@@ -24,3 +24,44 @@ style_neha.css.map
 public/code.zip
 /public/*.zip
 /public/code.zip
+
+# Laravel specific
+/vendor
+/node_modules
+/public/storage
+/storage/*.key
+.env
+.env.*.local
+.env.local
+.phpunit.result.cache
+
+# Laravel caches
+bootstrap/cache/*.php
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*.log
+
+# Composer
+composer.lock
+composer.phar
+
+# NPM / Yarn / PNPM
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea
+.vscode
+*.sublime-project
+*.sublime-workspace
+
+# Optional: ignore compiled assets if built locally
+/public/js
+/public/css
+/public/mix-manifest.json
