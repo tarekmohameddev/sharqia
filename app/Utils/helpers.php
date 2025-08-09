@@ -46,6 +46,8 @@ class Helpers
 
         } elseif (isset($request->user)) {
             $user = $request->user;
+        } elseif (isset($request['payment_request_from']) && $request['payment_request_from'] == 'app' && isset($request->customer_id) && $request->is_guest != 1) {
+            $user = User::find($request['customer_id']);
         }
 
         if ($user == null) {
@@ -189,21 +191,25 @@ class Helpers
         return $data;
     }
 
-    public static function set_data_format_for_json_data($data)
+
+    public static function setDataFormatForJsonData($data): mixed
     {
-        $colors = is_array($data['colors']) ? $data['colors'] : json_decode($data['colors']);
-        $query_data = Color::whereIn('code', $colors)->pluck('name', 'code')->toArray();
-        $color_process = [];
-        foreach ($query_data as $key => $color) {
-            $color_process[] = array(
+        $colors = [0];
+        if (isset($data['colors'])) {
+            $colors = is_array($data['colors']) ? $data['colors'] : json_decode($data['colors']);
+        }
+        $queryData = Color::whereIn('code', $colors)->pluck('name', 'code')->toArray();
+        $colorProcess = [];
+        foreach ($queryData as $key => $color) {
+            $colorProcess[] = [
                 'name' => $color,
                 'code' => $key,
-            );
+            ];
         }
 
         $colorImage = isset($data['color_image']) ? (is_array($data['color_image']) ? $data['color_image'] : json_decode($data['color_image'])) : null;
         $colorsFormatted = [];
-        foreach ($color_process as $color) {
+        foreach ($colorProcess as $color) {
             $colorImageName = null;
             if ($colorImage) {
                 foreach ($colorImage as $image) {
@@ -220,21 +226,22 @@ class Helpers
         }
 
         $variation = [];
-        $data['category_ids'] = is_array($data['category_ids']) ? $data['category_ids'] : json_decode($data['category_ids']);
-        $data['images'] = is_array($data['images']) ? $data['images'] : json_decode($data['images']);
+        $data['category_ids'] = isset($data['category_ids']) ? (is_array($data['category_ids']) ? $data['category_ids'] : json_decode($data['category_ids'])) : [];
+
+        $data['images'] = isset($data['images']) ? (is_array($data['images']) ? $data['images'] : json_decode($data['images'])) : [];
         $data['colors'] = $colors;
         $data['color_image'] = $colorImage;
         $data['colors_formatted'] = $colorsFormatted;
         $attributes = [];
-        if ((is_array($data['attributes']) ? $data['attributes'] : json_decode($data['attributes'])) != null) {
+        if ((isset($data['attributes']) && is_array($data['attributes']) ? $data['attributes'] : json_decode($data['attributes'] ?? '')) != null) {
             $attributes_arr = is_array($data['attributes']) ? $data['attributes'] : json_decode($data['attributes']);
             foreach ($attributes_arr as $attribute) {
                 $attributes[] = (integer)$attribute;
             }
         }
         $data['attributes'] = $attributes;
-        $data['choice_options'] = is_array($data['choice_options']) ? $data['choice_options'] : json_decode($data['choice_options']);
-        $variation_arr = is_array($data['variation']) ? $data['variation'] : json_decode($data['variation'], true);
+        $data['choice_options'] = isset($data['choice_options']) ? (is_array($data['choice_options']) ? $data['choice_options'] : json_decode($data['choice_options'])) : [];
+        $variation_arr = isset($data['variation']) ? (is_array($data['variation']) ? $data['variation'] : json_decode($data['variation'], true)) : [];
         foreach ($variation_arr as $var) {
             $variation[] = [
                 'type' => $var['type'],
@@ -246,7 +253,6 @@ class Helpers
         $data['variation'] = $variation;
         return $data;
     }
-
 
     public static function product_data_formatting($data, $multi_data = false)
     {
@@ -275,12 +281,12 @@ class Helpers
             if ($multi_data == true) {
                 foreach ($data as $item) {
                     if ($item) {
-                        $storage[] = Helpers::set_data_format_for_json_data($item);
+                        $storage[] = Helpers::setDataFormatForJsonData($item);
                     }
                 }
                 $data = $storage;
             } else {
-                $data = Helpers::set_data_format_for_json_data($data);;
+                $data = Helpers::setDataFormatForJsonData($data);;
             }
 
             return $data;
@@ -439,9 +445,9 @@ class Helpers
 
     public static function module_permission_check($mod_name)
     {
-        $user_role = auth('admin')->user()->role;
-        $permission = $user_role->module_access;
-        if (isset($permission) && $user_role->status == 1 && in_array($mod_name, (array)json_decode($permission)) == true) {
+        $user_role = auth('admin')->user()?->role;
+        $permission = $user_role?->module_access ?? '';
+        if (isset($permission) && $user_role?->status == 1 && in_array($mod_name, (array)json_decode($permission)) == true) {
             return true;
         }
 
@@ -711,23 +717,21 @@ class Helpers
                 $discount_amount = $coupon->coupon_type == 'free_delivery' ? 0 : $order['discount_amount'];
             }
         }
-        $order_summery = OrderManager::order_summary($order);
+        $order_summery = OrderManager::getOrderTotalAndSubTotalAmountSummary($order);
         $order_total = $order_summery['subtotal'] - $order_summery['total_discount_on_product'] - $discount_amount;
-        $commission_amount = self::seller_sales_commission($order['seller_is'], $order['seller_id'], $order_total);
-
-        return $commission_amount;
+        return self::seller_sales_commission($order['seller_is'], $order['seller_id'], $order_total);
     }
 
-    public static function sales_commission_before_order($cart_group_id, $coupon_discount)
+    public static function sales_commission_before_order($cart_group_id, $coupon_discount): int|string
     {
         $carts = CartManager::getCartListQuery(groupId: $cart_group_id);
-        $cart_summery = OrderManager::order_summary_before_place_order($carts, $coupon_discount);
+        $cart_summery = OrderManager::getOrderSummaryBeforePlaceOrder($carts, $coupon_discount);
         return self::seller_sales_commission($carts[0]['seller_is'], $carts[0]['seller_id'], $cart_summery['order_total']);
     }
 
-    public static function seller_sales_commission($seller_is, $seller_id, $order_total)
+    public static function seller_sales_commission($seller_is, $seller_id, $order_total): int|string
     {
-        $commission_amount = 0;
+        $commissionAmount = 0;
         if ($seller_is == 'seller') {
             $seller = Seller::find($seller_id);
             if (isset($seller) && $seller['sales_commission_percentage'] !== null) {
@@ -735,9 +739,9 @@ class Helpers
             } else {
                 $commission = getWebConfig(name: 'sales_commission');
             }
-            $commission_amount = number_format(($order_total / 100) * $commission, 2);
+            $commissionAmount = number_format(($order_total / 100) * $commission, 2);
         }
-        return $commission_amount;
+        return $commissionAmount;
     }
 
     public static function categoryName($id)
