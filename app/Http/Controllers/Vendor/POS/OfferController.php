@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Http;
 
 class OfferController extends BaseController
 {
-    public function index(): View
+    public function index(?Request $request, ?string $type = null): View
     {
         $sellerId = auth('seller')->id();
         $products = Product::select('id','name')->where(['status'=>1,'user_id'=>$sellerId])->get();

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class OfferController extends BaseController
 {
-    public function index(): JsonResponse
+    public function index(?Request $request, ?string $type = null): JsonResponse
     {
         $offers = Offer::whereHas('product', function ($query) {
             $query->where('user_id', Auth::id());

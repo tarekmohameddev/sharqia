@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\ExpenseTransactionReportController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSaleController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSalePrioritySetupController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSaleVendorOfferController;
-use App\Http\Controllers\Admin\OfferController;
+use App\Http\Controllers\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Admin\Settings\AddonActivationController;
 use App\Http\Controllers\Admin\Settings\FirebaseOTPVerificationController;
 use App\Http\Controllers\FirebaseController;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SharedController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\POS\POSController;
-use App\Http\Controllers\Admin\POS\OfferController;
+use App\Http\Controllers\Admin\POS\OfferController as POSOfferController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ChattingController;
 use App\Http\Controllers\Admin\POS\CartController;
@@ -178,7 +178,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::any('view-hold-orders', 'getAllHoldOrdersView')->name('view-hold-orders');
         });
 
-        Route::controller(OfferController::class)->group(function () {
+        Route::controller(POSOfferController::class)->group(function () {
             Route::get('offers', 'index')->name('offers.index');
             Route::post('offers', 'store')->name('offers.store');
             Route::post('offers/status', 'updateStatus')->name('offers.status');
@@ -1161,7 +1161,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
     });
 
     Route::group(['prefix' => 'offers', 'as' => 'offers.'], function () {
-        Route::controller(OfferController::class)->group(function () {
+        Route::controller(AdminOfferController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('/', 'store')->name('store');
             Route::get('{offer}', 'show')->name('show');

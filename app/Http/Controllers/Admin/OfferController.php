@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 
 class OfferController extends BaseController
 {
-    public function index(): JsonResponse
+    public function index(?Request $request, ?string $type = null): JsonResponse
     {
         $offers = Offer::with(['product', 'variant', 'giftProduct'])->get();
         return response()->json($offers);

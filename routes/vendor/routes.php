@@ -35,11 +35,11 @@ use App\Http\Controllers\Vendor\NotificationController;
 use App\Http\Controllers\Vendor\POS\CartController;
 use App\Http\Controllers\Vendor\POS\POSController;
 use App\Http\Controllers\Vendor\POS\POSOrderController;
-use App\Http\Controllers\Vendor\POS\OfferController;
+use App\Http\Controllers\Vendor\POS\OfferController as POSOfferController;
 use App\Http\Controllers\Vendor\Product\ProductController;
 use App\Http\Controllers\Vendor\ProfileController;
 use App\Http\Controllers\Vendor\Promotion\ClearanceSaleController;
-use App\Http\Controllers\Vendor\OfferController;
+use App\Http\Controllers\Vendor\OfferController as VendorOfferController;
 use App\Http\Controllers\Vendor\RefundController;
 use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\Shipping\CategoryShippingCostController;
@@ -122,7 +122,7 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::any(POSOrder::HOLD_ORDERS[URI], 'getAllHoldOrdersView')->name('view-hold-orders');
                 });
 
-                Route::controller(OfferController::class)->group(function () {
+                Route::controller(POSOfferController::class)->group(function () {
                     Route::get('offers', 'index')->name('offers.index');
                     Route::post('offers', 'store')->name('offers.store');
                     Route::post('offers/status', 'updateStatus')->name('offers.status');
@@ -363,7 +363,7 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
             });
 
             Route::group(['prefix' => 'offers', 'as' => 'offers.'], function () {
-                Route::controller(OfferController::class)->group(function () {
+                Route::controller(VendorOfferController::class)->group(function () {
                     Route::get('/', 'index')->name('index');
                     Route::post('/', 'store')->name('store');
                     Route::get('{offer}', 'show')->name('show');
