@@ -432,6 +432,29 @@ class POSController extends BaseController
         return array_merge($customerCartData[$cartName], $cartItemData);
     }
 
+    public function getActiveOffers(Request $request): JsonResponse
+    {
+        $product = $this->productRepo->getFirstWhere(
+            params: ['id' => $request['product_id']],
+            relations: ['clearanceSale' => function ($query) {
+                return $query->active();
+            }]
+        );
+
+        $offers = [];
+        if ($product?->clearanceSale) {
+            $offers[] = [
+                'id' => $product->clearanceSale->id,
+                'label' => translate('offer'),
+                'bundle_quantity' => 1,
+                'gift_product_id' => null,
+                'offer_price' => getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'value', price: $product['unit_price'], from: 'panel'),
+            ];
+        }
+
+        return response()->json(['offers' => $offers]);
+    }
+
     public function getSearchedProductsView(Request $request): JsonResponse
     {
         $products = $this->productRepo->getListWithScope(

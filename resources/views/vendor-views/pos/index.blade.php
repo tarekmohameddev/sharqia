@@ -162,6 +162,7 @@
     <span id="route-vendor-pos-empty-cart" data-url="{{ route('vendor.pos.cart-empty') }}"></span>
     <span id="route-vendor-pos-update-quantity" data-url="{{ route('vendor.pos.quantity-update') }}"></span>
     <span id="route-vendor-pos-get-variant-price" data-url="{{ route('vendor.pos.get-variant-price') }}"></span>
+    <span id="route-vendor-pos-get-active-offers" data-url="{{ route('vendor.pos.get-active-offers') }}"></span>
     <span id="route-vendor-pos-change-cart-editable" data-url="{{ route('vendor.pos.change-cart').'/?cart_id=:value' }}"></span>
 
     <span id="message-cart-word" data-text="{{ translate('cart') }}"></span>
