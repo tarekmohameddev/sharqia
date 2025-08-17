@@ -426,6 +426,22 @@
                     </div>
                 </div>
             </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="fs-18">{{ translate('Coverage_Governorates') }}</h3>
+                    <p class="mb-0 fs-12">{{ translate('select_governorates_this_vendor_covers') }}</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-0">
+                        <label class="form-label mb-2">{{ translate('Governorates') }}</label>
+                        <select name="governorates[]" class="form-control js-select2-custom" multiple>
+                            @foreach($governorates as $governorate)
+                                <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div class="d-flex justify-content-end trans3 mt-4">
                 <div
                     class="d-flex justify-content-sm-end justify-content-center gap-3 flex-grow-1 flex-grow-sm-0 bg-white action-btn-wrapper trans3">
