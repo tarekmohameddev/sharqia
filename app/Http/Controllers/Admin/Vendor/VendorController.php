@@ -39,6 +39,7 @@ use App\Contracts\Repositories\WithdrawRequestRepositoryInterface;
 use App\Contracts\Repositories\OrderTransactionRepositoryInterface;
 use App\Contracts\Repositories\StockClearanceSetupRepositoryInterface;
 use App\Contracts\Repositories\StockClearanceProductRepositoryInterface;
+use App\Models\Governorate;
 
 class VendorController extends BaseController
 {
@@ -88,7 +89,8 @@ class VendorController extends BaseController
 
     public function getAddView(Request $request): View
     {
-        return view('admin-views.vendor.add-new-vendor');
+        $governorates = Governorate::all();
+        return view('admin-views.vendor.add-new-vendor', compact('governorates'));
     }
 
     public function add(Request $request): JsonResponse
@@ -96,6 +98,9 @@ class VendorController extends BaseController
         $vendor = $this->vendorRepo->add(data: $this->vendorService->getAddData($request));
         $this->shopRepo->add($this->shopService->getAddShopDataForRegistration(request: $request, vendorId: $vendor['id']));
         $this->vendorWalletRepo->add($this->vendorService->getInitialWalletData(vendorId: $vendor['id']));
+        if ($request->has('governorates')) {
+            $vendor->governorate_coverages()->sync($request['governorates']);
+        }
         $data = [
             'vendorName' => $request['f_name'],
             'status' => 'pending',
@@ -380,11 +385,18 @@ class VendorController extends BaseController
 
     public function getSettingListTabView(Request $request, $seller, $id): View
     {
-        return view('admin-views.vendor.view.setting', compact('seller'));
+        $governorates = Governorate::all();
+        $seller->load('governorate_coverages');
+        return view('admin-views.vendor.view.setting', compact('seller', 'governorates'));
     }
 
     public function updateSetting(Request $request, $id): RedirectResponse
     {
+        if ($request->has('governorates')) {
+            $seller = $this->vendorRepo->getFirstWhere(params: ['id' => $id]);
+            $seller->governorate_coverages()->sync($request['governorates']);
+            ToastMagic::success(translate('coverage_governorates_updated'));
+        }
         if ($request->has('commission')) {
             request()->validate([
                 'commission' => 'required|numeric|min:1',
