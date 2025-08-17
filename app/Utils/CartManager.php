@@ -69,7 +69,8 @@ class CartManager
                 return $query->where(['is_checked' => 1]);
             })
             ->get()?->each(function ($item) {
-                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
             });
     }
 
@@ -95,7 +96,8 @@ class CartManager
                 return $query->where(['is_checked' => 1]);
             })
             ->get()?->each(function ($item) {
-                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
             });
     }
 
@@ -119,7 +121,8 @@ class CartManager
                 return $query->where(['is_checked' => 1]);
             })
             ->get()?->each(function ($item) {
-                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
             })->groupBy('cart_group_id');
     }
 
@@ -139,7 +142,8 @@ class CartManager
                 return $query->where(['is_checked' => 1]);
             })
             ->get()?->each(function ($item) {
-                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $item['discount'] = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
             });
     }
 
@@ -303,7 +307,8 @@ class CartManager
         $total = 0;
         if (!empty($cart)) {
             foreach ($cart as $item) {
-                $product_subtotal = $item['price'] * $item['quantity'];
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $product_subtotal = $basePrice * $item['quantity'];
                 $total += $product_subtotal;
             }
         }
@@ -315,8 +320,9 @@ class CartManager
         $total = 0;
         if (!empty($cart)) {
             foreach ($cart as $item) {
-                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
-                $productSubtotal = ($item['price'] - $discount) * $item['quantity'];
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
+                $productSubtotal = ($basePrice - $discount) * $item['quantity'];
                 $total += $productSubtotal;
             }
         }
@@ -328,7 +334,8 @@ class CartManager
         $total = 0;
         if (!empty($cart)) {
             foreach ($cart as $item) {
-                $product_subtotal = ($item['price'] * $item['quantity']) + ($item['tax'] * $item['quantity']);
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $product_subtotal = ($basePrice * $item['quantity']) + ($item['tax'] * $item['quantity']);
                 $total += $product_subtotal;
             }
         }
@@ -348,8 +355,9 @@ class CartManager
         if (!empty($cart)) {
             foreach ($cart as $item) {
                 $tax = $item['tax_model'] == 'include' ? 0 : $item['tax'];
-                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
-                $productSubtotal = ($item['price'] + $tax - $discount) * $item['quantity'];
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
+                $productSubtotal = ($basePrice + $tax - $discount) * $item['quantity'];
                 $total += $productSubtotal;
             }
             $total += $shippingCost;
@@ -367,8 +375,9 @@ class CartManager
         $total = 0;
         if (!empty($cart)) {
             foreach ($cart as $item) {
-                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $item['price']);
-                $productSubtotal = ($item['price'] - $discount) * $item['quantity'];
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $discount = getProductPriceByType(product: $item['product'], type: 'discounted_amount', result: 'value', price: $basePrice);
+                $productSubtotal = ($basePrice - $discount) * $item['quantity'];
                 $total += $productSubtotal;
             }
         }
@@ -383,7 +392,8 @@ class CartManager
         if (!empty($cart)) {
             foreach ($cart as $item) {
                 $tax = $item['tax_model'] == 'include' ? 0 : $item['tax'];
-                $product_subtotal = ($item['price'] * $item['quantity'])
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $product_subtotal = ($basePrice * $item['quantity'])
                     + ($tax * $item['quantity'])
                     - $item['discount'] * $item['quantity'];
                 $total += $product_subtotal;
@@ -404,7 +414,8 @@ class CartManager
         if (!empty($cart)) {
             foreach ($cart as $item) {
                 $tax = $item['tax_model'] == 'include' ? 0 : $item['tax'];
-                $productSubtotal = ($item['price'] * $item['quantity']) + ($tax * $item['quantity']) - $item['discount'] * $item['quantity'];
+                $basePrice = $item['offer_id'] ? $item['bundle_price'] : $item['price'];
+                $productSubtotal = ($basePrice * $item['quantity']) + ($tax * $item['quantity']) - $item['discount'] * $item['quantity'];
                 $total += $productSubtotal;
             }
         }
@@ -501,7 +512,8 @@ class CartManager
         }
 
         $tax = Helpers::tax_calculation(product: $product, price: $price, tax: $product['tax'], tax_type: 'percent');
-        $getProductDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $price);
+        $basePrice = $request['offer_id'] ? $request['bundle_price'] : $price;
+        $getProductDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $basePrice);
 
         $cartArray += [
             'customer_id' => ($user == 'offline' ? $guestId : $user->id),
@@ -509,6 +521,8 @@ class CartManager
             'product_type' => $product['product_type'],
             'quantity' => $request['quantity'],
             'price' => $price,
+            'bundle_price' => $basePrice,
+            'offer_id' => $request['offer_id'] ?? null,
             'tax' => $tax,
             'tax_model' => $product->tax_model,
             'discount' => $getProductDiscount,
@@ -544,7 +558,7 @@ class CartManager
 
         if ($request['buy_now'] == 1) {
             $calculateTax = $product['tax_model'] == 'include' ? 0 : ($tax * $request['quantity']);
-            $productTotalPrice = ($price * $request['quantity']) + $calculateTax - ($getProductDiscount * $request['quantity']);
+            $productTotalPrice = ($basePrice * $request['quantity']) + $calculateTax - ($getProductDiscount * $request['quantity']);
             $verifyStatus = OrderManager::checkSingleProductMinimumOrderAmountVerify(request: $request, product: $product, totalAmount: $productTotalPrice);
             if ($verifyStatus['status'] == 0) {
                 return ['status' => 0, 'message' => $verifyStatus['message']];
@@ -656,7 +670,8 @@ class CartManager
         }
 
         $tax = Helpers::tax_calculation(product: $product, price: $price, tax: $product['tax'], tax_type: 'percent');
-        $getProductDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $price);
+        $basePrice = $request['offer_id'] ? $request['bundle_price'] : $price;
+        $getProductDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $basePrice);
         $cartArray = [
             'customer_id' => $customerId,
             'product_id' => $request['id'],
@@ -667,6 +682,8 @@ class CartManager
             'variant' => $request['variant_key'],
             'quantity' => $request['quantity'],
             'price' => $price,
+            'bundle_price' => $basePrice,
+            'offer_id' => $request['offer_id'] ?? null,
             'tax' => $tax,
             'tax_model' => $product['tax_model'],
             'discount' => $getProductDiscount,
@@ -701,7 +718,7 @@ class CartManager
 
         if ($request['buy_now'] == 1) {
             $calculateTax = $product['tax_model'] == 'include' ? 0 : ($tax * $request['quantity']);
-            $productTotalPrice = ($price * $request['quantity']) + $calculateTax - ($getProductDiscount * $request['quantity']);
+            $productTotalPrice = ($basePrice * $request['quantity']) + $calculateTax - ($getProductDiscount * $request['quantity']);
             $verifyStatus = OrderManager::checkSingleProductMinimumOrderAmountVerify(request: $request, product: $product, totalAmount: $productTotalPrice);
             if ($verifyStatus['status'] == 0) {
                 return ['status' => 0, 'message' => $verifyStatus['message']];

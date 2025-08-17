@@ -62,7 +62,8 @@ class OrderManager
         }
 
         foreach ($cart as $item) {
-            $subTotal += $item->price * $item->quantity;
+            $basePrice = $item->offer_id ? $item->bundle_price : $item->price;
+            $subTotal += $basePrice * $item->quantity;
             $totalDiscountOnProduct += $item->discount * $item->quantity;
         }
 
@@ -399,14 +400,16 @@ class OrderManager
         $onlyProductTotalAmount = 0;
         if ($coupon->coupon_type == 'first_order') {
             foreach ($cartList as $cartItem) {
-                $onlyProductTotalAmount += ($cartItem['price'] - $cartItem['discount']) * $cartItem['quantity'];
+                $basePrice = $cartItem['offer_id'] ? $cartItem['bundle_price'] : $cartItem['price'];
+                $onlyProductTotalAmount += ($basePrice - $cartItem['discount']) * $cartItem['quantity'];
             }
         }
 
         if ($coupon->coupon_type == 'discount_on_purchase') {
             foreach ($cartList as $cartItem) {
                 if (($coupon->seller_id == '0') || (is_null($coupon->seller_id) && $cartItem['seller_is'] == 'admin') || ($coupon->seller_id == $cartItem['seller_id'] && $cartItem['seller_is'] == 'seller')) {
-                    $onlyProductTotalAmount += ($cartItem['price'] - $cartItem['discount']) * $cartItem['quantity'];
+                    $basePrice = $cartItem['offer_id'] ? $cartItem['bundle_price'] : $cartItem['price'];
+                    $onlyProductTotalAmount += ($basePrice - $cartItem['discount']) * $cartItem['quantity'];
                 }
             }
         }
@@ -429,7 +432,8 @@ class OrderManager
         } elseif ($coupon->coupon_type == 'free_delivery') {
             foreach ($cartList as $cartItem) {
                 if (($coupon->seller_id == '0') || (is_null($coupon->seller_id) && $cartItem['seller_is'] == 'admin') || ($coupon->seller_id == $cartItem['seller_id'] && $cartItem['seller_is'] == 'seller')) {
-                    $onlyProductTotalAmount += ($cartItem['price'] - $cartItem['discount']) * $cartItem['quantity'];
+                    $basePrice = $cartItem['offer_id'] ? $cartItem['bundle_price'] : $cartItem['price'];
+                    $onlyProductTotalAmount += ($basePrice - $cartItem['discount']) * $cartItem['quantity'];
                 }
             }
             foreach ($cartList->groupBy('cart_group_id') as $cartGroupItem) {
@@ -495,7 +499,8 @@ class OrderManager
             foreach ($cartListGroup as $cartListGroupKey => $cartList) {
                 if ($cartListGroupKey == $groupId) {
                     foreach ($cartList as $cartItem) {
-                        $onlyProductTotalAmount += ($cartItem['price'] - $cartItem['discount']) * $cartItem['quantity'];
+                        $basePrice = $cartItem['offer_id'] ? $cartItem['bundle_price'] : $cartItem['price'];
+                        $onlyProductTotalAmount += ($basePrice - $cartItem['discount']) * $cartItem['quantity'];
                     }
                 }
             }
@@ -504,11 +509,12 @@ class OrderManager
         if ($discountOnPurchaseCoupon) {
             foreach ($cartListGroup as $cartListGroupKey => $cartList) {
                 if ($cartListGroupKey == $groupId) {
-                    foreach ($cartList as $cartItem) {
-                        if (($coupon->seller_id == '0') || (is_null($coupon->seller_id) && $cartItem['seller_is'] == 'admin') || ($coupon->seller_id == $cartItem['seller_id'] && $cartItem['seller_is'] == 'seller')) {
-                            $onlyProductTotalAmount += ($cartItem['price'] - $cartItem['discount']) * $cartItem['quantity'];
-                        }
-                    }
+            foreach ($cartList as $cartItem) {
+                if (($coupon->seller_id == '0') || (is_null($coupon->seller_id) && $cartItem['seller_is'] == 'admin') || ($coupon->seller_id == $cartItem['seller_id'] && $cartItem['seller_is'] == 'seller')) {
+                    $basePrice = $cartItem['offer_id'] ? $cartItem['bundle_price'] : $cartItem['price'];
+                    $onlyProductTotalAmount += ($basePrice - $cartItem['discount']) * $cartItem['quantity'];
+                }
+            }
                 }
             }
         }
@@ -832,8 +838,9 @@ class OrderManager
                 $product['storage_path'] = $product['digital_file_ready_storage_type'] ?? 'public';
             }
 
-            $price = $cartSingleItem['tax_model'] == 'include' ? $cartSingleItem['price'] - $cartSingleItem['tax'] : $cartSingleItem['price'];
-            $productDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $cartSingleItem['price']);
+            $basePrice = $cartSingleItem['offer_id'] ? $cartSingleItem['bundle_price'] : $cartSingleItem['price'];
+            $price = $cartSingleItem['tax_model'] == 'include' ? $basePrice - $cartSingleItem['tax'] : $basePrice;
+            $productDiscount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $basePrice);
             $orderDetails = [
                 'order_id' => $orderId,
                 'product_id' => $cartSingleItem['product_id'],
@@ -1311,6 +1318,8 @@ class OrderManager
                             $cart['customer_id'] = $user->id ?? 0;
                             $cart['quantity'] = $orderProductQuantity;
                             $cart['price'] = $price;
+                            $cart['bundle_price'] = $price;
+                            $cart['offer_id'] = null;
                             $cart['tax'] = $tax;
                             $cart['tax_model'] = $product->tax_model;
                             $cart['slug'] = $product->slug;
