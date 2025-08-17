@@ -534,6 +534,7 @@ class OrderManager
             'coupon_bearer' => $coupon->coupon_bearer,
             'coupon_code' => $coupon->code,
             'coupon_type' => $coupon->coupon_type,
+            'gift_product_id' => $coupon->gift_product_id ?? null,
         ];
     }
 
@@ -741,6 +742,7 @@ class OrderManager
                 'coupon_bearer' => $couponInfo['coupon_bearer'] ?? 'inhouse',
                 'coupon_discount' => $couponInfo['discount'] ?? 0,
                 'discount_type' => $couponInfo['discount'] == 0 ? null : 'coupon_discount',
+                'gift_product_id' => $couponInfo['gift_product_id'] ?? null,
                 'shipping_cost' => $shippingCost,
                 'shipping_address_id' => OrderManager::getOrderAddressId(type: 'shipping_address', id: $data['address_id'] ?? null),
                 'billing_address_id' => OrderManager::getOrderAddressId(type: 'billing_address', id: $data['billing_address_id'] ?? null),
@@ -804,7 +806,7 @@ class OrderManager
         ];
     }
 
-    public static function addOrderDetailsData(int $orderId, object|array|null $vendorCartList = []): void
+    public static function addOrderDetailsData(int $orderId, object|array|null $vendorCartList = [], int|string|null $giftProductId = null): void
     {
         foreach ($vendorCartList as $cartSingleItem) {
             $product = Product::where(['id' => $cartSingleItem['product_id']])->with(['digitalVariation', 'clearanceSale' => function ($query) {
@@ -872,6 +874,45 @@ class OrderManager
 
             DB::table('order_details')->insert($orderDetails);
         }
+
+        if ($giftProductId) {
+            $giftProduct = Product::find($giftProductId);
+            if ($giftProduct) {
+                $giftDetails = $giftProduct->toArray();
+                unset($giftDetails['is_shop_temporary_close']);
+                unset($giftDetails['color_images_full_url']);
+                unset($giftDetails['meta_image_full_url']);
+                unset($giftDetails['images_full_url']);
+                unset($giftDetails['reviews']);
+                unset($giftDetails['translations']);
+
+                $giftOrderDetails = [
+                    'order_id' => $orderId,
+                    'product_id' => $giftProductId,
+                    'seller_id' => $giftProduct['seller_id'],
+                    'product_details' => json_encode($giftDetails),
+                    'qty' => 1,
+                    'price' => 0,
+                    'tax' => 0,
+                    'tax_model' => $giftProduct['tax_model'],
+                    'discount' => 0,
+                    'discount_type' => 'gift',
+                    'variant' => null,
+                    'variation' => json_encode([]),
+                    'delivery_status' => 'pending',
+                    'shipping_method_id' => null,
+                    'payment_status' => 'unpaid',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                Product::where(['id' => $giftProductId])->update([
+                    'current_stock' => $giftProduct['current_stock'] - 1,
+                ]);
+
+                DB::table('order_details')->insert($giftOrderDetails);
+            }
+        }
     }
 
     public static function generateOrder(object|array|null $data = []): array
@@ -917,6 +958,7 @@ class OrderManager
             OrderManager::addOrderDetailsData(
                 orderId: $order_id,
                 vendorCartList: $vendorWiseCart['cart_list'],
+                giftProductId: $vendorWiseCart['gift_product_id'] ?? null,
             );
 
             $order = Order::with('customer', 'seller.shop', 'details')->find($order_id);
