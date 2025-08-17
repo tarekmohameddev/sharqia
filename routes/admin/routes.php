@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ExpenseTransactionReportController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSaleController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSalePrioritySetupController;
 use App\Http\Controllers\Admin\Promotion\ClearanceSaleVendorOfferController;
+use App\Http\Controllers\Admin\OfferController;
 use App\Http\Controllers\Admin\Settings\AddonActivationController;
 use App\Http\Controllers\Admin\Settings\FirebaseOTPVerificationController;
 use App\Http\Controllers\FirebaseController;
@@ -1148,6 +1149,16 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('feature-status-update', 'updateFeatureStatus')->name('feature-status-update');
             Route::post('update' . '/{id}', 'update');
             Route::post('delete', 'delete')->name('delete');
+        });
+    });
+
+    Route::group(['prefix' => 'offers', 'as' => 'offers.'], function () {
+        Route::controller(OfferController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::get('{offer}', 'show')->name('show');
+            Route::put('{offer}', 'update')->name('update');
+            Route::delete('{offer}', 'destroy')->name('destroy');
         });
     });
 

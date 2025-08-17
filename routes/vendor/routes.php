@@ -38,6 +38,7 @@ use App\Http\Controllers\Vendor\POS\POSOrderController;
 use App\Http\Controllers\Vendor\Product\ProductController;
 use App\Http\Controllers\Vendor\ProfileController;
 use App\Http\Controllers\Vendor\Promotion\ClearanceSaleController;
+use App\Http\Controllers\Vendor\OfferController;
 use App\Http\Controllers\Vendor\RefundController;
 use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\Shipping\CategoryShippingCostController;
@@ -351,6 +352,16 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
 
             Route::controller(SystemController::class)->group(function () {
                 Route::get('/get-order-data', 'getOrderData')->name('get-order-data');
+            });
+
+            Route::group(['prefix' => 'offers', 'as' => 'offers.'], function () {
+                Route::controller(OfferController::class)->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::post('/', 'store')->name('store');
+                    Route::get('{offer}', 'show')->name('show');
+                    Route::put('{offer}', 'update')->name('update');
+                    Route::delete('{offer}', 'destroy')->name('destroy');
+                });
             });
 
             Route::group(['prefix' => 'report', 'as' => 'report.'], function () {

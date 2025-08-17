@@ -217,6 +217,11 @@ class Product extends Model
         return $this->hasMany(ProductStock::class);
     }
 
+    public function offers(): HasMany
+    {
+        return $this->hasMany(Offer::class);
+    }
+
     public function clearanceSale(): HasOne
     {
         return $this->hasOne(StockClearanceProduct::class, 'product_id');
