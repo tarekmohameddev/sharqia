@@ -71,6 +71,13 @@
                                         class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('POS') }}</span>
                                 </a>
                             </li>
+                            <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/pos/offers*')?'active' : ''}}">
+                                <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                   href="{{ route('vendor.pos.offers.index') }}" title="{{ translate('offers') }}">
+                                    <i class="tio-gift nav-icon"></i>
+                                    <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('offers') }}</span>
+                                </a>
+                            </li>
                         @endif
 
                         <li class="nav-item">
