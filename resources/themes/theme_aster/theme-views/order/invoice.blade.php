@@ -687,6 +687,9 @@ $orderTotalPriceSummary = \App\Utils\OrderManager::getOrderTotalPriceSummary(ord
                             <td colspan="2">
                                 <div class="fs-12 font-semibold">
                                     {{$productDetails->name}}
+                                    @if($details['discount_type'] === 'gift')
+                                        ({{ translate('gift') }})
+                                    @endif
                                 </div>
                                 <div class="fs-10">
                                     @if($details['variant'])
