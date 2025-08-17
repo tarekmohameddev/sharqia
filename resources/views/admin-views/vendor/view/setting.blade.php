@@ -206,6 +206,27 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-6">
+                <form action="{{ route('admin.vendors.update-setting',['id'=>$seller['id']]) }}" method="post" id="update-setting-form-coverage">
+                    @csrf
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between gap-2">
+                            <h4 class="mb-0">{{ translate('coverage_governorates') }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="mb-2">{{ translate('Governorates') }}</label>
+                                <select name="governorates[]" class="form-control js-select2-custom" multiple>
+                                    @foreach($governorates as $governorate)
+                                        <option value="{{ $governorate->id }}" {{ $seller->governorate_coverages->contains($governorate->id) ? 'selected' : '' }}>{{ $governorate->name_ar }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">{{ translate('update') }}</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 @endsection
