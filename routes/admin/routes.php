@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SharedController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\POS\POSController;
+use App\Http\Controllers\Admin\POS\OfferController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ChattingController;
 use App\Http\Controllers\Admin\POS\CartController;
@@ -173,6 +174,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('order-place', 'placeOrder')->name('place-order');
             Route::any('cancel-order', 'cancelOrder')->name('cancel-order');
             Route::any('view-hold-orders', 'getAllHoldOrdersView')->name('view-hold-orders');
+        });
+
+        Route::controller(OfferController::class)->group(function () {
+            Route::get('offers', 'index')->name('offers.index');
+            Route::post('offers', 'store')->name('offers.store');
+            Route::post('offers/status', 'updateStatus')->name('offers.status');
         });
     });
 

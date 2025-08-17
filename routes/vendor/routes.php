@@ -35,6 +35,7 @@ use App\Http\Controllers\Vendor\NotificationController;
 use App\Http\Controllers\Vendor\POS\CartController;
 use App\Http\Controllers\Vendor\POS\POSController;
 use App\Http\Controllers\Vendor\POS\POSOrderController;
+use App\Http\Controllers\Vendor\POS\OfferController;
 use App\Http\Controllers\Vendor\Product\ProductController;
 use App\Http\Controllers\Vendor\ProfileController;
 use App\Http\Controllers\Vendor\Promotion\ClearanceSaleController;
@@ -117,6 +118,12 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::post(POSOrder::ORDER_PLACE[URI], 'placeOrder')->name('order-place');
                     Route::any(POSOrder::CANCEL_ORDER[URI], 'cancelOrder')->name('cancel-order');
                     Route::any(POSOrder::HOLD_ORDERS[URI], 'getAllHoldOrdersView')->name('view-hold-orders');
+                });
+
+                Route::controller(OfferController::class)->group(function () {
+                    Route::get('offers', 'index')->name('offers.index');
+                    Route::post('offers', 'store')->name('offers.store');
+                    Route::post('offers/status', 'updateStatus')->name('offers.status');
                 });
             });
             Route::group(['prefix' => 'refund', 'as' => 'refund.'], function () {

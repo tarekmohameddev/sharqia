@@ -41,6 +41,12 @@
                         <span class="aside-mini-hidden-element text-truncate">{{ translate('POS') }}</span>
                     </a>
                 </li>
+                <li>
+                    <a class="nav-link {{ Request::is('admin/pos/offers*') ? 'active' : '' }}" title="{{ translate('offers') }}" href="{{ route('admin.pos.offers.index') }}">
+                        <i class="fi fi-rr-gift"></i>
+                        <span class="aside-mini-hidden-element text-truncate">{{ translate('offers') }}</span>
+                    </a>
+                </li>
             @endif
             @if(Helpers::module_permission_check('order_management'))
                 <li class="nav-item nav-item_title {{ Request::is('admin/orders*')?((Request::is('admin/orders/details/*') && request()->has('vendor-order-list')) ? '' : 'scroll-here'):''}}">
