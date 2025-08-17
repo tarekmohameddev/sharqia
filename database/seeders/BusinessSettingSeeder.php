@@ -1,5 +1,7 @@
 <?php
 
+namespace Database\Seeders;
+
 use App\Models\BusinessSetting;
 use Illuminate\Database\Seeder;
 
