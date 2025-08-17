@@ -210,12 +210,25 @@ class ClearanceSaleController extends BaseController
 
     public function updateProductStatus(Request $request): JsonResponse
     {
-        $stockClearanceProduct = $this->stockClearanceProductRepo->getFirstWhere(params: ['product_id' => $request['product_id']], relations: ['setup']);
-        if ($request['status'] == 1 && !$this->productService->validateStockClearanceProductDiscount(stockClearanceProduct: $stockClearanceProduct)) {
-            return response()->json([
-                'status' => 0,
-                'message' => translate('Your_products_unit_price_is_lower_then_offer_price'),
-            ]);
+        $stockClearanceProduct = $this->stockClearanceProductRepo->getFirstWhere(
+            params: ['product_id' => $request['product_id']],
+            relations: ['setup', 'product']
+        );
+
+        if ($request['status'] == 1) {
+            if ($stockClearanceProduct?->product?->current_stock <= 0) {
+                return response()->json([
+                    'status' => 0,
+                    'message' => translate('product_is_out_of_stock'),
+                ]);
+            }
+
+            if (!$this->productService->validateStockClearanceProductDiscount(stockClearanceProduct: $stockClearanceProduct)) {
+                return response()->json([
+                    'status' => 0,
+                    'message' => translate('Your_products_unit_price_is_lower_then_offer_price'),
+                ]);
+            }
         }
 
         $this->stockClearanceProductRepo->updateByParams(

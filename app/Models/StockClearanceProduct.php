@@ -56,10 +56,19 @@ class StockClearanceProduct extends Model
 
     public function scopeActive($query)
     {
+        $isPosRequest = request()->is('admin/pos*') || request()->is('vendor/pos*') || request()->is('api/*/pos*');
+
+        if (!$isPosRequest) {
+            return $query->whereRaw('0 = 1');
+        }
+
         return $query
             ->where(['is_active' => 1])
             ->whereIn('added_by', ['admin', 'vendor'])
-        ->CheckConfig();
+            ->whereHas('product', function ($q) {
+                return $q->where('current_stock', '>', 0);
+            })
+            ->CheckConfig();
     }
 
     public function scopeCheckConfig($query): void
