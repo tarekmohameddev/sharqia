@@ -68,6 +68,12 @@
                 <form id="add-to-cart-form" class="add-to-cart-details-form">
                     @csrf
 
+                    <div class="offer-section d-none mb-3">
+                        <div class="d-flex gap-2 flex-wrap offer-buttons"></div>
+                    </div>
+                    <input type="hidden" name="offer_price" value="">
+                    <input type="hidden" name="gift_product_id" value="">
+
                     <div class="details">
                         <div class="d-flex flex-wrap gap-3 mb-3">
                             <div

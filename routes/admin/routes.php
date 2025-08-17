@@ -156,6 +156,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('coupon-discount', 'getCouponDiscount')->name('coupon-discount');
             Route::get('quick-view', 'getQuickView')->name('quick-view');
             Route::get('search-product', 'getSearchedProductsView')->name('search-product');
+            Route::get('active-offers', 'getActiveOffers')->name('get-active-offers');
         });
 
         Route::controller(CartController::class)->group(function () {

@@ -161,6 +161,7 @@
 <span id="route-admin-pos-empty-cart" data-url="{{ route('admin.pos.empty-cart') }}"></span>
 <span id="route-admin-pos-update-quantity" data-url="{{ route('admin.pos.update-quantity') }}"></span>
 <span id="route-admin-pos-get-variant-price" data-url="{{ route('admin.pos.get-variant-price') }}"></span>
+<span id="route-admin-pos-get-active-offers" data-url="{{ route('admin.pos.get-active-offers') }}"></span>
 <span id="route-admin-pos-change-cart-editable" data-url="{{ route('admin.pos.change-cart').'/?cart_id=:value' }}"></span>
 
 <span id="message-cart-word" data-text="{{ translate('cart') }}"></span>

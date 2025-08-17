@@ -125,6 +125,10 @@ class CartController extends BaseController
         }
         $price = $product['unit_price'];
         $discount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $price);
+        if ($request->filled('offer_price')) {
+            $price = $request['offer_price'];
+            $discount = 0;
+        }
         $cartData = session($cartId);
         if ($cartId && session()->has($cartId) && count($cartData) > 0) {
             foreach ($cartData as $key => $cartItem) {
@@ -172,6 +176,14 @@ class CartController extends BaseController
                     unset($cartData[$key]);
                     $cartData[] = $cartItem;
                     session([$cartId => $cartData]);
+                    if ($request->filled('gift_product_id')) {
+                        $giftProduct = $this->productRepo->getFirstWhere(params: ['id' => $request['gift_product_id']], relations: ['clearanceSale' => function ($query) {
+                            return $query->active();
+                        }]);
+                        if ($giftProduct) {
+                            $this->cartService->addCartDataOnSession(product: $giftProduct, quantity: 1, price: 0, discount: 0, variant: null, variations: []);
+                        }
+                    }
                     $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
                     $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
                     $cartItems = $this->getCartData(cartName: $cartId);
@@ -215,6 +227,14 @@ class CartController extends BaseController
             variant: $variant,
             variations: $variations
         );
+        if ($request->filled('gift_product_id')) {
+            $giftProduct = $this->productRepo->getFirstWhere(params: ['id' => $request['gift_product_id']], relations: ['clearanceSale' => function ($query) {
+                return $query->active();
+            }]);
+            if ($giftProduct) {
+                $this->cartService->addCartDataOnSession(product: $giftProduct, quantity: 1, price: 0, discount: 0, variant: null, variations: []);
+            }
+        }
         $cartItems = $this->getCartData(cartName: $cartId);
         return response()->json([
             'data' => $sessionData,

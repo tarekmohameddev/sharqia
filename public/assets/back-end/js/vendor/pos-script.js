@@ -726,12 +726,46 @@ function quickView(product_id) {
             renderRippleEffect();
             closeAlertMessage();
             $("#quick-view").modal("show");
+            fetchActiveOffers(product_id);
         },
         complete: function () {
             $("#loading").fadeOut();
         },
     });
 }
+
+function fetchActiveOffers(productId) {
+    $.get({
+        url: $("#route-vendor-pos-get-active-offers").data("url"),
+        data: { product_id: productId },
+        success: function (response) {
+            let section = $(".offer-section");
+            let container = section.find(".offer-buttons");
+            container.empty();
+            if (response.offers && response.offers.length) {
+                section.removeClass("d-none");
+                response.offers.forEach(function (offer) {
+                    container.append(
+                        `<button type="button" class="btn btn-outline--primary btn-sm offer-btn" data-bundle="${offer.bundle_quantity}" data-gift="${offer.gift_product_id}" data-price="${offer.offer_price}">${offer.label} (${offer.bundle_quantity})</button>`
+                    );
+                });
+            } else {
+                section.addClass("d-none");
+            }
+        },
+    });
+}
+
+$(document).on("click", ".offer-btn", function () {
+    let bundle = $(this).data("bundle");
+    let gift = $(this).data("gift");
+    let price = $(this).data("price");
+    let form = $("#add-to-cart-form");
+    form.find("input[name='quantity']").val(bundle);
+    form.find("input[name='offer_price']").val(price);
+    form.find("input[name='gift_product_id']").val(gift);
+    addToCart();
+});
 
 function getVariantForAlreadyInCart(event = null) {
     let current_val = parseFloat($(".in-cart-quantity-field").val());
@@ -945,6 +979,7 @@ function addToCart(form_id = "add-to-cart-form") {
                         : "";
                     removeFromCart();
                     basicFunctionalityForCartSummary();
+                    $("#" + form_id).find("input[name='offer_price'], input[name='gift_product_id']").val("");
                     return false;
                 } else if (data.data == 0) {
                     Swal.fire({
@@ -980,6 +1015,7 @@ function addToCart(form_id = "add-to-cart-form") {
                 $("#search").val("");
                 posUpdateQuantityFunctionality();
                 removeFromCart();
+                $("#" + form_id).find("input[name='offer_price'], input[name='gift_product_id']").val("");
             },
             complete: function () {
                 $("#loading").fadeOut();
