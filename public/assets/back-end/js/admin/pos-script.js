@@ -686,7 +686,7 @@ $("#order-place").submit(function (eventObj) {
     let customerValue = $("#customer").val();
     if (customerValue) {
         $(this).append(
-            '<input type="hidden" name="user_id" value="' +
+            '<input type="hidden" name="customer[id]" value="' +
             customerValue +
             '" /> '
         );

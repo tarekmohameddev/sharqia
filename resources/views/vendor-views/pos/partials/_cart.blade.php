@@ -1,5 +1,6 @@
 <form action="{{route('vendor.pos.order-place')}}" id='order-place' method="post" >
     @csrf
+    <input type="hidden" name="cart" value='@json(["items" => $cartItems["cartItemValue"]])'>
     <div id="cart">
         <div class="table-responsive pos-cart-table border">
             <table class="table table-align-middle m-0">
