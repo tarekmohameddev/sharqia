@@ -384,8 +384,7 @@ class CustomerController extends BaseController
 
         $token = Str::random(120);
         $this->passwordResetRepo->add($this->passwordResetService->getAddData(identity: $request['phone'], token: $token, userType: 'customer'));
-        $this->customerRepo->add($customerService->getCustomerData(request: $request));
-        $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+        $customer = $this->customerRepo->add($customerService->getCustomerData(request: $request));
 
         $this->shippingAddressRepo->add($this->shippingAddressService->getAddAddressData(request: $request, customerId: $customer['id'], addressType: 'home'));
         session(['selected_city_id' => $request['city_id'], 'selected_seller_id' => $request['seller_id']]);
