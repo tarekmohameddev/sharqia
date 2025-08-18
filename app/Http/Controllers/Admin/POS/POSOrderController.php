@@ -93,6 +93,11 @@ class POSOrderController extends BaseController
         $cityId = $request['city_id'];
 
         $cart = $request->input('cart', []);
+
+        if (is_string($cart)) {
+                $cart = json_decode($cart, true) ?: [];
+            }
+            
         $cartItems = $cart['items'] ?? [];
         if (empty($cartItems)) {
             ToastMagic::error(translate('cart_empty_warning'));
