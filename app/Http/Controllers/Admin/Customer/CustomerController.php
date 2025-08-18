@@ -368,14 +368,28 @@ class CustomerController extends BaseController
         return response()->json($customers);
     }
 
-    public function add(CustomerRequest $request, CustomerService $customerService): RedirectResponse
+    public function add(CustomerRequest $request, CustomerService $customerService): RedirectResponse|JsonResponse
     {
+        $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+        if ($customer) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'customer' => $customer,
+                    'message' => translate('customer_already_exists'),
+                ]);
+            }
+            ToastMagic::warning(translate('customer_already_exists'));
+            return redirect()->back();
+        }
+
         $token = Str::random(120);
         $this->passwordResetRepo->add($this->passwordResetService->getAddData(identity: $request['phone'], token: $token, userType: 'customer'));
         $this->customerRepo->add($customerService->getCustomerData(request: $request));
         $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+
         $this->shippingAddressRepo->add($this->shippingAddressService->getAddAddressData(request: $request, customerId: $customer['id'], addressType: 'home'));
         session(['selected_city_id' => $request['city_id'], 'selected_seller_id' => $request['seller_id']]);
+
         if ($request['email']) {
             $resetRoute = route('customer.auth.recover-password');
             $data = [
@@ -389,7 +403,35 @@ class CustomerController extends BaseController
             ];
             event(new CustomerRegistrationEvent(email: $request['email'], data: $data));
         }
+
+        if ($request->ajax()) {
+            return response()->json([
+                'customer' => $customer,
+                'message' => translate('customer_added_successfully'),
+            ]);
+        }
+
         ToastMagic::success(translate('customer_added_successfully'));
         return redirect()->back();
+    }
+
+    public function addAddress(Request $request): JsonResponse
+    {
+        $request->validate([
+            'customer_id' => 'required|integer',
+            'city_id' => 'required|integer',
+            'seller_id' => 'required|integer',
+            'address' => 'required|string',
+        ]);
+
+        $customer = $this->customerRepo->getFirstWhere(params: ['id' => $request['customer_id']]);
+        if (!$customer) {
+            return response()->json(['message' => translate('The_selected_customer_does_not_exist')], 404);
+        }
+
+        $this->shippingAddressRepo->add($this->shippingAddressService->getAddAddressData(request: $request, customerId: $customer['id'], addressType: 'home'));
+        session(['selected_city_id' => $request['city_id'], 'selected_seller_id' => $request['seller_id']]);
+
+        return response()->json(['message' => translate('address_added_successfully!')]);
     }
 }
