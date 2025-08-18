@@ -201,7 +201,46 @@
                         </div>
 
                         <div id="cart-summary">
-                            @include('admin-views.pos.partials._cart-summary')
+                            <table class="table table-align-middle m-0" id="cart-table">
+                                <thead class="text-capitalize bg-light">
+                                <tr>
+                                    <th class="border-0">{{ translate('item') }}</th>
+                                    <th class="border-0">{{ translate('qty') }}</th>
+                                    <th class="border-0">{{ translate('price') }}</th>
+                                    <th class="border-0 text-center">{{ translate('delete') }}</th>
+                                </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+
+                            <div class="pt-4">
+                                <div class="d-flex justify-content-between">
+                                    <span>{{ translate('sub_total') }} :</span>
+                                    <span id="cart-subtotal">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>{{ translate('total') }} :</span>
+                                    <span id="cart-total">0</span>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div>{{ translate('paid_By') }}:</div>
+                                <div class="d-flex gap-3">
+                                    <label class="form-check">
+                                        <input class="form-check-input" type="radio" name="type" value="cash" checked>
+                                        <span class="form-check-label">{{ translate('cash') }}</span>
+                                    </label>
+                                    <label class="form-check">
+                                        <input class="form-check-input" type="radio" name="type" value="card">
+                                        <span class="form-check-label">{{ translate('card') }}</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3 align-items-center pt-3">
+                                <button class="btn btn-danger" id="cancel-order">{{ translate('cancel_Order') }}</button>
+                                <button class="btn btn-primary" id="place-order">{{ translate('place_Order') }}</button>
+                            </div>
                         </div>
 
                     </div>
@@ -229,53 +268,8 @@
 @include('admin-views.pos.partials.modals._add-discount')
 @include('admin-views.pos.partials.modals._short-cut-keys')
 
-<span id="route-admin-pos-get-cart-ids" data-url="{{ route('admin.pos.get-cart-ids') }}"></span>
-<span id="route-admin-pos-new-cart-id" data-url="{{ route('admin.pos.new-cart-id') }}"></span>
-<span id="route-admin-pos-clear-cart-ids" data-url="{{ route('admin.pos.clear-cart-ids') }}"></span>
-<span id="route-admin-pos-view-hold-orders" data-url="{{ route('admin.pos.view-hold-orders') }}"></span>
 <span id="route-admin-products-search-product" data-url="{{ route('admin.pos.search-product') }}"></span>
-<span id="route-admin-pos-change-customer" data-url="{{ route('admin.pos.change-customer') }}"></span>
-<span id="route-admin-pos-update-discount" data-url="{{ route('admin.pos.update-discount') }}"></span>
-<span id="route-admin-pos-coupon-discount" data-url="{{ route('admin.pos.coupon-discount') }}"></span>
-<span id="route-admin-pos-cancel-order" data-url="{{ route('admin.pos.cancel-order') }}"></span>
-<span id="route-admin-pos-quick-view" data-url="{{ route('admin.pos.quick-view') }}"></span>
-<span id="route-admin-pos-add-to-cart" data-url="{{ route('admin.pos.add-to-cart') }}"></span>
-<span id="route-admin-pos-remove-cart" data-url="{{ route('admin.pos.remove-cart') }}"></span>
-<span id="route-admin-pos-empty-cart" data-url="{{ route('admin.pos.empty-cart') }}"></span>
-<span id="route-admin-pos-update-quantity" data-url="{{ route('admin.pos.update-quantity') }}"></span>
-<span id="route-admin-pos-get-variant-price" data-url="{{ route('admin.pos.get-variant-price') }}"></span>
-<span id="route-admin-pos-change-cart-editable" data-url="{{ route('admin.pos.change-cart').'/?cart_id=:value' }}"></span>
-<span id="route-admin-pos-get-sellers" data-url="{{ route('admin.pos.get-sellers') }}"></span>
-<span id="route-admin-customer-add" data-url="{{ route('admin.customer.add') }}"></span>
-<span id="route-admin-customer-address-add" data-url="{{ route('admin.customer.address-add') }}"></span>
-
-<span id="message-cart-word" data-text="{{ translate('cart') }}"></span>
-<span id="message-stock-out" data-text="{{ translate('stock_out') }}"></span>
-<span id="message-stock-id" data-text="{{ translate('in_stock') }}"></span>
-<span id="message-add-to-cart" data-text="{{ translate('add_to_cart') }}"></span>
-<span id="message-cart-updated" data-text="{{ translate('cart_updated') }}"></span>
-<span id="message-update-to-cart" data-text="{{ translate('update_to_cart') }}"></span>
-<span id="message-cart-is-empty" data-text="{{ translate('cart_is_empty') }}"></span>
-<span id="message-enter-valid-amount" data-text="{{ translate('please_enter_a_valid_amount') }}"></span>
-<span id="message-less-than-total-amount" data-text="{{ translate('paid_amount_is_less_than_total_amount') }}"></span>
-<span id="message-coupon-is-invalid" data-text="{{ translate('coupon_is_invalid') }}"></span>
-<span id="message-product-quantity-updated" data-text="{{ translate('product_quantity_updated') }}"></span>
-<span id="message-coupon-added-successfully" data-text="{{ translate('coupon_added_successfully') }}"></span>
-<span id="message-sorry-stock-limit-exceeded" data-text="{{ translate('sorry_stock_limit_exceeded') }}"></span>
-<span id="message-please-choose-all-the-options" data-text="{{ translate('please_choose_all_the_options') }}"></span>
-<span id="message-item-has-been-removed-from-cart" data-text="{{ translate('item_has_been_removed_from_cart') }}"></span>
-<span id="message-you-want-to-remove-all-items-from-cart" data-text="{{ translate('you_want_to_remove_all_items_from_cart') }}"></span>
-<span id="message-you-want-to-create-new-order" data-text="{{ translate('Want_to_create_new_order_for_another_customer') }}"></span>
-<span id="message-product-quantity-is-not-enough" data-text="{{ translate('product_quantity_is_not_enough') }}"></span>
-<span id="message-sorry-product-is-out-of-stock" data-text="{{ translate('sorry_product_is_out_of_stock') }}"></span>
-<span id="message-item-has-been-added-in-your-cart" data-text="{{ translate('item_has_been_added_in_your_cart') }}"></span>
-<span id="message-extra-discount-added-successfully" data-text="{{ translate('extra_discount_added_successfully') }}"></span>
-<span id="message-amount-can-not-be-negative-or-zero" data-text="{{ translate('amount_can_not_be_negative_or_zero') }}"></span>
-<span id="message-sorry-the-minimum-value-was-reached" data-text="{{ translate('sorry_the_minimum_value_was_reached') }}"></span>
-<span id="message-this-discount-is-not-applied-for-this-amount" data-text="{{ translate('this_discount_is_not_applied_for_this_amount') }}"></span>
-<span id="message-please-add-product-in-cart-before-applying-discount" data-text="{{ translate('please_add_product_to_cart_before_applying_discount') }}"></span>
-<span id="message-please-add-product-in-cart-before-applying-coupon" data-text="{{ translate('please_add_product_to_cart_before_applying_coupon') }}"></span>
-<span id="message-product-quantity-cannot-be-zero-in-cart" data-text="{{ translate('product_quantity_can_not_be_zero_or_less_than_zero_in_cart') }}"></span>
+<span id="route-admin-pos-place-order" data-url="{{ route('admin.pos.place-order') }}"></span>
 
 @endsection
 
