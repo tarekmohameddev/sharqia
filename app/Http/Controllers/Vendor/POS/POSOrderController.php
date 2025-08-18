@@ -96,17 +96,83 @@ class POSOrderController extends BaseController
      */
     public function placeOrder(Request $request): JsonResponse
     {
-        $amount = $request['amount'];
         $paidAmount = $request['type'] == 'cash' ? ($request['paid_amount'] ?? 0) : null;
-        $cartId = session(SessionKey::CURRENT_USER);
-        $condition = $this->POSService->checkConditions(amount: $amount, paidAmount: $paidAmount);
+
+        $condition = $this->POSService->checkConditions(amount: ($request['amount'] ?? 0), paidAmount: $paidAmount);
         if ($condition == 'true') {
             return response()->json();
         }
-        if ($condition == 'true') {
-            return response()->json();
+
+        $items = $request->input('cart', []);
+        $userId = (int)$request->input('customer_id', 0);
+        $validationErrors = [];
+        $validatedItems = [];
+        $amount = 0;
+        $checkProductTypeDigital = false;
+
+        foreach ($items as $index => $cartItem) {
+            $product = $this->productRepo->getFirstWhere(params: ['id' => $cartItem['id'] ?? null], relations: ['clearanceSale' => function ($query) {
+                return $query->active();
+            }]);
+
+            if (!$product) {
+                $validationErrors["items.$index.id"] = translate('product_not_found');
+                continue;
+            }
+
+            $variant = $cartItem['variant'] ?? null;
+            $quantity = (int)($cartItem['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                $validationErrors["items.$index.quantity"] = translate('invalid_quantity');
+                continue;
+            }
+
+            if ($product['product_type'] == 'physical') {
+                $stock = $variant ? $this->cartService->getVariationQuantity(json_decode($product['variation']), $variant) : $product['current_stock'];
+                if ($stock < $quantity) {
+                    $validationErrors["items.$index.quantity"] = translate('out_of_stock');
+                    continue;
+                }
+            }
+
+            $unitPrice = $variant ? $this->cartService->getVariationPrice(json_decode($product['variation']), $variant) : $product['unit_price'];
+
+            if (isset($cartItem['price']) && $cartItem['price'] != $unitPrice) {
+                $validationErrors["items.$index.price"] = translate('price_mismatch');
+                continue;
+            }
+
+            $discount = getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $unitPrice, from: 'panel');
+            $tax = $this->getTaxAmount($unitPrice, $product['tax']);
+            $priceExclTax = $product['tax_model'] == 'include' ? $unitPrice - $tax : $unitPrice;
+
+            $amount += ($priceExclTax - $discount + ($product['tax_model'] == 'exclude' ? $tax : 0)) * $quantity;
+
+            $validatedItems[] = [
+                'id' => $product['id'],
+                'quantity' => $quantity,
+                'price' => $unitPrice,
+                'discount' => $discount,
+                'variant' => $variant,
+                'variations' => $cartItem['variations'] ?? [],
+                'product' => $product,
+                'tax' => $tax,
+                'price_excl_tax' => $priceExclTax,
+            ];
+
+            if ($product['product_type'] == 'digital') {
+                $checkProductTypeDigital = true;
+            }
         }
-        $userId = $this->cartService->getUserId();
+
+        if (!empty($validationErrors)) {
+            return response()->json(['errors' => $validationErrors], 422);
+        }
+
+        if ($userId == 0 && $checkProductTypeDigital) {
+            return response()->json(['checkProductTypeForWalkingCustomer' => true, 'message' => translate('To_order_digital_product') . ',' . translate('_kindly_fill_up_the_“Add_New_Customer”_form') . '.']);
+        }
+
         if ($request['type'] == 'wallet' && $userId != 0) {
             $customerBalance = $this->customerRepo->getFirstWhere(params: ['id' => $userId]) ?? 0;
             if ($customerBalance['wallet_balance'] >= currencyConverter(amount: $amount)) {
@@ -116,70 +182,45 @@ class POSOrderController extends BaseController
                 return response()->json();
             }
         }
-        $checkProductTypeDigital = $this->cartService->checkProductTypeDigital(cartId: $cartId);
-        if ($userId == 0 && $checkProductTypeDigital) {
-            return response()->json(['checkProductTypeForWalkingCustomer' => true, 'message' => translate('To_order_digital_product') . ',' . translate('_kindly_fill_up_the_“Add_New_Customer”_form') . '.']);
-        }
 
-        $cart = session($cartId);
         $orderId = 100000 + $this->orderRepo->getList()->count() + 1;
         $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId]);
         if ($order) {
             $orderId = $this->orderRepo->getList(orderBy: ['id' => 'DESC'])->first()->id + 1;
         }
-        foreach ($cart as $item) {
-            if (is_array($item)) {
-                $product = $this->productRepo->getFirstWhere(params: ['id' => $item['id']], relations: ['clearanceSale' => function ($query) {
-                    return $query->active();
-                }]);
-                if ($product) {
-                    $tax = $this->getTaxAmount($item['price'], $product['tax']);
-                    $price = $product['tax_model'] == 'include' ? $item['price'] - $tax : $item['price'];
 
-                    $digitalProductVariation = $this->digitalProductVariationRepo->getFirstWhere(params: ['product_id' => $item['id'], 'variant_key' => $item['variant']], relations: ['storage']);
-                    if ($product['product_type'] == 'digital' && $digitalProductVariation) {
-                        $price = $product['tax_model'] == 'include' ? $digitalProductVariation['price'] - $tax : $digitalProductVariation['price'];
+        foreach ($validatedItems as $item) {
+            $product = $item['product'];
+            $orderDetail = $this->orderDetailsService->getPOSOrderDetailsData(
+                orderId: $orderId,
+                item: $item,
+                product: $product,
+                price: $item['price_excl_tax'],
+                tax: $item['tax']
+            );
 
-                        if ($product['digital_product_type'] == 'ready_product') {
-                            $getStoragePath = $this->storageRepo->getFirstWhere(params: [
-                                'data_id' => $digitalProductVariation['id'],
-                                "data_type" => "App\Models\DigitalProductVariation",
-                            ]);
-                            $product['digital_file_ready'] = $digitalProductVariation['file'];
-                            $product['storage_path'] = $getStoragePath ? $getStoragePath['value'] : 'public';
-                        }
-                    } elseif ($product['digital_product_type'] == 'ready_product' && !empty($product['digital_file_ready'])) {
-                        $product['storage_path'] = $product['digital_file_ready_storage_type'] ?? 'public';
+            if ($item['variant'] != null) {
+                $type = $item['variant'];
+                $variantStore = [];
+                foreach (json_decode($product['variation'], true) as $variantData) {
+                    if ($type == $variantData['type']) {
+                        $variantData['qty'] -= $item['quantity'];
                     }
-
-                    $orderDetail = $this->orderDetailsService->getPOSOrderDetailsData(
-                        orderId: $orderId, item: $item,
-                        product: $product, price: $price, tax: $tax
-                    );
-                    if ($item['variant'] != null) {
-                        $type = $item['variant'];
-                        $variantStore = [];
-                        foreach (json_decode($product['variation'], true) as $variant) {
-                            if ($type == $variant['type']) {
-                                $variant['qty'] -= $item['quantity'];
-                            }
-                            $variantStore[] = $variant;
-                        }
-                        $this->productRepo->update(id: $product['id'], data: ['variation' => json_encode($variantStore)]);
-                    }
-
-                    if ($product['product_type'] == 'physical') {
-                        $currentStock = $product['current_stock'] - $item['quantity'];
-                        $this->productRepo->update(id: $product['id'], data: ['current_stock' => $currentStock]);
-                    }
-                    $this->orderDetailRepo->add(data: $orderDetail);
+                    $variantStore[] = $variantData;
                 }
+                $this->productRepo->update(id: $product['id'], data: ['variation' => json_encode($variantStore)]);
             }
+
+            if ($product['product_type'] == 'physical') {
+                $currentStock = $product['current_stock'] - $item['quantity'];
+                $this->productRepo->update(id: $product['id'], data: ['current_stock' => $currentStock]);
+            }
+            $this->orderDetailRepo->add(data: $orderDetail);
         }
 
-        $order = $this->orderService->getPOSOrderData(
+        $orderData = $this->orderService->getPOSOrderData(
             orderId: $orderId,
-            cart: $cart,
+            cart: $request->all(),
             amount: $amount,
             paidAmount: $request['type'] == 'cash' ? $paidAmount : $amount,
             paymentType: $request['type'],
@@ -188,7 +229,9 @@ class POSOrderController extends BaseController
             sellerId: auth('seller')->id(),
             cityId: $request['city_id'] ?? null,
         );
-        $this->orderRepo->add(data: $order);
+
+        $this->orderRepo->add(data: $orderData);
+
         if ($checkProductTypeDigital) {
             $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId], relations: ['details.productAllStatus']);
             $data = [
@@ -199,16 +242,13 @@ class POSOrderController extends BaseController
                 'subject' => translate('download_Digital_Product'),
                 'title' => translate('Congratulations') . '!',
                 'emailId' => $order->customer['email'],
-
             ];
             event(new DigitalProductDownloadEvent(email: $order->customer['email'], data: $data));
         }
-        session()->forget($cartId);
-        session(['last_order' => $orderId]);
-        $this->cartService->getNewCartId();
-        ToastMagic::success(translate('order_placed_successfully'));
-        return response()->json();
+
+        return response()->json(['order_id' => $orderId, 'message' => translate('order_placed_successfully')]);
     }
+
 
     public function cancelOrder(Request $request): JsonResponse
     {
