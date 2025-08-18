@@ -1224,3 +1224,17 @@ $(".close-alert--message-for-pos").on("click", function () {
     $(".alert--message-for-pos").removeClass("active");
 });
 
+$("#city_id").on("change", function () {
+    $.get({
+        url: $("#route-admin-pos-get-sellers").data("url"),
+        data: {governorate_id: $(this).val()},
+        success: function (data) {
+            let seller = $("#seller_id");
+            seller.empty();
+            $.each(data, function (key, value) {
+                seller.append('<option value="' + value.id + '">' + value.name + '</option>');
+            });
+        }
+    });
+});
+

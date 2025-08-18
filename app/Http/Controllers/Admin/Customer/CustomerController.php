@@ -373,19 +373,22 @@ class CustomerController extends BaseController
         $token = Str::random(120);
         $this->passwordResetRepo->add($this->passwordResetService->getAddData(identity: $request['phone'], token: $token, userType: 'customer'));
         $this->customerRepo->add($customerService->getCustomerData(request: $request));
-        $customer = $this->customerRepo->getFirstWhere(params: ['email' => $request['email']]);
+        $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
         $this->shippingAddressRepo->add($this->shippingAddressService->getAddAddressData(request: $request, customerId: $customer['id'], addressType: 'home'));
-        $resetRoute = route('customer.auth.recover-password');
-        $data = [
-            'userName' => $request['f_name'],
-            'userType' => 'customer',
-            'templateName' => 'registration-from-pos',
-            'subject' => translate('Customer_Registration_Successfully_Completed'),
-            'title' => translate('welcome_to') . ' ' . getWebConfig('company_name') . '!',
-            'resetPassword' => $resetRoute,
-            'message' => translate('thank_you_for_joining') . ' ' . getWebConfig('company_name') . '.' . translate('if_you_want_to_become_a_registered_customer_then_reset_your_password_below_by_using_this_phone') . ' ' . ($request['phone']) . '.' . translate('then_you’ll_be_able_to_explore_the_website_and_app_as_a_registered_customer') . '.',
-        ];
-        event(new CustomerRegistrationEvent(email: $request['email'], data: $data));
+        session(['selected_city_id' => $request['city_id'], 'selected_seller_id' => $request['seller_id']]);
+        if ($request['email']) {
+            $resetRoute = route('customer.auth.recover-password');
+            $data = [
+                'userName' => $request['f_name'],
+                'userType' => 'customer',
+                'templateName' => 'registration-from-pos',
+                'subject' => translate('Customer_Registration_Successfully_Completed'),
+                'title' => translate('welcome_to') . ' ' . getWebConfig('company_name') . '!',
+                'resetPassword' => $resetRoute,
+                'message' => translate('thank_you_for_joining') . ' ' . getWebConfig('company_name') . '.' . translate('if_you_want_to_become_a_registered_customer_then_reset_your_password_below_by_using_this_phone') . ' ' . ($request['phone']) . '.' . translate('then_you’ll_be_able_to_explore_the_website_and_app_as_a_registered_customer') . '.',
+            ];
+            event(new CustomerRegistrationEvent(email: $request['email'], data: $data));
+        }
         ToastMagic::success(translate('customer_added_successfully'));
         return redirect()->back();
     }

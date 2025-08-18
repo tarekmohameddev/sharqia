@@ -13,15 +13,16 @@ class CustomerService
      */
     public function getCustomerData(object $request):array
     {
+        $cityName = $request['city_id'] ? (\App\Models\Governorate::find($request['city_id'])->name_ar ?? null) : ($request['city'] ?? null);
         return [
             'f_name' => $request['f_name'],
-            'l_name' => $request['l_name'],
-            'email' => $request['email'],
+            'l_name' => $request['l_name'] ?? null,
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
-            'country' => $request['country']??null,
-            'city' => $request['city']??null,
-            'zip' => $request['zip_code']??null,
-            'street_address' =>$request['address']??null,
+            'country' => $request['country'] ?? null,
+            'city' => $cityName,
+            'zip' => $request['zip_code'] ?? null,
+            'street_address' => $request['address'] ?? null,
             'password' => bcrypt($request['password'] ?? 'password')
         ];
     }

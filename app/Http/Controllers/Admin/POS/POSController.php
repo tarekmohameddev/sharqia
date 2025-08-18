@@ -6,6 +6,7 @@ use App\Contracts\Repositories\CategoryRepositoryInterface;
 use App\Contracts\Repositories\CouponRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryZipCodeRepositoryInterface;
+use App\Models\Governorate;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Enums\SessionKey;
@@ -77,8 +78,7 @@ class POSController extends BaseController
         $order = $this->orderRepo->getFirstWhere(params: ['id' => session(SessionKey::LAST_ORDER)]);
         $totalHoldOrder = $summaryData['totalHoldOrders'];
 
-        $countries = getWebConfig(name: 'delivery_country_restriction') ? $this->get_delivery_country_array() : COUNTRIES;
-        $zipCodes = getWebConfig(name: 'delivery_zip_code_area_restriction') ? $this->deliveryZipCodeRepo->getListWhere(dataLimit: 'all') : 0;
+        $governorates = Governorate::all();
         return view('admin-views.pos.index', compact(
             'categories',
             'categoryId',
@@ -90,9 +90,18 @@ class POSController extends BaseController
             'cartItems',
             'order',
             'totalHoldOrder',
-            'countries',
-            'zipCodes'
+            'governorates'
         ));
+    }
+
+    public function getSellers(Request $request): JsonResponse
+    {
+        $governorate = Governorate::with('sellers.shop')->find($request['governorate_id']);
+        $sellers = $governorate?->sellers->map(fn($seller) => [
+            'id' => $seller->id,
+            'name' => $seller->shop->name ?? ($seller->f_name . ' ' . $seller->l_name),
+        ]);
+        return response()->json($sellers);
     }
 
 
