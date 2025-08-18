@@ -322,6 +322,7 @@ function basicFunctionalityForCartSummary() {
                 reverseButtons: true,
             }).then(function (result) {
                 if (result.value) {
+                    document.querySelector('input[name="cart"]').value = JSON.stringify({items: cart});
                     let formData = new FormData(document.getElementById('order-place'));
                     $.ajaxSetup({
                         headers: {
