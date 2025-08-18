@@ -1282,6 +1282,7 @@ $("#customer_form").on("submit", function (e) {
                 toastr.error(jqXHR.responseJSON.message);
             }
         },
+
         complete: function () {
             $("#loading").fadeOut();
         },
