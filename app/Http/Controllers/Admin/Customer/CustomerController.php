@@ -371,12 +371,20 @@ class CustomerController extends BaseController
     public function add(CustomerRequest $request, CustomerService $customerService): RedirectResponse|JsonResponse
     {
         $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
-        if (!$customer) {
-            $token = Str::random(120);
-            $this->passwordResetRepo->add($this->passwordResetService->getAddData(identity: $request['phone'], token: $token, userType: 'customer'));
-            $this->customerRepo->add($customerService->getCustomerData(request: $request));
-            $customer = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+        if ($customer) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'customer' => $customer,
+                    'message' => translate('customer_already_exists'),
+                ]);
+            }
+            ToastMagic::warning(translate('customer_already_exists'));
+            return redirect()->back();
         }
+
+        $token = Str::random(120);
+        $this->passwordResetRepo->add($this->passwordResetService->getAddData(identity: $request['phone'], token: $token, userType: 'customer'));
+        $customer = $this->customerRepo->add($customerService->getCustomerData(request: $request));
 
         $this->shippingAddressRepo->add($this->shippingAddressService->getAddAddressData(request: $request, customerId: $customer['id'], addressType: 'home'));
         session(['selected_city_id' => $request['city_id'], 'selected_seller_id' => $request['seller_id']]);

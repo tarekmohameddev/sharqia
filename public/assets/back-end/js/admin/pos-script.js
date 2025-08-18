@@ -1277,6 +1277,12 @@ $("#customer_form").on("submit", function (e) {
             $("#customer_form")[0].reset();
             $("#add-customer-card").addClass("d-none");
         },
+        error: function (jqXHR) {
+            if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                toastr.error(jqXHR.responseJSON.message);
+            }
+        },
+
         complete: function () {
             $("#loading").fadeOut();
         },
