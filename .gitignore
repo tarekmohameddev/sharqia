@@ -65,3 +65,4 @@ Thumbs.db
 /public/js
 /public/css
 /public/mix-manifest.json
+resources/lang/en/new-messages.php
