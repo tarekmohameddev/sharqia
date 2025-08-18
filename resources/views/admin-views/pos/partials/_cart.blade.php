@@ -2,7 +2,7 @@
     @csrf
     <input type="hidden" name="city_id" value="{{ session('selected_city_id') }}">
     <input type="hidden" name="seller_id" value="{{ session('selected_seller_id') }}">
-    <input type="hidden" name="cart" value='@json(["items" => $cartItems["cartItemValue"]])'>
+    <input type="hidden" name="cart">
     <div id="cart">
         <div class="table-responsive pos-cart-table border">
             <table class="table table-align-middle m-0">

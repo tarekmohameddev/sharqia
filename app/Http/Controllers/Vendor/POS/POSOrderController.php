@@ -9,7 +9,6 @@ use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Contracts\Repositories\StorageRepositoryInterface;
 use App\Contracts\Repositories\VendorRepositoryInterface;
-use App\Enums\SessionKey;
 use App\Enums\ViewPaths\Vendor\POSOrder;
 use App\Events\DigitalProductDownloadEvent;
 use App\Http\Controllers\BaseController;
@@ -101,6 +100,9 @@ class POSOrderController extends BaseController
         $cityId = $request['city_id'] ?? null;
 
         $cart = $request->input('cart', []);
+        if (is_string($cart)) {
+            $cart = json_decode($cart, true) ?: [];
+        }
         $cartItems = $cart['items'] ?? [];
         if (empty($cartItems)) {
             ToastMagic::error(translate('cart_empty_warning'));
