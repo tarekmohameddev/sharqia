@@ -3230,4 +3230,6 @@ return [
 	"please_add_product_to_cart_before_applying_coupon" => "Please add product to cart before applying coupon",
 	"Walk-In-Customer" => "Walk-In-Customer",
 	"please_add_product_to_cart_before_applying_discount" => "Please add product to cart before applying discount",
+	"city_is_required" => "City is required",
+	"seller_is_required" => "Seller is required",
 ];

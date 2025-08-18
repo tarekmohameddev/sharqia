@@ -1268,9 +1268,9 @@ $("#customer_form").on("submit", function (e) {
         },
         success: function (data) {
             if (data.status === "exists") {
-                toastr.warning(data.message);
+                toastMagic.warning(data.message);
             } else {
-                toastr.success(data.message);
+                toastMagic.success(data.message);
             }
 
             if (data.customer) {
@@ -1290,7 +1290,7 @@ $("#customer_form").on("submit", function (e) {
                 jqXHR.responseJSON && jqXHR.responseJSON.message
                     ? jqXHR.responseJSON.message
                     : "An unexpected error occurred";
-            toastr.error(message);
+            toastMagic.error(message);
         },
         complete: function () {
             $("#loading").fadeOut();
@@ -1307,7 +1307,7 @@ $("#customer_address_form").on("submit", function (e) {
             $("#loading").fadeIn();
         },
         success: function (data) {
-            toastr.success(data.message);
+            toastMagic.success(data.message);
             $("#customer_address_form")[0].reset();
             $("#add-address-card").addClass("d-none");
         },
