@@ -1224,17 +1224,81 @@ $(".close-alert--message-for-pos").on("click", function () {
     $(".alert--message-for-pos").removeClass("active");
 });
 
-$("#city_id").on("change", function () {
+$(document).on("change", "#customer_city_id, #address_city_id", function () {
+    let target = $(this).attr("id") === "customer_city_id" ? "#customer_seller_id" : "#address_seller_id";
     $.get({
         url: $("#route-admin-pos-get-sellers").data("url"),
         data: {governorate_id: $(this).val()},
         success: function (data) {
-            let seller = $("#seller_id");
+            let seller = $(target);
             seller.empty();
             $.each(data, function (key, value) {
                 seller.append('<option value="' + value.id + '">' + value.name + '</option>');
             });
-        }
+        },
+    });
+});
+
+$("#add_new_customer").on("click", function () {
+    $("#add-customer-card").toggleClass("d-none");
+    $("#add-address-card").addClass("d-none");
+});
+
+$("#add_new_address").on("click", function () {
+    $("#address_customer_id").val($("#customer").val());
+    $("#add-address-card").toggleClass("d-none");
+    $("#add-customer-card").addClass("d-none");
+});
+
+$("#customer").on("change", function () {
+    if ($(this).val() == 0) {
+        $("#add_new_address").addClass("d-none");
+    } else {
+        $("#add_new_address").removeClass("d-none");
+    }
+});
+
+$("#customer_form").on("submit", function (e) {
+    e.preventDefault();
+    $.post({
+        url: $("#route-admin-customer-add").data("url"),
+        data: $(this).serialize(),
+        beforeSend: function () {
+            $("#loading").fadeIn();
+        },
+        success: function (data) {
+            toastr.success(data.message);
+            let optionExists = $("#customer option[value=" + data.customer.id + "]").length;
+            let customerText = data.customer.f_name + " " + (data.customer.l_name ?? "") + " (" + data.customer.phone + ")";
+            if (!optionExists) {
+                $("#customer").append('<option value="' + data.customer.id + '">' + customerText + "</option>");
+            }
+            $("#customer").val(data.customer.id).trigger("change");
+            $("#customer_form")[0].reset();
+            $("#add-customer-card").addClass("d-none");
+        },
+        complete: function () {
+            $("#loading").fadeOut();
+        },
+    });
+});
+
+$("#customer_address_form").on("submit", function (e) {
+    e.preventDefault();
+    $.post({
+        url: $("#route-admin-customer-address-add").data("url"),
+        data: $(this).serialize(),
+        beforeSend: function () {
+            $("#loading").fadeIn();
+        },
+        success: function (data) {
+            toastr.success(data.message);
+            $("#customer_address_form")[0].reset();
+            $("#add-address-card").addClass("d-none");
+        },
+        complete: function () {
+            $("#loading").fadeOut();
+        },
     });
 });
 

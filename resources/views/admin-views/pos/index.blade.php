@@ -110,10 +110,94 @@
                                 @endforeach
                             </select>
 
-                            <button class="btn btn-success rounded text-nowrap" id="add_new_customer" type="button"
-                                    data-bs-toggle="modal" data-bs-target="#add-customer" title="{{ translate('add_new_customer') }}">
+                            <button class="btn btn-success rounded text-nowrap" id="add_new_customer" type="button" title="{{ translate('add_new_customer') }}">
                                 {{ translate('add_New_Customer') }}
                             </button>
+
+                            <button class="btn btn-primary rounded text-nowrap d-none" id="add_new_address" type="button" title="{{ translate('add_new_address') }}">
+                                {{ translate('add_new_address') }}
+                            </button>
+                        </div>
+
+                        <div id="add-customer-card" class="border rounded p-3 mt-3 d-none">
+                            <form id="customer_form">
+                                @csrf
+                                <div class="row g-3">
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('first_name') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <input type="text" name="f_name" class="form-control" placeholder="{{ translate('first_name') }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('phone') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <input class="form-control" type="tel" name="phone" placeholder="{{ translate('enter_phone_number') }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="city_id" id="customer_city_id" class="custom-select" required>
+                                                <option value="">{{ translate('select') }}</option>
+                                                @foreach($governorates as $governorate)
+                                                    <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="seller_id" id="customer_seller_id" class="custom-select" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('address') }}</label>
+                                            <input type="text" name="address" class="form-control" placeholder="{{ translate('address') }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end mt-2">
+                                    <button type="submit" id="submit_new_customer" class="btn btn-primary">{{ translate('submit') }}</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="add-address-card" class="border rounded p-3 mt-3 d-none">
+                            <form id="customer_address_form">
+                                @csrf
+                                <input type="hidden" name="customer_id" id="address_customer_id">
+                                <div class="row g-3">
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="city_id" id="address_city_id" class="custom-select" required>
+                                                <option value="">{{ translate('select') }}</option>
+                                                @foreach($governorates as $governorate)
+                                                    <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="seller_id" id="address_seller_id" class="custom-select" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('address') }}</label>
+                                            <input type="text" name="address" class="form-control" placeholder="{{ translate('address') }}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end mt-2">
+                                    <button type="submit" class="btn btn-primary">{{ translate('submit') }}</button>
+                                </div>
+                            </form>
                         </div>
 
                         <div id="cart-summary">
@@ -140,7 +224,6 @@
 @include('admin-views.pos.partials.modals._print-invoice')
 @endif
 
-@include('admin-views.pos.partials.modals._add-customer')
 @include('admin-views.pos.partials.modals._hold-orders-modal')
 @include('admin-views.pos.partials.modals._add-coupon-discount')
 @include('admin-views.pos.partials.modals._add-discount')
@@ -163,6 +246,8 @@
 <span id="route-admin-pos-get-variant-price" data-url="{{ route('admin.pos.get-variant-price') }}"></span>
 <span id="route-admin-pos-change-cart-editable" data-url="{{ route('admin.pos.change-cart').'/?cart_id=:value' }}"></span>
 <span id="route-admin-pos-get-sellers" data-url="{{ route('admin.pos.get-sellers') }}"></span>
+<span id="route-admin-customer-add" data-url="{{ route('admin.customer.add') }}"></span>
+<span id="route-admin-customer-address-add" data-url="{{ route('admin.customer.address-add') }}"></span>
 
 <span id="message-cart-word" data-text="{{ translate('cart') }}"></span>
 <span id="message-stock-out" data-text="{{ translate('stock_out') }}"></span>
