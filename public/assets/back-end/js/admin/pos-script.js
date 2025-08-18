@@ -4,6 +4,7 @@ let elementViewAllHoldOrdersSearch = $(".view_all_hold_orders_search");
 let getYesWord = $("#message-yes-word").data("text");
 let getNoWord = $("#message-no-word").data("text");
 let messageAreYouSure = $("#message-are-you-sure").data("text");
+let localPosCart = window.localPosCart || {};
 
 document.addEventListener("keydown", function (event) {
     if (event.altKey && event.code === "KeyO") {
@@ -125,6 +126,33 @@ function disableOrderPlaceButton() {
         $(".action-form-submit").attr("disabled", true);
     } else {
         $(".action-form-submit").attr("disabled", false);
+    }
+}
+
+function renderLocalCart(data) {
+    if (data?.cart) {
+        localPosCart = data.cart;
+    }
+    if (data?.view) {
+        $("#cart-items").empty().html(data.view);
+    }
+    if (typeof localPosCart === "object") {
+        const subTotal = parseFloat(localPosCart.subtotal || 0) +
+            parseFloat(localPosCart.discountOnProduct || 0);
+        const productDiscount = parseFloat(localPosCart.discountOnProduct || 0);
+        const extraDiscount = parseFloat(localPosCart.extraDiscount || 0);
+        const couponDiscount = parseFloat(localPosCart.couponDiscount || 0);
+        const tax = parseFloat(localPosCart.totalTax || 0);
+        const total = parseFloat(localPosCart.total || 0) + tax - couponDiscount;
+        $("#cart-subtotal").text(subTotal.toFixed(2));
+        $("#cart-product-discount").text(productDiscount.toFixed(2));
+        $("#cart-extra-discount").text(extraDiscount.toFixed(2));
+        $("#cart-coupon-discount").text(couponDiscount.toFixed(2));
+        $("#cart-tax").text(tax.toFixed(2));
+        $("#cart-total").text(total.toFixed(2));
+        $(".total-amount").val(total.toFixed(2));
+        $(".pos-paid-amount-element").val(total.toFixed(2));
+        $(".pos-paid-amount-element").attr("min", total.toFixed(2));
     }
 }
 $(".action-customer-change").on("change", function () {
@@ -497,7 +525,7 @@ $(".action-coupon-discount").on("click", function (event) {
                     toastMagic.warning($("#message-coupon-is-invalid").data("text"));
                 }
                 $("#add-coupon-discount").modal("hide");
-                $("#cart").empty().html(data.view);
+                renderLocalCart(data);
                 reinitializeTooltips();
                 basicFunctionalityForCartSummary();
                 posUpdateQuantityFunctionality();
@@ -568,7 +596,7 @@ $(".action-extra-discount").on("click", function (event) {
                 }
                 $("#add-discount").modal("hide");
                 $(".modal-backdrop").addClass("d-none");
-                $("#cart").empty().html(data.view);
+                renderLocalCart(data);
                 reinitializeTooltips();
                 basicFunctionalityForCartSummary();
                 posUpdateQuantityFunctionality();
@@ -664,7 +692,7 @@ function updateQuantityResponseProcess(data) {
             }
         );
     }
-    $("#cart").empty().html(data.view);
+    renderLocalCart(data);
     reinitializeTooltips();
     posUpdateQuantityFunctionality();
     viewAllHoldOrders("keyup");
@@ -1091,7 +1119,7 @@ function addToCart(form_id = "add-to-cart-form") {
                         ProgressBar: true,
                     }
                 );
-                $("#cart").empty().html(data.view);
+                renderLocalCart(data);
                 reinitializeTooltips();
                 viewAllHoldOrders("keyup");
                 $(".search-result-box").empty().hide();
@@ -1124,7 +1152,7 @@ function removeFromCart() {
                 variant: variant,
             },
             function (data) {
-                $("#cart").empty().html(data.view);
+                renderLocalCart(data);
                 reinitializeTooltips();
                 if (data.errors) {
                     for (let index = 0; index < data.errors.length; index++) {
