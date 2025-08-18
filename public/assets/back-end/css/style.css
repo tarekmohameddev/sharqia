@@ -1595,8 +1595,8 @@ img {
 }
 
 .pos-item-wrap {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 15px;
   max-block-size: 61vh;
   overflow-y: auto;
@@ -1604,10 +1604,10 @@ img {
 }
 
 .pos-product-item {
-  cursor: pointer;
   overflow: hidden;
   border-radius: 5px !important;
   position: relative;
+  width: 100%;
 }
 
 .pos-product-item_thumb {
