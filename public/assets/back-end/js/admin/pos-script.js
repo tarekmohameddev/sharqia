@@ -1267,22 +1267,31 @@ $("#customer_form").on("submit", function (e) {
             $("#loading").fadeIn();
         },
         success: function (data) {
-            toastr.success(data.message);
-            let optionExists = $("#customer option[value=" + data.customer.id + "]").length;
-            let customerText = data.customer.f_name + " " + (data.customer.l_name ?? "") + " (" + data.customer.phone + ")";
-            if (!optionExists) {
-                $("#customer").append('<option value="' + data.customer.id + '">' + customerText + "</option>");
+            if (data.status === "exists") {
+                toastr.warning(data.message);
+            } else {
+                toastr.success(data.message);
             }
-            $("#customer").val(data.customer.id).trigger("change");
+
+            if (data.customer) {
+                let optionExists = $("#customer option[value=" + data.customer.id + "]").length;
+                let customerText = data.customer.f_name + " " + (data.customer.l_name ?? "") + " (" + data.customer.phone + ")";
+                if (!optionExists) {
+                    $("#customer").append('<option value="' + data.customer.id + '">' + customerText + "</option>");
+                }
+                $("#customer").val(data.customer.id).trigger("change");
+            }
+
             $("#customer_form")[0].reset();
             $("#add-customer-card").addClass("d-none");
         },
         error: function (jqXHR) {
-            if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
-                toastr.error(jqXHR.responseJSON.message);
-            }
+            let message =
+                jqXHR.responseJSON && jqXHR.responseJSON.message
+                    ? jqXHR.responseJSON.message
+                    : "An unexpected error occurred";
+            toastr.error(message);
         },
-
         complete: function () {
             $("#loading").fadeOut();
         },

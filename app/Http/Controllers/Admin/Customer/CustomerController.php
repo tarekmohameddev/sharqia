@@ -376,6 +376,7 @@ class CustomerController extends BaseController
                 return response()->json([
                     'customer' => $customer,
                     'message' => translate('customer_already_exists'),
+                    'status' => 'exists',
                 ]);
             }
             ToastMagic::warning(translate('customer_already_exists'));
@@ -407,6 +408,7 @@ class CustomerController extends BaseController
             return response()->json([
                 'customer' => $customer,
                 'message' => translate('customer_added_successfully'),
+                'status' => 'added',
             ]);
         }
 
