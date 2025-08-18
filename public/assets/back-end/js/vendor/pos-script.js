@@ -714,15 +714,24 @@ function getVariantForAlreadyInCart(event = null) {
     getVariantPrice("already_in_cart");
 }
 
-function checkAddToCartValidity() {
-    const form = $("#add-to-cart-form");
-    const names = {};
+
+function checkAddToCartValidity(formSelector = "#add-to-cart-form") {
+    const form = $(formSelector);
+    const groups = {};
     form.find("input:radio").each(function () {
-        names[$(this).attr("name")] = true;
+        const name = $(this).attr("name");
+        if (!groups[name]) {
+            groups[name] = { count: 0, checked: false };
+        }
+        groups[name].count++;
+        if ($(this).is(":checked")) {
+            groups[name].checked = true;
+        }
     });
-    const totalGroups = Object.keys(names).length;
-    const selected = form.find("input:radio:checked").length;
-    return selected === totalGroups;
+    return Object.values(groups).every(
+        (group) => group.checked || group.count <= 1
+    );
+
 }
 
 function cartQuantityInitialize() {
@@ -881,7 +890,10 @@ function getVariantPrice(type = null) {
 }
 
 function addToCart(form_id = "add-to-cart-form") {
-    if (typeof checkAddToCartValidity === "function" && !checkAddToCartValidity()) {
+    if (
+        typeof checkAddToCartValidity === "function" &&
+        !checkAddToCartValidity("#" + form_id)
+    ) {
         Swal.fire({
             type: "info",
             title: $("#message-cart-word").data("text"),
