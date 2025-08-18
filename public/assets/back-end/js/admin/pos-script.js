@@ -776,6 +776,7 @@ function getVariantForAlreadyInCart(event = null) {
     getVariantPrice("already_in_cart");
 }
 
+
 function checkAddToCartValidity(formSelector = "#add-to-cart-form") {
     const form = $(formSelector);
     const groups = {};
@@ -792,6 +793,7 @@ function checkAddToCartValidity(formSelector = "#add-to-cart-form") {
     return Object.values(groups).every(
         (group) => group.checked || group.count <= 1
     );
+
 }
 
 function cartQuantityInitialize() {
