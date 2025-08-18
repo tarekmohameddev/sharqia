@@ -1,27 +1,41 @@
-<div class="pos-product-item card action-select-product" data-id="{{ $product['id'] }}">
-    <div class="pos-product-item_thumb position-relative">
-        @if($product?->clearanceSale)
-            <div class="position-absolute badge badge-soft-warning user-select-none m-2">
-                {{ translate('Clearance_Sale') }}
+@php($formId = isset($formIdPrefix) ? $formIdPrefix . '-' . $product['id'] : $product['id'])
+<div class="pos-product-item card p-3 mb-3">
+    <form id="add-to-cart-form-{{ $formId }}" class="add-to-cart-details-form">
+        @csrf
+        <input type="hidden" name="id" value="{{ $product['id'] }}">
+        <div class="d-flex gap-3 align-items-start">
+            <div class="pos-product-item_thumb position-relative">
+                @if($product?->clearanceSale)
+                    <div class="position-absolute badge badge-soft-warning user-select-none m-2">
+                        {{ translate('Clearance_Sale') }}
+                    </div>
+                @endif
+                <img class="img-fit aspect-1" src="{{ getStorageImages(path:$product->thumbnail_full_url, type: 'backend-product') }}" alt="{{ $product['name'] }}">
             </div>
-        @endif
-        <img class="img-fit aspect-1" src="{{ getStorageImages(path:$product->thumbnail_full_url, type: 'backend-product') }}"
-             alt="{{ $product['name'] }}">
-    </div>
-
-    <div class="pos-product-item_content clickable">
-        <div class="pos-product-item_title">
-            {{ $product['name'] }}
-        </div>
-        <div class="pos-product-item_price">
-            {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string', price: $product['unit_price'], from: 'panel') }}
-        </div>
-        <div class="pos-product-item_hover-content">
-            <div class="d-flex flex-wrap gap-2">
-                <span class="fz-22 text-capitalize">
-                    {{ $product['product_type'] == 'physical' ? ($product['current_stock'] >0 ? $product['current_stock'].' '.$product['unit'].($product['current_stock']>1?'s':'') : translate('out_of_stock').'.') : translate('click_for_details').'.' }}
-                </span>
+            <div class="flex-grow-1">
+                <h6 class="pos-product-item_title mb-2">{{ $product['name'] }}</h6>
+                <div class="mb-2">
+                    {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string', price: $product['unit_price'], from: 'panel') }}
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    @if(count(json_decode($product->colors)) > 0)
+                        <select name="color" class="form-select form-select-sm w-auto">
+                            @foreach(json_decode($product->colors) as $color)
+                                <option value="{{ $color }}">{{ $color }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+                    @foreach(json_decode($product->choice_options) as $key => $choice)
+                        <select name="{{ $choice->name }}" class="form-select form-select-sm w-auto">
+                            @foreach($choice->options as $index => $option)
+                                <option value="{{ $option }}">{{ $option }}</option>
+                            @endforeach
+                        </select>
+                    @endforeach
+                    <input type="number" name="quantity" value="1" min="1" class="form-control form-control-sm cart-qty-field" style="width:80px;"/>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm action-add-to-cart" data-form-id="add-to-cart-form-{{ $formId }}">{{ translate('add_to_cart') }}</button>
             </div>
         </div>
-    </div>
+    </form>
 </div>

@@ -90,7 +90,6 @@ $(".search-bar-input").on("keyup", function () {
             success: function (data) {
                 elementSearchResultBox.empty().html(data.result);
                 renderSelectProduct();
-                renderQuickViewSearchFunctionality();
             },
             complete: function () {
                 $("#loading").fadeOut();
@@ -186,64 +185,15 @@ function viewAllHoldOrders(action = null) {
 }
 
 function renderSelectProduct() {
-    $(".action-get-variant-for-already-in-cart").on("click", function () {
-        getVariantForAlreadyInCart($(this).data("action"));
-    });
-
-    $(".action-add-to-cart").on("click", function (e) {
-        addToCart();
-    });
-
-    $(".action-color-change").on("click", function () {
-        let val = $(this).val();
-        $(".color-border").removeClass("border-add");
-        $("#label-" + val.id).addClass("border-add");
+    $(".action-add-to-cart").on("click", function () {
+        let formId = $(this).data("form-id") || $(this).closest("form").attr("id");
+        addToCart(formId);
     });
 
     cartQuantityInitialize();
-    getVariantPrice();
-    $(".variant-change input , .cart-qty-field").on("change", function () {
-        getVariantPrice();
-    });
-    $("#add-to-cart-form .in-cart-quantity-field").on("change", function () {
-        getVariantPrice("already_in_cart");
-    });
-
-    $(".cart-qty-field").focus(function () {
-        $(this).closest(".product-quantity-group").addClass("border-primary");
-    });
-
-    $(".cart-qty-field").blur(function () {
-        $(this)
-            .closest(".product-quantity-group")
-            .removeClass("border-primary");
-    });
-
-    $(".in-cart-quantity-field").focus(function () {
-        $(this).closest(".product-quantity-group").addClass("border-primary");
-    });
-
-    $(".in-cart-quantity-field").blur(function () {
-        $(this)
-            .closest(".product-quantity-group")
-            .removeClass("border-primary");
-    });
 }
 
 renderSelectProduct();
-renderQuickViewFunctionality();
-
-function renderQuickViewFunctionality() {
-    $(".action-select-product").on("click", function () {
-        quickView($(this).data("id"));
-    });
-}
-
-function renderQuickViewSearchFunctionality() {
-    $(".action-select-search-product").on("click", function () {
-        quickView($(this).data("id"));
-    });
-}
 
 function basicFunctionalityForCartSummary() {
     $(".action-empty-alert-show").on("click", () => {
@@ -775,62 +725,16 @@ const renderRippleEffect = () => {
     }
 };
 
-function quickView(product_id) {
-    $.ajax({
-        url: $("#route-admin-pos-quick-view").data("url"),
-        type: "GET",
-        data: {
-            product_id: product_id,
-        },
-        dataType: "json",
-        beforeSend: function () {
-            $("#loading").fadeIn();
-        },
-        success: function (data) {
-            $("#quick-view-modal").empty().html(data.view);
-            renderSelectProduct();
-            renderRippleEffect();
-            closeAlertMessage();
-            $("#quick-view").modal("show");
-        },
-        complete: function () {
-            $("#loading").fadeOut();
-        },
-    });
-}
-
-function getVariantForAlreadyInCart(event = null) {
-    let current_val = parseFloat($(".in-cart-quantity-field").val());
-    if (current_val > 0) {
-        $(".in-cart-quantity-minus").removeAttr("disabled");
-        if (event == "plus") {
-            $(".in-cart-quantity-field").val(current_val + 1);
-        } else {
-            $(".in-cart-quantity-field").val(current_val - 1);
-            if (current_val <= 2) {
-                $(".in-cart-quantity-minus").attr("disabled", true);
-            }
-        }
-    } else {
-        $(".in-cart-quantity-minus").attr("disabled", true);
-    }
-    getVariantPrice("already_in_cart");
-}
-
-function checkAddToCartValidity() {
+function checkAddToCartValidity(form_id = "add-to-cart-form") {
     var names = {};
-    $("#add-to-cart-form input:radio").each(function () {
+    $("#" + form_id + " input:radio").each(function () {
         names[$(this).attr("name")] = true;
     });
     var count = 0;
     $.each(names, function () {
         count++;
     });
-
-    if ($("input:radio:checked").length - 1 == count) {
-        return true;
-    }
-    return false;
+    return $("#" + form_id + " input:radio:checked").length == count;
 }
 
 function cartQuantityInitialize() {
@@ -947,88 +851,8 @@ function updateProductDetailsTopSection(response) {
     }
 }
 
-function getVariantPrice(type = null) {
-    if (
-        $("#add-to-cart-form input[name=quantity]").val() > 0 &&
-        checkAddToCartValidity()
-    ) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
-        });
-        $.ajax({
-            type: "POST",
-            url:
-                $("#route-admin-pos-get-variant-price").data("url") +
-                (type ? "?type=" + type : ""),
-            data: $("#add-to-cart-form").serializeArray(),
-            success: function (response) {
-                updateProductDetailsTopSection(response);
-
-                let price;
-                let tax;
-                let discount;
-                stockStatus(
-                    response.quantity,
-                    "cart-qty-field-plus",
-                    "cart-qty-field"
-                );
-                if (response.inCartStatus == 0) {
-                    $(".default-quantity-system").removeClass("d-none");
-                    $(".quick-view-modal-add-cart-button").text(
-                        $("#message-add-to-cart").data("text")
-                    );
-                    $(".in-cart-quantity-system").addClass("d--none");
-                    $(".default-quantity-system").removeClass("d--none");
-                    price = response.price;
-                    tax = response.tax;
-                    discount = response.discount * response.requestQuantity;
-                } else {
-                    $(".default-quantity-system").addClass("d--none");
-                    $(".in-cart-quantity-system").removeClass("d--none");
-                    $(".quick-view-modal-add-cart-button").text(
-                        $("#message-update-to-cart").data("text")
-                    );
-                    if (type == null) {
-                        $(".in-cart-quantity-field").val(
-                            response.inCartData.quantity
-                        );
-                        response.inCartData.quantity == 1
-                            ? buttonDisableOrEnableFunction(
-                                "in-cart-quantity-minus",
-                                true
-                            )
-                            : "";
-                        price = response.inCartData.price;
-                        tax = response.inCartData.tax;
-                        discount =
-                            response.inCartData.discount *
-                            response.inCartData.quantity;
-                    } else {
-                        price = response.price;
-                        tax = response.tax;
-                        discount = response.discount * response.requestQuantity;
-                    }
-                    stockStatus(
-                        response.quantity,
-                        "in-cart-quantity-plus",
-                        "in-cart-quantity-field"
-                    );
-                }
-                setProductData(
-                    "add-to-cart-details-form",
-                    response.price,
-                    tax,
-                    response.discount_text
-                );
-            },
-        });
-    }
-}
-
 function addToCart(form_id = "add-to-cart-form") {
-    if (checkAddToCartValidity()) {
+    if (checkAddToCartValidity(form_id)) {
         $.ajaxSetup({
             headers: {
                 "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
@@ -1077,7 +901,6 @@ function addToCart(form_id = "add-to-cart-form") {
                     return false;
                 } else {
                     $(".in-cart-quantity-field").val(data.quantity);
-                    getVariantPrice();
                     setTimeout(function () {
                         $(".cart-qty-field").val(1);
                     }, 500);
