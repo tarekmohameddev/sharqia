@@ -71,6 +71,8 @@ $(".action-pos-update-quantity").on("focus", function () {
     $(this).select();
 });
 
+// Local cart to avoid network requests for each product addition
+let localPosCart = [];
 
 $(".search-bar-input").on("keyup", function () {
     $(".pos-search-card").removeClass("d-none").show();
@@ -852,121 +854,92 @@ function updateProductDetailsTopSection(response) {
 }
 
 function addToCart(form_id = "add-to-cart-form") {
-    if (checkAddToCartValidity(form_id)) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
-        });
-        $.post({
-            url: $("#route-admin-pos-add-to-cart").data("url"),
-            data: $("#" + form_id).serializeArray(),
-            beforeSend: function () {
-                $("#loading").fadeIn();
-            },
-            success: function (data) {
-                if (data.data == 1) {
-                    $("#cart-summary").empty().html(data.view);
-                    reinitializeTooltips();
-                    toastMagic.success(
-                        $("#message-cart-updated").data("text"), '',
-                        {
-                            CloseButton: true,
-                            ProgressBar: true,
-                        }
-                    );
-                    data.inCartData && data.inCartData == 1
-                        ? $(".in-cart-quantity-field").val(data.requestQuantity)
-                        : "";
-                    removeFromCart();
-                    basicFunctionalityForCartSummary();
-                    posUpdateQuantityFunctionality();
-                    return false;
-                } else if (data.data == 0) {
-                    $(".product-stock-message")
-                        .empty()
-                        .html(
-                            $("#get-product-stock-message").data("out-of-stock")
-                        );
-                    $(".pos-alert-message").removeClass("d-none");
-                    return false;
-                } else if (data.data == 'custom-error') {
-                    Swal.fire({
-                        icon: "error",
-                        title: data?.title ?? $("#message-cart-word").data("text"),
-                        text: data?.text ?? $("#message-sorry-product-is-out-of-stock").data(
-                            "text"
-                        ),
-                    });
-                    return false;
-                } else {
-                    $(".in-cart-quantity-field").val(data.quantity);
-                    setTimeout(function () {
-                        $(".cart-qty-field").val(1);
-                    }, 500);
-                }
-                $(".close-quick-view-modal").click();
-
-                toastMagic.success(
-                    $("#message-item-has-been-added-in-your-cart").data("text"), '',
-                    {
-                        CloseButton: true,
-                        ProgressBar: true,
-                    }
-                );
-                $("#cart").empty().html(data.view);
-                reinitializeTooltips();
-                viewAllHoldOrders("keyup");
-                $(".search-result-box").empty().hide();
-                $("#search").val("");
-                basicFunctionalityForCartSummary();
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-            },
-            complete: function () {
-                $("#loading").fadeOut();
-            },
-        });
-    } else {
+    if (!checkAddToCartValidity(form_id)) {
         Swal.fire({
             type: "info",
             title: $("#message-cart-word").data("text"),
             text: $("#message-please-choose-all-the-options").data("text"),
         });
+        return;
     }
+
+    const form = $("#" + form_id);
+    const formData = {};
+    form.serializeArray().forEach((e) => {
+        formData[e.name] = e.value;
+    });
+
+    let variantParts = [];
+    form.find("select").each(function () {
+        variantParts.push($(this).val());
+    });
+    let variant = variantParts.join("-");
+
+    const qty = parseInt(formData.quantity || 1);
+    const existingIndex = localPosCart.findIndex(
+        (item) => item.id == formData.id && item.variant === variant
+    );
+
+    if (existingIndex > -1) {
+        localPosCart[existingIndex].quantity += qty;
+    } else {
+        localPosCart.push({
+            id: formData.id,
+            name: formData.name,
+            price: parseFloat(formData.price || 0),
+            quantity: qty,
+            variant: variant,
+        });
+    }
+
+    form.find(".cart-qty-field").val(1);
+    if (typeof toastMagic !== "undefined") {
+        toastMagic.success($("#message-item-has-been-added-in-your-cart").data("text"));
+    }
+    renderLocalCart();
 }
+
+function renderLocalCart() {
+    let container = $("#cart");
+    let html = "";
+    localPosCart.forEach((item, index) => {
+        let lineTotal = item.price * item.quantity;
+        html += `<div class="cart-item d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <span>${item.name}</span>
+                        ${item.variant ? `<small class="text-muted">(${item.variant})</small>` : ""}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="number" min="1" value="${item.quantity}" data-index="${index}" class="form-control form-control-sm local-cart-qty" style="width:60px;">
+                        <span>${lineTotal.toFixed(2)}</span>
+                        <button type="button" class="btn btn-sm btn-danger local-cart-remove" data-index="${index}">&times;</button>
+                    </div>
+                </div>`;
+    });
+    if (!html) {
+        html = `<p class="text-center text-muted my-3">${$("#message-cart-is-empty").data("text")}</p>`;
+    }
+    container.html(html);
+    removeFromCart();
+}
+
 function removeFromCart() {
-    $(".remove-from-cart").on("click", function () {
-        let id = $(this).data("id");
-        let variant = $(this).data("variant");
-        $.post(
-            $("#route-admin-pos-remove-cart").data("url"),
-            {
-                _token: $('meta[name="_token"]').attr("content"),
-                id: id,
-                variant: variant,
-            },
-            function (data) {
-                $("#cart").empty().html(data.view);
-                reinitializeTooltips();
-                if (data.errors) {
-                    for (let index = 0; index < data.errors.length; index++) {
-                        setTimeout(() => {
-                            toastMagic.error(data.errors[index].message);
-                        }, index * 500);
-                    }
-                } else {
-                    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
-                    viewAllHoldOrders("keyup");
-                }
-                posUpdateQuantityFunctionality();
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-            }
-        );
+    $(".local-cart-remove").off("click").on("click", function () {
+        const index = $(this).data("index");
+        localPosCart.splice(index, 1);
+        renderLocalCart();
+    });
+
+    $(".local-cart-qty").off("change").on("change", function () {
+        const index = $(this).data("index");
+        let qty = parseInt($(this).val());
+        if (isNaN(qty) || qty < 1) qty = 1;
+        localPosCart[index].quantity = qty;
+        renderLocalCart();
     });
 }
-removeFromCart();
+
+renderLocalCart();
 
 $(".js-example-matcher").select2({
     matcher: matchCustom,

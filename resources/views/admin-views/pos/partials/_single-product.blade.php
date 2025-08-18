@@ -3,6 +3,8 @@
     <form id="add-to-cart-form-{{ $formId }}" class="add-to-cart-details-form">
         @csrf
         <input type="hidden" name="id" value="{{ $product['id'] }}">
+        <input type="hidden" name="name" value="{{ $product['name'] }}">
+        <input type="hidden" name="price" value="{{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'float', price: $product['unit_price'], from: 'panel') }}">
         <div class="d-flex gap-3 align-items-start">
             <div class="pos-product-item_thumb position-relative">
                 @if($product?->clearanceSale)
