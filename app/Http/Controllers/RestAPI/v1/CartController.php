@@ -287,4 +287,22 @@ class CartController extends Controller
             'amount' => $referralDiscount,
         ]);
     }
+
+    public function submitOrder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 422);
+        }
+
+        return response()->json([
+            'status' => 'order_submitted',
+            'items' => $request->items,
+        ]);
+    }
 }

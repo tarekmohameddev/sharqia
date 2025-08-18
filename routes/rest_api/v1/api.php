@@ -104,18 +104,8 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
         });
     });
 
-    Route::group(['prefix' => 'cart', 'middleware' => 'apiGuestCheck'], function () {
-        Route::controller(CartController::class)->group(function () {
-            Route::get('/', 'getCartList');
-            Route::post('add', 'addToCart');
-            Route::put('update', 'update_cart');
-            Route::delete('remove', 'remove_from_cart');
-            Route::delete('remove-all', 'remove_all_from_cart');
-            Route::post('select-cart-items', 'updateCheckedCartItems');
-            Route::post('product-restock-request', 'addProductRestockRequest');
-            Route::post('get-referral-discount-redeem', 'getReferralDiscountRedeem');
-        });
-    });
+    Route::post('order/submit', [CartController::class, 'submitOrder'])->middleware('apiGuestCheck');
+    Route::get('products/basic-info/{id}', [ProductController::class, 'getBasicInfo']);
 
     Route::group(['prefix' => 'customer/order', 'middleware' => 'apiGuestCheck'], function () {
         Route::controller(CustomerController::class)->group(function () {

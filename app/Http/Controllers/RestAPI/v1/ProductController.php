@@ -849,4 +849,10 @@ class ProductController extends Controller
             'products' => Helpers::product_data_formatting($products->items(), true)
         ]);
     }
+
+    public function getBasicInfo($id): JsonResponse
+    {
+        $product = Product::select('id', 'name', 'price')->findOrFail($id);
+        return response()->json($product);
+    }
 }
