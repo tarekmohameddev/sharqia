@@ -1094,6 +1094,7 @@ $size: 50px;
     transition: all 0.3sease;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
 }
 .pos-product-item:hover .pos-product-item_hover-content {
     opacity: 1;
