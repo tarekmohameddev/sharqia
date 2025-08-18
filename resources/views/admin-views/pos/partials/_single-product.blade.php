@@ -23,5 +23,16 @@
                 </span>
             </div>
         </div>
+        <div class="mt-2">
+            <button type="button"
+                    class="btn btn-primary btn-block action-add-to-cart"
+                    data-id="{{ $product['id'] }}"
+                    data-name="{{ $product['name'] }}"
+                    data-price="{{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'value', price: $product['unit_price'], from: 'panel') }}"
+                    data-default-variant="{{ $product['default_variant'] ?? '' }}"
+                    data-stock="{{ $product['current_stock'] }}">
+                {{ translate('add_to_cart') }}
+            </button>
+        </div>
     </div>
 </div>

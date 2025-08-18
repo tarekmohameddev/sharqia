@@ -179,7 +179,8 @@ function renderSelectProduct() {
         getVariantForAlreadyInCart($(this).data("action"));
     });
 
-    $(".action-add-to-cart").on("click", function () {
+    $(".action-add-to-cart").on("click", function (e) {
+        e.stopPropagation();
         addToCart();
     });
 
