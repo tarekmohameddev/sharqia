@@ -184,7 +184,9 @@ class POSOrderController extends BaseController
             paidAmount: $request['type'] == 'cash' ? $paidAmount : $amount,
             paymentType: $request['type'],
             addedBy: 'seller',
-            userId: $userId
+            userId: $userId,
+            sellerId: auth('seller')->id(),
+            cityId: $request['city_id'] ?? null,
         );
         $this->orderRepo->add(data: $order);
         if ($checkProductTypeDigital) {

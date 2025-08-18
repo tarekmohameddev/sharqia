@@ -89,6 +89,8 @@ class POSOrderController extends BaseController
     {
         $amount = $request['amount'];
         $paidAmount = $request['type'] == 'cash' ? ($request['paid_amount'] ?? 0) : null;
+        $sellerId = $request['seller_id'];
+        $cityId = $request['city_id'];
         $cartId = session(SessionKey::CURRENT_USER);
         $condition = $this->POSService->checkConditions(amount: $amount, paidAmount: $paidAmount);
         if ($condition == 'true') {
@@ -166,7 +168,9 @@ class POSOrderController extends BaseController
             paidAmount: $request['type'] == 'cash' ? $paidAmount : $amount,
             paymentType: $request['type'],
             addedBy: 'admin',
-            userId: $userId
+            userId: $userId,
+            sellerId: $sellerId,
+            cityId: $cityId,
         );
         $this->orderRepo->add(data: $order);
         if ($checkProductTypeDigital) {
