@@ -21,7 +21,7 @@ class CartService
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
-    public function getVariantData(object $request, object $product, string $colorName = null): array
+    public function getVariantData(object $request, object $product, ?string $colorName = null): array
     {
         $quantity = 0;
         $price = 0;
@@ -143,18 +143,6 @@ class CartService
             $userType = 'saved-customer';
         }
         return $userType;
-    }
-
-    public function getNewCartSession(string|int $cartId): void
-    {
-        if (!session()->has(SessionKey::CURRENT_USER)) {
-            session()->put(SessionKey::CURRENT_USER, $cartId);
-        }
-        if (!session()->has(SessionKey::CART_NAME)) {
-            if (!in_array($cartId, session(SessionKey::CART_NAME) ?? [])) {
-                session()->push(SessionKey::CART_NAME, $cartId);
-            }
-        }
     }
 
     public function getCartKeeper(): void
@@ -282,15 +270,6 @@ class CartService
         return $quantity;
     }
 
-    public function getNewCartId(): void
-    {
-        $cartId = 'walk-in-customer-' . rand(10, 1000);
-        session()->put(SessionKey::CURRENT_USER, $cartId);
-        if (!in_array($cartId, session(SessionKey::CART_NAME) ?? [])) {
-            session()->push(SessionKey::CART_NAME, $cartId);
-        }
-    }
-
     public function getCartSubtotalCalculation(object $product, array $cartItem, array $calculation): array
     {
         $taxCalculate = $product['tax_model'] == 'include' ? 0 : $this->getTaxAmount($cartItem['price'], $product['tax']) * $cartItem['quantity'];
@@ -309,21 +288,18 @@ class CartService
         ];
     }
 
-    public function getTotalCalculation(array $subTotalCalculation, string $cartName): array
+    public function getTotalCalculation(array $subTotalCalculation, array $cart): array
     {
         $total = $subTotalCalculation['subtotal'];
-        $extraDiscount = session()->get($cartName)['ext_discount'] ?? 0;
-        $extraDiscountType = session()->get($cartName)['ext_discount_type'] ?? 'amount';
+        $extraDiscount = $cart['ext_discount'] ?? 0;
+        $extraDiscountType = $cart['ext_discount_type'] ?? 'amount';
         if ($extraDiscountType == 'percent' && $extraDiscount > 0) {
             $extraDiscount = (($subTotalCalculation['subtotal'] + $subTotalCalculation['discountOnProduct'] - $subTotalCalculation['totalIncludeTax']) * $extraDiscount) / 100;
         }
         if ($extraDiscount) {
             $total -= $extraDiscount;
         }
-        $couponDiscount = 0;
-        if (isset(session()->get($cartName)['coupon_discount'])) {
-            $couponDiscount = session()->get($cartName)['coupon_discount'];
-        }
+        $couponDiscount = $cart['coupon_discount'] ?? 0;
         return [
             'total' => $total,
             'couponDiscount' => $couponDiscount,
@@ -331,19 +307,16 @@ class CartService
         ];
     }
 
-    public function customerOnHoldStatus($status): void
+    public function customerOnHoldStatus(array $cart, $status): array
     {
-        $cart = session(session(SessionKey::CURRENT_USER));
         $cartKeeper = [];
-        if (session()->has(session(SessionKey::CURRENT_USER)) && count($cart) > 0) {
-            foreach ($cart as $cartItem) {
-                if (is_array($cartItem)) {
-                    $cartItem['customerOnHold'] = $status;
-                }
-                $cartKeeper[] = $cartItem;
+        foreach ($cart as $cartItem) {
+            if (is_array($cartItem)) {
+                $cartItem['customerOnHold'] = $status;
             }
+            $cartKeeper[] = $cartItem;
         }
-        session()->put(session(SessionKey::CURRENT_USER), $cartKeeper);
+        return $cartKeeper;
     }
 
     public function checkCurrentStock(string $variant, array $variation, int $productQty, int $quantity): int
@@ -376,8 +349,6 @@ class CartService
         } else {
             $customerName = "";
             $customerPhone = "";
-            session()->forget(session($customerId));
-            $this->getNewCartId();
         }
         return [
             'customerName' => $customerName,

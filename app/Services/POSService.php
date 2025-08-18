@@ -5,79 +5,39 @@ namespace App\Services;
 use App\Enums\SessionKey;
 use App\Traits\CalculatorTrait;
 use Brian2694\Toastr\Facades\Toastr;
-use Illuminate\Support\Str;
 
 class POSService
 {
     use CalculatorTrait;
 
-    public function getTotalHoldOrders(): int
+    public function getTotalHoldOrders(array $carts): int
     {
         $totalHoldOrders = 0;
-        if (session()->has(SessionKey::CART_NAME)) {
-            foreach (session(SessionKey::CART_NAME) as $item) {
-                if (session()->has($item) && count(session($item)) > 1) {
-                    if (isset(session($item)[0]) && is_array(session($item)[0]) && isset(session($item)[0]['customerOnHold']) && session($item)[0]['customerOnHold']) {
-                        $totalHoldOrders++;
-                    }
+        foreach ($carts as $cart) {
+            if (is_array($cart) && count($cart) > 1) {
+                if (isset($cart[0]) && is_array($cart[0]) && ($cart[0]['customerOnHold'] ?? false)) {
+                    $totalHoldOrders++;
                 }
             }
         }
         return $totalHoldOrders;
     }
 
-    public function getCartNames(): array
+    public function getCartNames(array $carts): array
     {
         $cartNames = [];
-        if (session()->has(SessionKey::CART_NAME)) {
-            foreach (session(SessionKey::CART_NAME) as $item) {
-                if (session()->has($item) && count(session($item)) > 1) {
-                    $cartNames[] = $item;
-                }
+        foreach ($carts as $name => $cart) {
+            if (is_array($cart) && count($cart) > 1) {
+                $cartNames[] = $name;
             }
         }
         return $cartNames;
     }
 
-    public function UpdateSessionWhenCustomerChange(string $cartId): void
-    {
-        if (!in_array($cartId, session(SessionKey::CART_NAME) ?? [])) {
-            session()->push(SessionKey::CART_NAME, $cartId);
-        }
-        $cart = session(session(SessionKey::CURRENT_USER));
-        $cartKeeper = [];
-        if (session()->has(session(SessionKey::CURRENT_USER)) && count($cart) > 0) {
-            foreach ($cart as $cartItem) {
-                if (is_array($cartItem)) {
-                    $cartItem['customerId'] = Str::contains($cartId, 'walk-in-customer') ? '0' : explode('-', $cartId)[2];
-                }
-                $cartKeeper[] = $cartItem;
-            }
-        }
-        if (session(SessionKey::CURRENT_USER) != $cartId) {
-            $tempCartName = [];
-            foreach (session(SessionKey::CART_NAME) as $cartName) {
-                if ($cartName != session(SessionKey::CURRENT_USER)) {
-                    $tempCartName[] = $cartName;
-                }
-            }
-            session()->put(SessionKey::CART_NAME, $tempCartName);
-        }
-        session()->forget(session(SessionKey::CURRENT_USER));
-        session()->put($cartId, $cartKeeper);
-        session()->put(SessionKey::CURRENT_USER, $cartId);
-    }
-
-    public function checkConditions(float $amount, float $paidAmount = null): bool
+    public function checkConditions(float $amount, array $cart, ?float $paidAmount = null): bool
     {
         $condition = false;
-        $cartId = session(SessionKey::CURRENT_USER);
-        if (session()->has($cartId)) {
-            if (count(session()->get($cartId)) < 1) {
-                Toastr::error(translate('cart_empty_warning'));
-                $condition = true;
-            }
-        } else {
+        if (count($cart) < 1) {
             Toastr::error(translate('cart_empty_warning'));
             $condition = true;
         }
@@ -92,7 +52,7 @@ class POSService
         return $condition;
     }
 
-    public function getCouponCalculation(object $coupon, float $totalProductPrice, float $productDiscount, float $productTax): array
+    public function getCouponCalculation(object $coupon, float $totalProductPrice, float $productDiscount, float $productTax, array $cart = []): array
     {
         $extraDiscount = 0;
         if ($coupon['discount_type'] === 'percentage') {
@@ -100,8 +60,8 @@ class POSService
         } else {
             $discount = $coupon['discount'];
         }
-        if (isset($carts['ext_discount_type'])) {
-            $extraDiscount = $this->getDiscountAmount(price: $totalProductPrice, discount: $carts['ext_discount'], discountType: $carts['ext_discount_type']);
+        if (isset($cart['ext_discount_type'])) {
+            $extraDiscount = $this->getDiscountAmount(price: $totalProductPrice, discount: $cart['ext_discount'], discountType: $cart['ext_discount_type']);
         }
         $total = $totalProductPrice - $productDiscount + $productTax - $discount - $extraDiscount;
         return [
@@ -110,14 +70,13 @@ class POSService
         ];
     }
 
-    public function putCouponDataOnSession($cartId, $discount, $couponTitle, $couponBearer, $couponCode): void
+    public function applyCouponToCart(array $cart, $discount, $couponTitle, $couponBearer, $couponCode): array
     {
-        $cart = session($cartId, collect([]));
         $cart['coupon_code'] = $couponCode;
         $cart['coupon_discount'] = $discount;
         $cart['coupon_title'] = $couponTitle;
         $cart['coupon_bearer'] = $couponBearer;
-        session()->put($cartId, $cart);
+        return $cart;
     }
 
     public function getVariantData(string $type, array $variation, int $quantity): array
@@ -132,13 +91,13 @@ class POSService
         return $variationData;
     }
 
-    public function getSummaryData(): array
+    public function getSummaryData(array $carts, string $currentUser): array
     {
         return [
-            'cartName' => session(SessionKey::CART_NAME),
-            'currentUser' => session(SessionKey::CURRENT_USER),
-            'totalHoldOrders' => $this->getTotalHoldOrders(),
-            'cartNames' => $this->getCartNames(),
+            'cartName' => array_keys($carts),
+            'currentUser' => $currentUser,
+            'totalHoldOrders' => $this->getTotalHoldOrders($carts),
+            'cartNames' => $this->getCartNames($carts),
         ];
     }
 }

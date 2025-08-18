@@ -66,7 +66,7 @@ class POSOrderController extends BaseController
      * @param string|null $type
      * @return View|Collection|LengthAwarePaginator|callable|RedirectResponse|null
      */
-    public function index(?Request $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
+    public function index(?Request $request, ?string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
         $vendorId = auth('seller')->id();
         $vendor = $this->vendorRepo->getFirstWhere(params: ['id' => $vendorId]);
@@ -92,7 +92,8 @@ class POSOrderController extends BaseController
         $sellerId = $request['seller_id'];
         $cityId = $request['city_id'];
         $cartId = session(SessionKey::CURRENT_USER);
-        $condition = $this->POSService->checkConditions(amount: $amount, paidAmount: $paidAmount);
+        $cart = session($cartId, []);
+        $condition = $this->POSService->checkConditions(amount: $amount, cart: $cart, paidAmount: $paidAmount);
         if ($condition == 'true') {
             return response()->json();
         }
@@ -188,7 +189,13 @@ class POSOrderController extends BaseController
         }
         session()->forget($cartId);
         session(['last_order' => $orderId]);
-        $this->cartService->getNewCartId();
+        $cartId = 'walk-in-customer-' . rand(10, 1000);
+        session()->put(SessionKey::CURRENT_USER, $cartId);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        if (!in_array($cartId, $cartNames)) {
+            $cartNames[] = $cartId;
+            session()->put(SessionKey::CART_NAME, $cartNames);
+        }
         ToastMagic::success(translate('order_placed_successfully'));
         return response()->json();
     }
@@ -334,8 +341,10 @@ class POSOrderController extends BaseController
                 }
             }
         }
+        $cart = session()->get($cartName, []);
         $totalCalculation = $this->cartService->getTotalCalculation(
-            subTotalCalculation: $subTotalCalculation, cartName: $cartName
+            subTotalCalculation: $subTotalCalculation,
+            cart: $cart
         );
         return [
             'countItem' => $subTotalCalculation['countItem'],

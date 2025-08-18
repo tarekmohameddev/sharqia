@@ -51,7 +51,7 @@ class CartController extends BaseController
      * @param string|null $type
      * @return View|Collection|LengthAwarePaginator|callable|RedirectResponse|null
      */
-    public function index(?Request $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
+    public function index(?Request $request, ?string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
         // TODO: Implement index() method.
     }
@@ -183,7 +183,15 @@ class CartController extends BaseController
                     $cartData[] = $cartItem;
                     session([$cartId => $cartData]);
                     $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
-                    $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+                    $cartNames = session(SessionKey::CART_NAME) ?? [];
+                    $allCarts = [];
+                    foreach ($cartNames as $name) {
+                        $allCarts[$name] = session($name);
+                    }
+                    $summaryData = array_merge(
+                        $this->POSService->getSummaryData(carts: $allCarts, currentUser: session(SessionKey::CURRENT_USER)),
+                        $getCurrentCustomerData
+                    );
                     $cartItems = $this->getCartData(cartName: $cartId);
                     return response()->json([
                         'data' => 1,
@@ -279,7 +287,15 @@ class CartController extends BaseController
     {
         $this->cartService->getCartKeeper();
         $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
-        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        $allCarts = [];
+        foreach ($cartNames as $name) {
+            $allCarts[$name] = session($name);
+        }
+        $summaryData = array_merge(
+            $this->POSService->getSummaryData(carts: $allCarts, currentUser: session(SessionKey::CURRENT_USER)),
+            $getCurrentCustomerData
+        );
         $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));
         return response()->json([
             'view' => view(Cart::SUMMARY[VIEW], compact('summaryData', 'cartItems'))->render(),
@@ -291,9 +307,22 @@ class CartController extends BaseController
     {
         $cartId = session(SessionKey::CURRENT_USER);
         session()->forget($cartId);
-        $this->cartService->getNewCartSession(cartId: $cartId);
+        session()->put(SessionKey::CURRENT_USER, $cartId);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        if (!in_array($cartId, $cartNames)) {
+            $cartNames[] = $cartId;
+            session()->put(SessionKey::CART_NAME, $cartNames);
+        }
         $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
-        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        $allCarts = [];
+        foreach ($cartNames as $name) {
+            $allCarts[$name] = session($name);
+        }
+        $summaryData = array_merge(
+            $this->POSService->getSummaryData(carts: $allCarts, currentUser: session(SessionKey::CURRENT_USER)),
+            $getCurrentCustomerData
+        );
         $cartItems = $this->getCartData(cartName: $cartId);
         return response()->json([
             'view' => view(Cart::SUMMARY[VIEW], compact('summaryData', 'cartItems'))->render(),
@@ -306,9 +335,13 @@ class CartController extends BaseController
      */
     public function changeCart(Request $request): RedirectResponse
     {
-        $this->cartService->customerOnHoldStatus(status: true);
+        $cart = session(session(SessionKey::CURRENT_USER), []);
+        $cart = $this->cartService->customerOnHoldStatus(cart: $cart, status: true);
+        session()->put(session(SessionKey::CURRENT_USER), $cart);
         session()->put(SessionKey::CURRENT_USER, $request['cart_id']);
-        $this->cartService->customerOnHoldStatus(status: false);
+        $cart = session($request['cart_id'], []);
+        $cart = $this->cartService->customerOnHoldStatus(cart: $cart, status: false);
+        session()->put($request['cart_id'], $cart);
         ToastMagic::success($request['cart_id'] . ' ' . translate('order_is_now_resumed'));
         return redirect()->route(POS::INDEX[ROUTE]);
     }
@@ -323,8 +356,15 @@ class CartController extends BaseController
         if (session()->has(session(SessionKey::CURRENT_USER)) && count($cart) > 0) {
             ToastMagic::success(translate('this_order_is_now_on_hold'));
         }
-        $this->cartService->customerOnHoldStatus(status: true);
-        $this->cartService->getNewCartId();
+        $cart = $this->cartService->customerOnHoldStatus(cart: $cart, status: true);
+        session()->put(session(SessionKey::CURRENT_USER), $cart);
+        $cartId = 'walk-in-customer-' . rand(10, 1000);
+        session()->put(SessionKey::CURRENT_USER, $cartId);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        if (!in_array($cartId, $cartNames)) {
+            $cartNames[] = $cartId;
+            session()->put(SessionKey::CART_NAME, $cartNames);
+        }
         return redirect()->route(POS::INDEX[ROUTE]);
     }
 
@@ -418,8 +458,10 @@ class CartController extends BaseController
                 }
             }
         }
+        $cart = session()->get($cartName, []);
         $totalCalculation = $this->cartService->getTotalCalculation(
-            subTotalCalculation: $subTotalCalculation, cartName: $cartName
+            subTotalCalculation: $subTotalCalculation,
+            cart: $cart
         );
         return [
             'countItem' => $subTotalCalculation['countItem'],

@@ -67,7 +67,7 @@ class POSController extends BaseController
      * @param string|null $type
      * @return View|Collection|LengthAwarePaginator|callable|RedirectResponse|null
      */
-    public function index(?Request $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
+    public function index(?Request $request, ?string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
         return $this->getPOSView(request: $request);
     }
@@ -105,10 +105,22 @@ class POSController extends BaseController
             dataLimit: getWebConfig('pagination_limit'),
         );
         $cartId = 'walk-in-customer-' . rand(10, 1000);
-        $this->cartService->getNewCartSession(cartId: $cartId);
+        session()->put(SessionKey::CURRENT_USER, $cartId);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        if (!in_array($cartId, $cartNames)) {
+            $cartNames[] = $cartId;
+            session()->put(SessionKey::CART_NAME, $cartNames);
+        }
         $customers = $this->customerRepo->getListWhereNotIn(ids: [0]);
         $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
-        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $allCarts = [];
+        foreach ($cartNames as $name) {
+            $allCarts[$name] = session($name);
+        }
+        $summaryData = array_merge(
+            $this->POSService->getSummaryData(carts: $allCarts, currentUser: session(SessionKey::CURRENT_USER)),
+            $getCurrentCustomerData
+        );
         $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));
         $order = $this->orderRepo->getFirstWhere(params: ['id' => session(SessionKey::LAST_ORDER)]);
         $totalHoldOrder = $summaryData['totalHoldOrders'];
@@ -138,9 +150,21 @@ class POSController extends BaseController
     public function changeCustomer(Request $request): JsonResponse
     {
         $cartId = ($request['user_id'] != 0 ? 'saved-customer-' . $request['user_id'] : 'walk-in-customer-' . rand(10, 1000));
-        $this->POSService->UpdateSessionWhenCustomerChange(cartId: $cartId);
+        session()->put(SessionKey::CURRENT_USER, $cartId);
+        $cartNames = session(SessionKey::CART_NAME) ?? [];
+        if (!in_array($cartId, $cartNames)) {
+            $cartNames[] = $cartId;
+            session()->put(SessionKey::CART_NAME, $cartNames);
+        }
         $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
-        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $allCarts = [];
+        foreach ($cartNames as $name) {
+            $allCarts[$name] = session($name);
+        }
+        $summaryData = array_merge(
+            $this->POSService->getSummaryData(carts: $allCarts, currentUser: $cartId),
+            $getCurrentCustomerData
+        );
         $cartItems = $this->getCartData(cartName: $cartId);
 
         return response()->json([
@@ -279,7 +303,7 @@ class POSController extends BaseController
                     }
                 }
                 if ($totalProductPrice >= $coupon['min_purchase']) {
-                    $calculation = $this->POSService->getCouponCalculation(coupon: $coupon, totalProductPrice: $totalProductPrice, productDiscount: $productDiscount, productTax: $productTax);
+                    $calculation = $this->POSService->getCouponCalculation(coupon: $coupon, totalProductPrice: $totalProductPrice, productDiscount: $productDiscount, productTax: $productTax, cart: $carts);
                     $couponDiscount = $calculation['discount'];
 
                     $extraDiscount = 0;
@@ -301,13 +325,14 @@ class POSController extends BaseController
                         ]);
                     }
 
-                    $this->POSService->putCouponDataOnSession(
-                        cartId: $cartId,
+                    $carts = $this->POSService->applyCouponToCart(
+                        cart: $carts,
                         discount: $couponDiscount,
                         couponTitle: $coupon['title'],
                         couponBearer: $coupon['coupon_bearer'],
                         couponCode: $request['coupon_code']
                     );
+                    session()->put($cartId, $carts);
                     $cartItems = $this->getCartData(cartName: $cartId);
                     return response()->json([
                         'coupon' => 'success',
@@ -438,8 +463,10 @@ class POSController extends BaseController
                 }
             }
         }
+        $cart = session()->get($cartName, []);
         $totalCalculation = $this->cartService->getTotalCalculation(
-            subTotalCalculation: $subTotalCalculation, cartName: $cartName
+            subTotalCalculation: $subTotalCalculation,
+            cart: $cart
         );
         return [
             'countItem' => $subTotalCalculation['countItem'],
