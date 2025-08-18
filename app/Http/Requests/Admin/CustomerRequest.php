@@ -24,7 +24,7 @@ class CustomerRequest extends FormRequest
     {
         return [
             'f_name' => 'required',
-            'phone' => 'required|unique:users|min:4|max:20',
+            'phone' => 'required|min:4|max:20',
             'city_id' => 'required|exists:governorates,id',
             'seller_id' => 'required|exists:sellers,id',
         ];

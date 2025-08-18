@@ -335,6 +335,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('customer-list-search', 'getCustomerList')->name('customer-list-search');
             Route::get('customer-list-without-all-customer', 'getCustomerListWithoutAllCustomerName')->name('customer-list-without-all-customer');
             Route::post('add', 'add')->name('add');
+            Route::post('address-add', 'addAddress')->name('address-add');
         });
 
         Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
