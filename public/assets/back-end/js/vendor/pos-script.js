@@ -715,19 +715,14 @@ function getVariantForAlreadyInCart(event = null) {
 }
 
 function checkAddToCartValidity() {
-    var names = {};
-    $("#add-to-cart-form input:radio").each(function () {
+    const form = $("#add-to-cart-form");
+    const names = {};
+    form.find("input:radio").each(function () {
         names[$(this).attr("name")] = true;
     });
-    var count = 0;
-    $.each(names, function () {
-        count++;
-    });
-
-    if ($("input:radio:checked").length - 1 == count) {
-        return true;
-    }
-    return false;
+    const totalGroups = Object.keys(names).length;
+    const selected = form.find("input:radio:checked").length;
+    return selected === totalGroups;
 }
 
 function cartQuantityInitialize() {
