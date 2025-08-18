@@ -191,6 +191,7 @@ function renderSelectProduct() {
     });
 
     $(".action-add-to-cart").on("click", function (e) {
+        e.stopPropagation();
         addToCart();
     });
 
