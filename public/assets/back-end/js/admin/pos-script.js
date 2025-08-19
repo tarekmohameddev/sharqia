@@ -1,5 +1,547 @@
 "use strict";
 
+// Client-side cart management
+let clientCart = {
+    items: [],
+    subtotal: 0,
+    totalTax: 0,
+    discountOnProduct: 0,
+    extraDiscount: 0,
+    couponDiscount: 0,
+    total: 0
+};
+
+// Initialize client cart from session if exists
+function initializeClientCart() {
+    const savedCart = sessionStorage.getItem('pos_client_cart');
+    if (savedCart) {
+        clientCart = JSON.parse(savedCart);
+        updateCartDisplay();
+    } else {
+        // Initialize with empty cart if no saved cart exists
+        updateCartDisplay();
+    }
+}
+
+// Save cart to session storage
+function saveClientCart() {
+    sessionStorage.setItem('pos_client_cart', JSON.stringify(clientCart));
+}
+
+// Add product to client cart
+function addToClientCart(productData) {
+    const existingItemIndex = clientCart.items.findIndex(item => 
+        item.id === productData.id && item.variant === (productData.variant || '')
+    );
+
+    if (existingItemIndex !== -1) {
+        // Update existing item quantity
+        clientCart.items[existingItemIndex].quantity += 1;
+    } else {
+        // Add new item
+        const newItem = {
+            id: productData.id,
+            name: productData.name,
+            price: parseFloat(productData.price),
+            image: productData.image,
+            quantity: 1,
+            productType: productData.productType,
+            unit: productData.unit || '',
+            tax: parseFloat(productData.tax || 0),
+            taxType: productData.taxType || 'percent',
+            taxModel: productData.taxModel || 'exclude',
+            discount: parseFloat(productData.discount || 0),
+            discountType: productData.discountType || 'flat',
+            variant: productData.variant || '',
+            variations: productData.variations || [],
+            stock: parseInt(productData.stock || 0)
+        };
+        clientCart.items.push(newItem);
+    }
+
+    calculateCartTotals();
+    updateCartDisplay();
+    saveClientCart();
+    
+    // Show success message
+    toastMagic.success(
+        $("#message-item-has-been-added-in-your-cart").data("text"), '',
+        {
+            CloseButton: true,
+            ProgressBar: true,
+        }
+    );
+}
+
+// Remove item from client cart
+function removeFromClientCart(productId, variant = '') {
+    clientCart.items = clientCart.items.filter(item => 
+        !(item.id === productId && item.variant === variant)
+    );
+    
+    calculateCartTotals();
+    updateCartDisplay();
+    saveClientCart();
+    
+    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
+}
+
+// Update item quantity in client cart
+function updateClientCartQuantity(productId, variant = '', newQuantity) {
+    const item = clientCart.items.find(item => 
+        item.id === productId && item.variant === variant
+    );
+    
+    if (item) {
+        if (newQuantity <= 0) {
+            removeFromClientCart(productId, variant);
+            return;
+        }
+        
+        // Check stock for physical products
+        if (item.productType === 'physical' && newQuantity > item.stock) {
+            toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text"));
+            return;
+        }
+        
+        item.quantity = parseInt(newQuantity);
+        calculateCartTotals();
+        updateCartDisplay();
+        saveClientCart();
+        
+        toastMagic.success($("#message-product-quantity-updated").data("text"));
+    }
+}
+
+// Calculate cart totals
+function calculateCartTotals() {
+    clientCart.subtotal = 0;
+    clientCart.totalTax = 0;
+    clientCart.discountOnProduct = 0;
+
+    clientCart.items.forEach(item => {
+        const itemSubtotal = item.price * item.quantity;
+        const itemDiscount = item.discount * item.quantity;
+        
+        clientCart.subtotal += itemSubtotal;
+        clientCart.discountOnProduct += itemDiscount;
+        
+        // Calculate tax
+        let taxAmount = 0;
+        if (item.tax > 0) {
+            if (item.taxType === 'percent') {
+                if (item.taxModel === 'include') {
+                    taxAmount = (itemSubtotal * item.tax) / (100 + item.tax);
+                } else {
+                    taxAmount = (itemSubtotal * item.tax) / 100;
+                }
+            } else {
+                taxAmount = item.tax * item.quantity;
+            }
+        }
+        clientCart.totalTax += taxAmount;
+    });
+
+    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax - clientCart.extraDiscount - clientCart.couponDiscount;
+    
+    if (clientCart.total < 0) {
+        clientCart.total = 0;
+    }
+}
+
+// Clear client cart
+function clearClientCart() {
+    clientCart = {
+        items: [],
+        subtotal: 0,
+        totalTax: 0,
+        discountOnProduct: 0,
+        extraDiscount: 0,
+        couponDiscount: 0,
+        total: 0
+    };
+    saveClientCart();
+    updateCartDisplay();
+    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
+}
+
+// Update cart display
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('cart');
+    if (!cartContainer) return;
+
+    const currencySymbol = $('#get-currency-symbol').data('symbol') || 'EGP';
+    const currencyPosition = $('#get-currency-position').data('position') || 'left';
+    
+    function formatCurrency(amount) {
+        const formattedAmount = parseFloat(amount || 0).toFixed(2);
+        return currencyPosition === 'left' ? `${currencySymbol}${formattedAmount}` : `${formattedAmount}${currencySymbol}`;
+    }
+    
+    function getTranslation(elementId, fallback) {
+        const element = document.getElementById(elementId);
+        return element ? element.getAttribute('data-text') : fallback;
+    }
+
+    let cartHTML = `
+        <div class="table-responsive pos-cart-table border">
+            <table class="table table-align-middle m-0">
+                <thead class="text-capitalize bg-light">
+                    <tr>
+                        <th class="border-0 min-w-120">${getTranslation("translate-item", "Item")}</th>
+                        <th class="border-0">${getTranslation("translate-qty", "Qty")}</th>
+                        <th class="border-0">${getTranslation("translate-price", "Price")}</th>
+                        <th class="border-0 text-center">${getTranslation("translate-delete", "Delete")}</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+    if (clientCart.items.length === 0) {
+        cartHTML += `
+                    <tr>
+                        <td colspan="4" class="text-center py-4">
+                            <div class="text-muted">${$("#message-cart-is-empty").data("text") || "Cart is empty"}</div>
+                        </td>
+                    </tr>`;
+    } else {
+        clientCart.items.forEach((item, index) => {
+            const itemTotal = (item.price - item.discount) * item.quantity;
+            cartHTML += `
+                    <tr>
+                        <td>
+                            <div class="media d-flex align-items-center gap-10">
+                                <img class="avatar avatar-sm" src="${item.image}" alt="${item.name} Image">
+                                <div class="media-body">
+                                    <h5 class="text-hover-primary mb-0 d-flex flex-wrap gap-2">
+                                        ${item.name.length > 12 ? item.name.substring(0, 12) + '...' : item.name}
+                                        ${item.taxModel === 'include' ? '<span data-bs-toggle="tooltip" data-bs-title="Tax Included"><img class="info-img" src="/public/assets/back-end/img/info-circle.svg" alt="img"></span>' : ''}
+                                    </h5>
+                                    <small>${item.variant}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control qty client-cart-quantity w-max-content" 
+                                   value="${item.quantity}" min="1" max="${item.productType === 'physical' ? item.stock : 999}"
+                                   data-product-id="${item.id}" data-variant="${item.variant}">
+                        </td>
+                        <td>
+                            <div>${formatCurrency(itemTotal)}</div>
+                        </td>
+                        <td>
+                            <div class="d-flex justify-content-center">
+                                <a href="javascript:" class="btn btn-danger rounded-circle icon-btn client-remove-from-cart"
+                                   data-product-id="${item.id}" data-variant="${item.variant}">
+                                    <i class="fi fi-rr-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>`;
+        });
+    }
+
+    cartHTML += `
+                </tbody>
+            </table>
+        </div>
+        <div class="pt-4 pb-60">
+            <dl>
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-subtotal").data("text") || "Sub total"} : </dt>
+                    <dd>${formatCurrency(clientCart.subtotal)}</dd>
+                </div>
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-product-discount").data("text") || "Product Discount"} :</dt>
+                    <dd>${formatCurrency(clientCart.discountOnProduct)}</dd>
+                </div>
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-extra-discount").data("text") || "Extra Discount"} :</dt>
+                    <dd>
+                        <button id="extra_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-discount">
+                            <i class="fi fi-rr-pencil"></i>
+                        </button>
+                        ${formatCurrency(clientCart.extraDiscount)}
+                    </dd>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <dt class="title-color gap-2 text-capitalize font-weight-normal">${$("#translate-coupon-discount").data("text") || "Coupon Discount"} :</dt>
+                    <dd>
+                        <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
+                            <i class="fi fi-rr-pencil"></i>
+                        </button>
+                        ${formatCurrency(clientCart.couponDiscount)}
+                    </dd>
+                </div>
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-tax").data("text") || "Tax"} : </dt>
+                    <dd>${formatCurrency(clientCart.totalTax)}</dd>
+                </div>
+                <div class="d-flex gap-2 border-top justify-content-between pt-2">
+                    <dt class="title-color text-capitalize font-weight-bold title-color">${$("#translate-total").data("text") || "Total"} : </dt>
+                    <dd class="font-weight-bold title-color">${formatCurrency(clientCart.total)}</dd>
+                </div>
+            </dl>
+            
+            <div class="form-group col-12">
+                <input type="hidden" class="form-control total-amount" name="amount" min="0" step="0.01"
+                       value="${clientCart.total}" readonly>
+            </div>
+            
+            <div class="p-4 bg-section rounded mt-4">
+                <div>
+                    <div class="text-dark d-flex mb-2">${$("#translate-paid-by").data("text") || "Paid By"}:</div>
+                    <ul class="list-unstyled option-buttons d-flex flex-wrap gap-2 align-items-center">
+                        <li>
+                            <input type="radio" class="paid-by-cash" id="cash" value="cash" name="type" hidden checked>
+                            <label for="cash" class="btn btn-outline-dark btn-sm mb-0">${$("#translate-cash").data("text") || "Cash"}</label>
+                        </li>
+                        <li>
+                            <input type="radio" value="card" id="card" name="type" hidden>
+                            <label for="card" class="btn btn-outline-dark btn-sm mb-0">${$("#translate-card").data("text") || "Card"}</label>
+                        </li>
+                        <li class="d-none">
+                            <input type="radio" value="wallet" id="wallet" name="type" hidden>
+                            <label for="wallet" class="btn btn-outline-dark btn-sm mb-0">${$("#translate-wallet").data("text") || "Wallet"}</label>
+                        </li>
+                    </ul>
+                </div>
+                <div class="cash-change-amount cash-change-section">
+                    <div class="d-flex gap-2 justify-content-between align-items-center pt-4">
+                        <dt class="text-capitalize font-weight-normal">${$("#translate-paid-amount").data("text") || "Paid Amount"} : </dt>
+                        <dd>
+                            <input type="number" class="form-control text-end pos-paid-amount-element remove-spin" 
+                                   placeholder="Ex: 1000" value="${clientCart.total}" name="paid_amount"
+                                   min="${clientCart.total}" data-currency-position="left" data-currency-symbol="${currencySymbol}">
+                        </dd>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-between align-items-center">
+                        <dt class="text-capitalize font-weight-normal">${$("#translate-change-amount").data("text") || "Change Amount"} : </dt>
+                        <dd class="font-weight-bold title-color pos-change-amount-element">${formatCurrency(0)}</dd>
+                    </div>
+                </div>
+                <div class="cash-change-card cash-change-section d-none">
+                    <div class="d-flex gap-2 justify-content-between align-items-center pt-4">
+                        <dt class="text-capitalize font-weight-normal">${$("#translate-paid-amount").data("text") || "Paid Amount"} : </dt>
+                        <dd>
+                            <input type="number" class="form-control text-end" placeholder="Ex: 1000" value="${clientCart.total}" disabled>
+                        </dd>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-between align-items-center">
+                        <dt class="text-capitalize font-weight-normal">${$("#translate-change-amount").data("text") || "Change Amount"} : </dt>
+                        <dd class="font-weight-bold title-color">${formatCurrency(0)}</dd>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-3 align-items-center pt-3 bottom-absolute-buttons z-1">
+            ${clientCart.items.length > 0 ? `
+                <span class="btn btn-danger btn-block client-empty-cart">
+                    <i class="fa fa-times-circle"></i>
+                    ${$("#translate-cancel-order").data("text") || "Cancel Order"}
+                </span>
+                <button id="submit_order" type="button" class="btn btn-primary btn-block m-0 client-place-order" 
+                        data-message="${$("#translate-want-to-place-order").data("text") || "Want to place this order?"}">
+                    <i class="fa fa-shopping-bag"></i>
+                    ${$("#translate-place-order").data("text") || "Place Order"}
+                </button>
+            ` : `
+                <span class="btn btn-danger btn-block" onclick="toastMagic.warning('${$("#message-cart-is-empty").data("text") || "Cart is empty"}')">
+                    <i class="fa fa-times-circle"></i>
+                    ${$("#translate-cancel-order").data("text") || "Cancel Order"}
+                </span>
+                <button type="button" class="btn btn-primary btn-block m-0" onclick="toastMagic.warning('${$("#message-cart-is-empty").data("text") || "Cart is empty"}')">
+                    <i class="fa fa-shopping-bag"></i>
+                    ${$("#translate-place-order").data("text") || "Place Order"}
+                </button>
+            `}
+        </div>`;
+
+    cartContainer.innerHTML = cartHTML;
+    
+    // Reinitialize event handlers
+    attachClientCartEventHandlers();
+    basicFunctionalityForCartSummary();
+}
+
+// Attach event handlers for client cart
+function attachClientCartEventHandlers() {
+    // Direct add to cart buttons
+    $('.action-direct-add-to-cart').off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const button = $(this);
+        const hasVariants = button.data('has-variants') === 'true';
+        
+        if (hasVariants) {
+            // Show quick view for products with variants
+            quickView(button.data('product-id'));
+        } else {
+            // Add directly to cart for simple products
+            const productData = {
+                id: parseInt(button.data('product-id')),
+                name: button.data('product-name'),
+                price: parseFloat(button.data('product-price')),
+                image: button.data('product-image'),
+                productType: button.data('product-type'),
+                unit: button.data('product-unit'),
+                tax: parseFloat(button.data('product-tax') || 0),
+                taxType: button.data('product-tax-type'),
+                taxModel: button.data('product-tax-model'),
+                discount: parseFloat(button.data('product-discount') || 0),
+                discountType: button.data('product-discount-type'),
+                stock: parseInt(button.data('product-stock') || 0),
+                variant: '',
+                variations: []
+            };
+            
+            // Check stock for physical products
+            if (productData.productType === 'physical' && productData.stock <= 0) {
+                toastMagic.warning($("#message-sorry-product-is-out-of-stock").data("text"));
+                return;
+            }
+            
+            addToClientCart(productData);
+        }
+    });
+    
+    // Quantity change handlers
+    $('.client-cart-quantity').off('change').on('change', function() {
+        const productId = parseInt($(this).data('product-id'));
+        const variant = $(this).data('variant') || '';
+        const newQuantity = parseInt($(this).val());
+        
+        updateClientCartQuantity(productId, variant, newQuantity);
+    });
+    
+    // Remove from cart handlers
+    $('.client-remove-from-cart').off('click').on('click', function() {
+        const productId = parseInt($(this).data('product-id'));
+        const variant = $(this).data('variant') || '';
+        
+        removeFromClientCart(productId, variant);
+    });
+    
+    // Clear cart handler
+    $('.client-empty-cart').off('click').on('click', function() {
+        Swal.fire({
+            title: messageAreYouSure,
+            text: $("#message-you-want-to-remove-all-items-from-cart").data("text"),
+            icon: "warning",
+            showCancelButton: true,
+            cancelButtonColor: "#dd3333",
+            confirmButtonColor: "#161853",
+            cancelButtonText: getNoWord,
+            confirmButtonText: getYesWord,
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.value) {
+                clearClientCart();
+            }
+        });
+    });
+    
+    // Place order handler
+    $('.client-place-order').off('click').on('click', function() {
+        if (clientCart.items.length === 0) {
+            toastMagic.warning($("#message-cart-is-empty").data("text"));
+            return;
+        }
+        
+        if (checkedPaidAmount()) {
+            Swal.fire({
+                title: messageAreYouSure,
+                icon: "warning",
+                text: $(this).data("message"),
+                showCancelButton: true,
+                showConfirmButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: getNoWord,
+                confirmButtonText: getYesWord,
+                reverseButtons: true,
+            }).then(function (result) {
+                if (result.value) {
+                    placeClientOrder();
+                }
+            });
+        }
+    });
+}
+
+// Place order with client cart data
+function placeClientOrder() {
+    const formData = new FormData();
+    formData.append('_token', $('meta[name="_token"]').attr('content'));
+    formData.append('customer_id', $('#customer').val() || 0);
+    formData.append('cart_data', JSON.stringify(clientCart));
+    formData.append('amount', clientCart.total);
+    formData.append('paid_amount', $('.pos-paid-amount-element').val());
+    formData.append('type', $('input[name="type"]:checked').val());
+    formData.append('city_id', $('input[name="city_id"]').val());
+    formData.append('seller_id', $('input[name="seller_id"]').val());
+    
+    $.ajaxSetup({
+        headers: {
+            "X-XSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        },
+    });
+    
+    $.post({
+        url: $("#route-admin-pos-place-order-direct").data("url") || $("#order-place").attr("action"),
+        data: formData,
+        contentType: false,
+        processData: false,
+        beforeSend: function () {
+            $("#loading").fadeIn();
+        },
+        success: function (response) {
+            if (Boolean(response.checkProductTypeForWalkingCustomer) === true) {
+                $("#add-customer").modal("show");
+                $(".alert--message-for-pos").addClass("active");
+                $(".alert--message-for-pos .warning-message")
+                    .empty()
+                    .html(response.message);
+            } else {
+                // Clear client cart on successful order
+                clearClientCart();
+                location.reload();
+            }
+        },
+        error: function(xhr) {
+            console.error('Order placement failed:', xhr);
+            toastMagic.error('Failed to place order. Please try again.');
+        },
+        complete: function () {
+            $("#loading").fadeOut();
+        },
+    });
+}
+
+// Initialize client cart when document is ready
+$(document).ready(function() {
+    // Check if we should use client-side cart (when cart is empty or enabled)
+    const shouldUseClientCart = true; // You can add conditions here if needed
+    
+    if (shouldUseClientCart) {
+        initializeClientCart();
+        attachClientCartEventHandlers();
+    }
+});
+
+// Also initialize when the page loads
+window.addEventListener('load', function() {
+    const shouldUseClientCart = true;
+    
+    if (shouldUseClientCart) {
+        setTimeout(() => {
+            initializeClientCart();
+            attachClientCartEventHandlers();
+        }, 100);
+    }
+});
+
 let elementViewAllHoldOrdersSearch = $(".view_all_hold_orders_search");
 let getYesWord = $("#message-yes-word").data("text");
 let getNoWord = $("#message-no-word").data("text");
@@ -234,8 +776,16 @@ renderSelectProduct();
 renderQuickViewFunctionality();
 
 function renderQuickViewFunctionality() {
-    $(".action-select-product").on("click", function () {
-        quickView($(this).data("id"));
+    $(".action-select-product").on("click", function (e) {
+        // Don't trigger quick view if clicking on the add to cart button
+        if ($(e.target).closest('.action-direct-add-to-cart').length) {
+            return;
+        }
+        
+        const hasVariants = $(this).find('.action-direct-add-to-cart').data('has-variants') === 'true';
+        if (hasVariants) {
+            quickView($(this).data("id"));
+        }
     });
 }
 
@@ -1029,81 +1579,173 @@ function getVariantPrice(type = null) {
 
 function addToCart(form_id = "add-to-cart-form") {
     if (checkAddToCartValidity()) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
+        // Get form data for client-side cart
+        const formData = $("#" + form_id).serializeArray();
+        const productData = {};
+        
+        // Convert form data to object
+        formData.forEach(item => {
+            productData[item.name] = item.value;
         });
-        $.post({
-            url: $("#route-admin-pos-add-to-cart").data("url"),
-            data: $("#" + form_id).serializeArray(),
-            beforeSend: function () {
-                $("#loading").fadeIn();
-            },
-            success: function (data) {
-                if (data.data == 1) {
-                    $("#cart-summary").empty().html(data.view);
-                    reinitializeTooltips();
-                    toastMagic.success(
-                        $("#message-cart-updated").data("text"), '',
-                        {
-                            CloseButton: true,
-                            ProgressBar: true,
-                        }
-                    );
-                    data.inCartData && data.inCartData == 1
-                        ? $(".in-cart-quantity-field").val(data.requestQuantity)
-                        : "";
-                    removeFromCart();
-                    basicFunctionalityForCartSummary();
-                    posUpdateQuantityFunctionality();
-                    return false;
-                } else if (data.data == 0) {
-                    $(".product-stock-message")
-                        .empty()
-                        .html(
-                            $("#get-product-stock-message").data("out-of-stock")
-                        );
-                    $(".pos-alert-message").removeClass("d-none");
-                    return false;
-                } else if (data.data == 'custom-error') {
-                    Swal.fire({
-                        icon: "error",
-                        title: data?.title ?? $("#message-cart-word").data("text"),
-                        text: data?.text ?? $("#message-sorry-product-is-out-of-stock").data(
-                            "text"
-                        ),
-                    });
-                    return false;
-                } else {
-                    $(".in-cart-quantity-field").val(data.quantity);
-                    getVariantPrice();
-                    setTimeout(function () {
-                        $(".cart-qty-field").val(1);
-                    }, 500);
+        
+        // Get product details from form or current product being viewed
+        const productId = parseInt(productData.id);
+        const quantity = parseInt(productData.quantity || productData.quantity_in_cart || 1);
+        
+        // Extract product info from hidden fields if available
+        const hiddenProductData = {
+            name: productData.product_name,
+            price: parseFloat(productData.product_price),
+            image: productData.product_image,
+            productType: productData.product_type,
+            unit: productData.product_unit,
+            tax: parseFloat(productData.product_tax || 0),
+            taxType: productData.product_tax_type,
+            taxModel: productData.product_tax_model,
+            discount: parseFloat(productData.product_discount || 0),
+            discountType: productData.product_discount_type,
+            stock: parseInt(productData.product_stock || 0)
+        };
+        
+        // Get product info from the modal or product card
+        let productElement = $(`.action-select-product[data-id="${productId}"]`);
+        if (!productElement.length) {
+            // Try to get data from the modal if product card not found
+            productElement = $(`#add-to-cart-form input[name="id"][value="${productId}"]`).closest('form');
+            if (!productElement.length) {
+                console.error('Product element not found');
+                return;
+            }
+        }
+        
+        // Build variant string
+        let variant = '';
+        let variations = [];
+        
+        // Handle color
+        if (productData.color) {
+            variant += productData.color;
+            variations.push({type: 'color', value: productData.color});
+        }
+        
+        // Handle other variations
+        Object.keys(productData).forEach(key => {
+            if (key !== 'id' && key !== 'quantity' && key !== 'quantity_in_cart' && key !== 'color' && key !== '_token') {
+                if (variant) variant += '-';
+                variant += productData[key];
+                variations.push({type: key, value: productData[key]});
+            }
+        });
+        
+        // Get product data for client cart - prefer hidden form data if available
+        let productName, productPrice, productImage, productType, productUnit, productTax, productTaxType, productTaxModel, productDiscount, productDiscountType, productStock;
+        
+        if (hiddenProductData.name) {
+            // Use data from hidden form fields (from quick view modal)
+            productName = hiddenProductData.name;
+            productPrice = hiddenProductData.price;
+            productImage = hiddenProductData.image;
+            productType = hiddenProductData.productType;
+            productUnit = hiddenProductData.unit;
+            productTax = hiddenProductData.tax;
+            productTaxType = hiddenProductData.taxType;
+            productTaxModel = hiddenProductData.taxModel;
+            productDiscount = hiddenProductData.discount;
+            productDiscountType = hiddenProductData.discountType;
+            productStock = hiddenProductData.stock;
+        } else if (productElement.hasClass('action-select-product')) {
+            // Data from product card
+            productName = productElement.find('.pos-product-item_title').text().trim();
+            productPrice = parseFloat(productElement.data('product-price')) || 0;
+            productImage = productElement.find('img').attr('src');
+            productType = productElement.data('product-type');
+            productUnit = productElement.data('product-unit');
+            productTax = parseFloat(productElement.data('product-tax') || 0);
+            productTaxType = productElement.data('product-tax-type');
+            productTaxModel = productElement.data('product-tax-model');
+            productDiscount = parseFloat(productElement.data('product-discount') || 0);
+            productDiscountType = productElement.data('product-discount-type');
+            productStock = parseInt(productElement.data('product-stock') || 0);
+        } else {
+            // Data from modal/form - try to get from original product card
+            const originalProductElement = $(`.action-select-product[data-id="${productId}"]`);
+            if (originalProductElement.length) {
+                productName = originalProductElement.find('.pos-product-item_title').text().trim();
+                productPrice = parseFloat(originalProductElement.data('product-price')) || 0;
+                productImage = originalProductElement.find('img').attr('src');
+                productType = originalProductElement.data('product-type');
+                productUnit = originalProductElement.data('product-unit');
+                productTax = parseFloat(originalProductElement.data('product-tax') || 0);
+                productTaxType = originalProductElement.data('product-tax-type');
+                productTaxModel = originalProductElement.data('product-tax-model');
+                productDiscount = parseFloat(originalProductElement.data('product-discount') || 0);
+                productDiscountType = originalProductElement.data('product-discount-type');
+                productStock = parseInt(originalProductElement.data('product-stock') || 0);
+            } else {
+                // Fallback to modal data
+                productName = $('.product-title').text().trim() || 'Product';
+                productPrice = parseFloat($('.discounted-unit-price').text().replace(/[^\d.]/g, '')) || 0;
+                productImage = $('.modal img').first().attr('src') || '';
+                productType = 'physical';
+                productUnit = '';
+                productTax = 0;
+                productTaxType = 'percent';
+                productTaxModel = 'exclude';
+                productDiscount = 0;
+                productDiscountType = 'flat';
+                productStock = 999;
+            }
+        }
+        
+        const clientProductData = {
+            id: productId,
+            name: productName,
+            price: productPrice,
+            image: productImage,
+            productType: productType || 'physical',
+            unit: productUnit || '',
+            tax: productTax,
+            taxType: productTaxType || 'percent',
+            taxModel: productTaxModel || 'exclude',
+            discount: productDiscount,
+            discountType: productDiscountType || 'flat',
+            stock: productStock,
+            variant: variant,
+            variations: variations
+        };
+        
+        // Check if this exact variant already exists in cart
+        const existingItem = clientCart.items.find(item => 
+            item.id === productId && item.variant === variant
+        );
+        
+        if (existingItem) {
+            // Update quantity of existing item
+            const newQuantity = existingItem.quantity + quantity;
+            updateClientCartQuantity(productId, variant, newQuantity);
+        } else {
+            // Add new item with specified quantity
+            clientProductData.quantity = quantity;
+            clientCart.items.push(clientProductData);
+            calculateCartTotals();
+            updateCartDisplay();
+            saveClientCart();
+            
+            toastMagic.success(
+                $("#message-item-has-been-added-in-your-cart").data("text"), '',
+                {
+                    CloseButton: true,
+                    ProgressBar: true,
                 }
-                $(".close-quick-view-modal").click();
-
-                toastMagic.success(
-                    $("#message-item-has-been-added-in-your-cart").data("text"), '',
-                    {
-                        CloseButton: true,
-                        ProgressBar: true,
-                    }
-                );
-                $("#cart").empty().html(data.view);
-                reinitializeTooltips();
-                viewAllHoldOrders("keyup");
-                $(".search-result-box").empty().hide();
-                $("#search").val("");
-                basicFunctionalityForCartSummary();
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-            },
-            complete: function () {
-                $("#loading").fadeOut();
-            },
-        });
+            );
+        }
+        
+        // Close modal and clear search
+        $(".close-quick-view-modal").click();
+        $("#quick-view").modal("hide");
+        $(".search-result-box").empty().hide();
+        $("#search").val("");
+        
     } else {
         Swal.fire({
             type: "info",
@@ -1268,9 +1910,9 @@ $("#customer_form").on("submit", function (e) {
         },
         success: function (data) {
             if (data.status === "exists") {
-                toastr.warning(data.message);
+                toastMagic.warning(data.message);
             } else {
-                toastr.success(data.message);
+                toastMagic.success(data.message);
             }
 
             if (data.customer) {
@@ -1290,7 +1932,7 @@ $("#customer_form").on("submit", function (e) {
                 jqXHR.responseJSON && jqXHR.responseJSON.message
                     ? jqXHR.responseJSON.message
                     : "An unexpected error occurred";
-            toastr.error(message);
+            toastMagic.error(message);
         },
         complete: function () {
             $("#loading").fadeOut();
@@ -1307,7 +1949,7 @@ $("#customer_address_form").on("submit", function (e) {
             $("#loading").fadeIn();
         },
         success: function (data) {
-            toastr.success(data.message);
+            toastMagic.success(data.message);
             $("#customer_address_form")[0].reset();
             $("#add-address-card").addClass("d-none");
         },

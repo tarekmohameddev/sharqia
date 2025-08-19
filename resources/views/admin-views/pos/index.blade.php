@@ -3,6 +3,139 @@
 @section('title', translate('POS'))
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <style>
+        .pos-product-item {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        
+        .pos-product-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .pos-product-item_content {
+            padding: 1rem;
+        }
+        
+        .pos-product-item_title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+            min-height: 2.6rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .pos-product-item_price {
+            font-weight: 700;
+            color: #0d6efd;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .pos-product-item_stock {
+            margin-bottom: 0.5rem;
+            min-height: 1.2rem;
+        }
+        
+        .pos-product-item_actions {
+            margin-top: auto;
+        }
+        
+        .pos-product-item_hover-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: inherit;
+        }
+        
+        .pos-product-item:hover .pos-product-item_hover-content {
+            opacity: 1;
+        }
+        
+        .action-direct-add-to-cart {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            font-weight: 500;
+        }
+        
+        .action-direct-add-to-cart:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .pos-product-item_thumb {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .pos-product-item_content {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 200px); /* Adjust based on image height */
+        }
+        
+        .client-cart-quantity {
+            width: 70px !important;
+            padding: 0.25rem 0.5rem;
+            text-align: center;
+        }
+        
+        /* Make product cards consistent height */
+        .pos-product-item {
+            height: 320px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pos-product-item_thumb {
+            height: 180px;
+            flex-shrink: 0;
+        }
+        
+        .pos-product-item_content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        /* Loading state for add to cart buttons */
+        .action-direct-add-to-cart.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        .action-direct-add-to-cart.loading::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid transparent;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 5px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 @endpush
 @section('content')
     <div class="content container-fluid">
@@ -276,6 +409,30 @@
 <span id="message-please-add-product-in-cart-before-applying-discount" data-text="{{ translate('please_add_product_to_cart_before_applying_discount') }}"></span>
 <span id="message-please-add-product-in-cart-before-applying-coupon" data-text="{{ translate('please_add_product_to_cart_before_applying_coupon') }}"></span>
 <span id="message-product-quantity-cannot-be-zero-in-cart" data-text="{{ translate('product_quantity_can_not_be_zero_or_less_than_zero_in_cart') }}"></span>
+
+<!-- Translation elements for client-side cart -->
+<span id="get-currency-symbol" data-symbol="{{ getCurrencySymbol() }}"></span>
+<span id="get-currency-position" data-position="{{ getWebConfig('currency_symbol_position') }}"></span>
+<span id="translate-item" data-text="{{ translate('item') }}"></span>
+<span id="translate-qty" data-text="{{ translate('qty') }}"></span>
+<span id="translate-price" data-text="{{ translate('price') }}"></span>
+<span id="translate-delete" data-text="{{ translate('delete') }}"></span>
+<span id="translate-subtotal" data-text="{{ translate('sub_total') }}"></span>
+<span id="translate-product-discount" data-text="{{ translate('product_Discount') }}"></span>
+<span id="translate-extra-discount" data-text="{{ translate('extra_Discount') }}"></span>
+<span id="translate-coupon-discount" data-text="{{ translate('coupon_Discount') }}"></span>
+<span id="translate-tax" data-text="{{ translate('tax') }}"></span>
+<span id="translate-total" data-text="{{ translate('total') }}"></span>
+<span id="translate-paid-by" data-text="{{ translate('paid_By') }}"></span>
+<span id="translate-cash" data-text="{{ translate('cash') }}"></span>
+<span id="translate-card" data-text="{{ translate('card') }}"></span>
+<span id="translate-wallet" data-text="{{ translate('wallet') }}"></span>
+<span id="translate-paid-amount" data-text="{{ translate('Paid_Amount') }}"></span>
+<span id="translate-change-amount" data-text="{{ translate('Change_Amount') }}"></span>
+<span id="translate-cancel-order" data-text="{{ translate('cancel_Order') }}"></span>
+<span id="translate-place-order" data-text="{{ translate('place_Order') }}"></span>
+<span id="translate-want-to-place-order" data-text="{{ translate('want_to_place_this_order').'?' }}"></span>
+<span id="route-admin-pos-place-order-direct" data-url="{{ route('admin.pos.place-order') }}"></span>
 
 @endsection
 

@@ -92,8 +92,38 @@ class POSOrderController extends BaseController
         $sellerId = $request['seller_id'];
         $cityId = $request['city_id'];
 
-        $cart = $request->input('cart', []);
-        $cartItems = $cart['items'] ?? [];
+        // Handle client cart data if present
+        if ($request->has('cart_data')) {
+            $clientCart = json_decode($request['cart_data'], true);
+            $cart = ['items' => []];
+            
+            // Convert client cart items to server cart format
+            foreach ($clientCart['items'] as $item) {
+                $cart['items'][] = [
+                    'id' => $item['id'],
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'image' => $item['image'],
+                    'productType' => $item['productType'],
+                    'unit' => $item['unit'],
+                    'tax' => $item['tax'],
+                    'tax_type' => $item['taxType'],
+                    'tax_model' => $item['taxModel'],
+                    'discount' => $item['discount'],
+                    'discount_type' => $item['discountType'],
+                    'variant' => $item['variant'],
+                    'variations' => $item['variations'],
+                    'productSubtotal' => ($item['price'] - $item['discount']) * $item['quantity']
+                ];
+            }
+            $cartItems = $cart['items'];
+        } else {
+            // Handle traditional server-side cart
+            $cart = $request->input('cart', []);
+            $cartItems = $cart['items'] ?? [];
+        }
+        
         if (empty($cartItems)) {
             ToastMagic::error(translate('cart_empty_warning'));
             return response()->json();
@@ -103,8 +133,14 @@ class POSOrderController extends BaseController
             return response()->json();
         }
 
-        $customerInfo = $request->input('customer', []);
-        $userId = $customerInfo['id'] ?? 0;
+        // Handle customer info from different sources
+        if ($request->has('customer_id')) {
+            $userId = $request['customer_id'];
+            $customerInfo = ['id' => $userId];
+        } else {
+            $customerInfo = $request->input('customer', []);
+            $userId = $customerInfo['id'] ?? 0;
+        }
         if ($userId == 0 && isset($customerInfo['phone'])) {
             $customer = $this->customerRepo->updateOrCreate(
                 ['phone' => $customerInfo['phone']],
