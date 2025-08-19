@@ -5,29 +5,6 @@ let getYesWord = $("#message-yes-word").data("text");
 let getNoWord = $("#message-no-word").data("text");
 let messageAreYouSure = $("#message-are-you-sure").data("text");
 
-// Local cart storage for vendor POS
-let cart = [];
-
-function renderCart() {
-    let cartTable = $("#cart");
-    let summaryTable = $("#cart-summary");
-    cartTable.empty();
-    let subtotal = 0;
-    cart.forEach(function (item, index) {
-        let row = `<tr>
-                <td>${item.name || ""}</td>
-                <td><input type="number" class="form-control action-pos-update-quantity" data-product-key="${index}" value="${item.quantity}" min="1"></td>
-                <td class="text-end">${(item.price * item.quantity).toFixed(2)}</td>
-                <td><button class="btn btn-sm btn-danger remove-from-cart" data-key="${index}">&times;</button></td>
-            </tr>`;
-        cartTable.append(row);
-        subtotal += item.price * item.quantity;
-    });
-    summaryTable.empty().html(`<div class="d-flex justify-content-between"><span>Total</span><span>${subtotal.toFixed(2)}</span></div>`);
-    posUpdateQuantityFunctionality();
-    removeFromCart();
-}
-
 document.addEventListener("keydown", function (event) {
     if (event.altKey && event.code === "KeyO") {
         $("#submit_order").click();
@@ -322,7 +299,6 @@ function basicFunctionalityForCartSummary() {
                 reverseButtons: true,
             }).then(function (result) {
                 if (result.value) {
-                    document.querySelector('input[name="cart"]').value = JSON.stringify({items: cart});
                     let formData = new FormData(document.getElementById('order-place'));
                     $.ajaxSetup({
                         headers: {
@@ -526,15 +502,12 @@ basicFunctionalityForCartSummary();
 posUpdateQuantityFunctionality();
 
 function posUpdateQuantityFunctionality() {
-    $(".action-pos-update-quantity").off("change").on("change", function () {
-        sanitizeAndValidateQuantityInput(this);
-        let key = $(this).data("product-key");
-        let quantity = parseInt($(this).val());
-        if (isNaN(quantity) || quantity < 1) {
-            quantity = 1;
-        }
-        cart[key].quantity = quantity;
-        renderCart();
+    $(".action-pos-update-quantity").on("change", function (event) {
+         sanitizeAndValidateQuantityInput(this);
+        let getKey = $(this).data("product-key");
+        let quantity = $(this).val();
+        let variant = $(this).data("product-variant");
+        getPOSUpdateQuantity(getKey, quantity, event, variant);
     });
 }
 
@@ -554,6 +527,72 @@ function sanitizeAndValidateQuantityInput(inputElement) {
     if (inputElement.value !== '' && (val < min || val > max)) {
         inputElement.value = min;
     }
+}
+
+function getPOSUpdateQuantity(key, qty, e, variant = null) {
+    if (qty !== "") {
+        $.post(
+            $("#route-vendor-pos-update-quantity").data("url"),
+            {
+                _token: $('meta[name="_token"]').attr("content"),
+                key: key,
+                quantity: qty,
+                variant: variant,
+            },
+            function (data) {
+                updateQuantityResponseProcess(data);
+            }
+        );
+    } else {
+        let element = $(e.target);
+        let minValue = parseInt(element.attr("min"));
+        $.post(
+            $("#route-vendor-pos-update-quantity").data("url"),
+            {
+                _token: $('meta[name="_token"]').attr("content"),
+                key: key,
+                quantity: minValue,
+                variant: variant,
+            },
+            function (data) {
+                updateQuantityResponseProcess(data);
+            }
+        );
+    }
+
+    if (e.type == "keydown") {
+        if (
+            $.inArray(e.keyCode, [46, 8, 9, 27, 13, 190]) !== -1 ||
+            (e.keyCode == 65 && e.ctrlKey === true) ||
+            (e.keyCode >= 35 && e.keyCode <= 39)
+        ) {
+            return;
+        }
+        if (
+            (e.shiftKey || e.keyCode < 48 || e.keyCode > 57) &&
+            (e.keyCode < 96 || e.keyCode > 105)
+        ) {
+            e.preventDefault();
+        }
+    }
+}
+
+function updateQuantityResponseProcess(data) {
+    if (data.productType === "physical" && data.qty < 0) {
+        toastMagic.warning($("#message-product-quantity-is-not-enough").data("text"));
+    }
+    if (data.upQty === "zeroNegative") {
+        toastMagic.warning($("#message-product-quantity-cannot-be-zero-in-cart").data("text"));
+    }
+    if (data.quantityUpdate == 1) {
+        toastMagic.success($("#message-product-quantity-updated").data("text"));
+    }
+    $("#cart").empty().html(data.view);
+    basicFunctionalityForCartSummary();
+    posUpdateQuantityFunctionality();
+    viewAllHoldOrders("keyup");
+    removeFromCart();
+    removeFromCart();
 }
 
 let dropdownSelect = $("#dropdown-order-select");
@@ -714,20 +753,22 @@ function getVariantForAlreadyInCart(event = null) {
     getVariantPrice("already_in_cart");
 }
 
-function checkAddToCartValidity() {
-    var names = {};
-    $("#add-to-cart-form input:radio").each(function () {
-        names[$(this).attr("name")] = true;
+function checkAddToCartValidity(formSelector = "#add-to-cart-form") {
+    const form = $(formSelector);
+    const groups = {};
+    form.find("input:radio").each(function () {
+        const name = $(this).attr("name");
+        if (!groups[name]) {
+            groups[name] = { count: 0, checked: false };
+        }
+        groups[name].count++;
+        if ($(this).is(":checked")) {
+            groups[name].checked = true;
+        }
     });
-    var count = 0;
-    $.each(names, function () {
-        count++;
-    });
-
-    if ($("input:radio:checked").length - 1 == count) {
-        return true;
-    }
-    return false;
+    return Object.values(groups).every(
+        (group) => group.checked || group.count <= 1
+    );
 }
 
 function cartQuantityInitialize() {
@@ -886,42 +927,103 @@ function getVariantPrice(type = null) {
 }
 
 function addToCart(form_id = "add-to-cart-form") {
-    if (typeof checkAddToCartValidity === "function" && !checkAddToCartValidity()) {
+    if (checkAddToCartValidity()) {
+        $.ajaxSetup({
+            headers: {
+                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
+            },
+        });
+        $.post({
+            url: $("#route-vendor-pos-add-to-cart").data("url"),
+            data: $("#" + form_id).serializeArray(),
+            beforeSend: function () {
+                $("#loading").fadeIn();
+            },
+            success: function (data) {
+                if (data.data == 1) {
+                    $("#cart-summary").empty().html(data.view);
+                    toastMagic.success($("#message-cart-updated").data("text"));
+                    data.inCartData && data.inCartData == 1
+                        ? $(".in-cart-quantity-field").val(data.requestQuantity)
+                        : "";
+                    removeFromCart();
+                    basicFunctionalityForCartSummary();
+                    return false;
+                } else if (data.data == 0) {
+                    Swal.fire({
+                        icon: "error",
+                        title: $("#message-cart-word").data("text"),
+                        text: $("#message-sorry-product-is-out-of-stock").data(
+                            "text"
+                        ),
+                    });
+                    return false;
+                } else if (data.data == 'custom-error') {
+                    Swal.fire({
+                        icon: "error",
+                        title: data?.title ?? $("#message-cart-word").data("text"),
+                        text: data?.text ?? $("#message-sorry-product-is-out-of-stock").data(
+                            "text"
+                        ),
+                    });
+                    return false;
+                } else {
+                    $(".in-cart-quantity-field").val(data.quantity);
+                    getVariantPrice();
+                    setTimeout(function () {
+                        $(".cart-qty-field").val(1);
+                    }, 500);
+                }
+                $(".close-quick-view-modal").click();
+
+                toastMagic.success($("#message-item-has-been-added-in-your-cart").data("text"));
+                $("#cart").empty().html(data.view);
+                viewAllHoldOrders("keyup");
+                $(".search-result-box").empty().hide();
+                $("#search").val("");
+                posUpdateQuantityFunctionality();
+                removeFromCart();
+            },
+            complete: function () {
+                $("#loading").fadeOut();
+            },
+        });
+    } else {
         Swal.fire({
             type: "info",
             title: $("#message-cart-word").data("text"),
             text: $("#message-please-choose-all-the-options").data("text"),
         });
-        return;
     }
-
-    let formArray = $("#" + form_id).serializeArray();
-    let product = {};
-    formArray.forEach(function (field) {
-        product[field.name] = field.value;
-    });
-    product.quantity = parseInt(product.quantity || 1);
-    product.price = parseFloat(product.price || 0);
-
-    let existing = cart.find(function (item) {
-        return item.id === product.id && item.variant === product.variant;
-    });
-
-    if (existing) {
-        existing.quantity += product.quantity;
-    } else {
-        cart.push(product);
-    }
-
-    renderCart();
-    $(".search-result-box").empty().hide();
-    $("#search").val("");
 }
 function removeFromCart() {
-    $(".remove-from-cart").off("click").on("click", function () {
-        let key = $(this).data("key");
-        cart.splice(key, 1);
-        renderCart();
+    $(".remove-from-cart").on("click", function () {
+        let id = $(this).data("id");
+        let variant = $(this).data("variant");
+        $.post(
+            $("#route-vendor-pos-remove-cart").data("url"),
+            {
+                _token: $('meta[name="_token"]').attr("content"),
+                id: id,
+                variant: variant,
+            },
+            function (data) {
+                $("#cart").empty().html(data.view);
+                if (data.errors) {
+                    for (let index = 0; index < data.errors.length; index++) {
+                        setTimeout(() => {
+                            toastMagic.error(data.errors[index].message);
+                        }, index * 500);
+                    }
+                } else {
+                    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
+                    viewAllHoldOrders("keyup");
+                }
+                posUpdateQuantityFunctionality();
+                posUpdateQuantityFunctionality();
+                removeFromCart();
+            }
+        );
     });
 }
 removeFromCart();
