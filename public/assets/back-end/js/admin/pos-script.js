@@ -1,5 +1,186 @@
 "use strict";
 
+if (window.POS_USE_LOCAL_CART) {
+    class PosCartStore {
+        constructor({ persist = true } = {}) {
+            this.key = "pos_cart";
+            this.persist = persist;
+            const stored = persist ? localStorage.getItem(this.key) : null;
+            this.state = stored ? JSON.parse(stored) : { items: {}, extraDiscount: 0, couponDiscount: 0 };
+        }
+        _save() { if (this.persist) localStorage.setItem(this.key, JSON.stringify(this.state)); }
+        _key(id, variant) { return id + "__" + (variant || ""); }
+        addItem(item) {
+            const key = this._key(item.id, item.variant_key || "");
+            const existing = this.state.items[key];
+            if (existing) {
+                existing.qty = Math.min(existing.qty + (item.qty || 1), existing.stock || Infinity);
+            } else {
+                item.qty = item.qty || 1;
+                this.state.items[key] = item;
+            }
+            this._save();
+        }
+        updateQty(id, variant, qty) {
+            const key = this._key(id, variant);
+            if (this.state.items[key]) {
+                const stock = this.state.items[key].stock || Infinity;
+                this.state.items[key].qty = Math.max(1, Math.min(qty, stock));
+                this._save();
+            }
+        }
+        removeItem(id, variant) {
+            delete this.state.items[this._key(id, variant)];
+            this._save();
+        }
+        empty() {
+            this.state.items = {};
+            this._save();
+        }
+        items() { return Object.values(this.state.items); }
+        totals() {
+            let subTotal = 0, productDiscountTotal = 0, taxTotal = 0;
+            this.items().forEach(i => {
+                subTotal += i.price * i.qty;
+                productDiscountTotal += (i.discount || 0) * i.qty;
+                if (i.tax_model === 'exclude' && i.tax_rate) {
+                    taxTotal += (i.price * i.qty) * i.tax_rate / 100;
+                }
+            });
+            const extra = this.state.extraDiscount || 0;
+            const coupon = this.state.couponDiscount || 0;
+            const grandTotal = subTotal - productDiscountTotal - extra - coupon + taxTotal;
+            return { subTotal, productDiscountTotal, extraDiscount: extra, couponDiscount: coupon, taxTotal, grandTotal };
+        }
+    }
+
+    const cart = new PosCartStore({ persist: true });
+
+    function formatCurrency(amount) {
+        const cartEl = document.getElementById('cart');
+        if (!cartEl) return amount.toFixed(2);
+        const symbol = cartEl.dataset.currencySymbol;
+        const position = cartEl.dataset.currencyPosition;
+        const value = parseFloat(amount).toFixed(2);
+        return position === 'left' ? symbol + value : value + symbol;
+    }
+
+    function renderCartTable(items) {
+        let html = '';
+        items.forEach(it => {
+            html += `<tr>
+                <td>
+                    <div class="media d-flex align-items-center gap-10">
+                        <img class="avatar avatar-sm" src="${it.image}" alt="${it.name}">
+                        <div class="media-body">
+                            <h5 class="text-hover-primary mb-0 d-flex flex-wrap gap-2">${it.name}</h5>
+                            <small>${it.variant_key || ''}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="form-control qty action-pos-update-quantity w-max-content" value="${it.qty}" min="1" data-product-key="${it.id}" data-product-variant="${it.variant_key || ''}">
+                </td>
+                <td><div>${formatCurrency(it.price * it.qty)}</div></td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <a href="javascript:" data-id="${it.id}" data-variant="${it.variant_key || ''}" class="btn btn-danger rounded-circle icon-btn remove-from-cart"><i class="fi fi-rr-trash"></i></a>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        return html;
+    }
+
+    function updateSummaryDom(totals) {
+        const q = document.querySelector.bind(document);
+        const setText = (sel, val) => { const el = q(sel); if (el) el.innerText = formatCurrency(val); };
+        setText('.cart-sub-total', totals.subTotal);
+        setText('.cart-product-discount', totals.productDiscountTotal);
+        setText('.cart-extra-discount', totals.extraDiscount);
+        setText('.cart-coupon-discount', totals.couponDiscount);
+        setText('.cart-tax-total', totals.taxTotal);
+        setText('.cart-grand-total', totals.grandTotal);
+        const amountInput = q('.total-amount');
+        if (amountInput) amountInput.value = totals.grandTotal;
+        const paidInput = q('.pos-paid-amount-element');
+        if (paidInput) paidInput.min = totals.grandTotal;
+    }
+
+    function wireDynamicRowHandlers() {
+        document.querySelectorAll('.action-pos-update-quantity').forEach(inp => {
+            inp.addEventListener('change', () => {
+                cart.updateQty(inp.dataset.productKey, inp.dataset.productVariant, parseInt(inp.value, 10) || 1);
+                render();
+            });
+        });
+        document.querySelectorAll('.remove-from-cart').forEach(btn => {
+            btn.addEventListener('click', () => {
+                cart.removeItem(btn.dataset.id, btn.dataset.variant);
+                render();
+            });
+        });
+    }
+
+    function render() {
+        const tbody = document.querySelector('#cart .pos-cart-table tbody');
+        if (tbody) tbody.innerHTML = renderCartTable(cart.items());
+        updateSummaryDom(cart.totals());
+        wireDynamicRowHandlers();
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.action-add-to-cart');
+        if (btn) {
+            const p = JSON.parse(btn.dataset.product);
+            let variantKey = p.variant_key || '';
+            if (p.has_variants && p.variations && p.variations.length) {
+                const def = p.variations.find(v => v.is_default) || p.variations[0];
+                variantKey = def.variant_key || '';
+                p.price = def.price || p.price;
+            }
+            cart.addItem({ id: p.id, name: p.name, price: p.price, image: p.image, tax_model: p.tax_model, variant_key: variantKey, qty: 1, productType: p.productType, discount: p.discount, tax_rate: p.tax_rate || 0, stock: p.stock || 0 });
+            render();
+        }
+        const empty = e.target.closest('.action-empty-cart');
+        if (empty) {
+            cart.empty();
+            render();
+        }
+    });
+
+    document.addEventListener('input', (e) => {
+        const inp = e.target.closest('.action-pos-update-quantity');
+        if (inp) {
+            cart.updateQty(inp.dataset.productKey, inp.dataset.productVariant, parseInt(inp.value, 10) || 1);
+            render();
+        }
+    });
+
+    const submitBtn = document.getElementById('submit_order');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', () => {
+            const form = document.getElementById('order-place');
+            if (!form) return;
+            form.querySelectorAll('.cart-item-input').forEach(el => el.remove());
+            cart.items().forEach((item, index) => {
+                const fields = { id: item.id, variant: item.variant_key || '', quantity: item.qty, price: item.price };
+                Object.entries(fields).forEach(([k, v]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `items[${index}][${k}]`;
+                    input.value = v;
+                    input.classList.add('cart-item-input');
+                    form.appendChild(input);
+                });
+            });
+        });
+    }
+
+    render();
+
+} else {
+
 let elementViewAllHoldOrdersSearch = $(".view_all_hold_orders_search");
 let getYesWord = $("#message-yes-word").data("text");
 let getNoWord = $("#message-no-word").data("text");
@@ -1316,4 +1497,6 @@ $("#customer_address_form").on("submit", function (e) {
         },
     });
 });
+
+}
 

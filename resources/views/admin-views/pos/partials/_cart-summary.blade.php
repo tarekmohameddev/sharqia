@@ -61,4 +61,3 @@
     </a>
 </div>
 
-@include('admin-views.pos.partials._cart')

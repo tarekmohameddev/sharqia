@@ -1,3 +1,27 @@
+@php
+    $productPayload = [
+        'id' => $product['id'],
+        'name' => $product['name'],
+        'price' => getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'value', price: $product['unit_price'], from: 'panel'),
+        'productType' => $product['product_type'],
+        'image' => getStorageImages(path:$product->thumbnail_full_url, type: 'backend-product'),
+        'tax_model' => $product['tax_model'],
+        'discount' => getProductDiscount(product: $product, price: $product['unit_price']),
+        'has_variants' => isset($product['variations']) && count($product['variations']) > 0,
+        'variations' => [],
+    ];
+    if(isset($product['variations']) && is_array($product['variations'])) {
+        foreach($product['variations'] as $variation) {
+            $productPayload['variations'][] = [
+                'sku' => $variation['sku'] ?? '',
+                'variant_key' => $variation['type'] ?? '',
+                'price' => $variation['price'] ?? 0,
+                'stock' => $variation['stock'] ?? 0,
+                'is_default' => $variation['is_default'] ?? false,
+            ];
+        }
+    }
+@endphp
 <div class="pos-product-item card action-select-product" data-id="{{ $product['id'] }}">
     <div class="pos-product-item_thumb position-relative">
         @if($product?->clearanceSale)
@@ -16,12 +40,8 @@
         <div class="pos-product-item_price">
             {{ getProductPriceByType(product: $product, type: 'discounted_unit_price', result: 'string', price: $product['unit_price'], from: 'panel') }}
         </div>
-        <div class="pos-product-item_hover-content">
-            <div class="d-flex flex-wrap gap-2">
-                <span class="fz-22 text-capitalize">
-                    {{ $product['product_type'] == 'physical' ? ($product['current_stock'] >0 ? $product['current_stock'].' '.$product['unit'].($product['current_stock']>1?'s':'') : translate('out_of_stock').'.') : translate('click_for_details').'.' }}
-                </span>
-            </div>
-        </div>
+        <button type="button" class="btn btn-primary mt-2 action-add-to-cart" data-product='@json($productPayload)'>
+            {{ translate('add_to_cart') }}
+        </button>
     </div>
 </div>

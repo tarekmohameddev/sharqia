@@ -3,6 +3,9 @@
 @section('title', translate('POS'))
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <script>
+        window.POS_USE_LOCAL_CART = true;
+    </script>
 @endpush
 @section('content')
     <div class="content container-fluid">
@@ -203,6 +206,7 @@
                         <div id="cart-summary">
                             @include('admin-views.pos.partials._cart-summary')
                         </div>
+                        @include('admin-views.pos.partials._cart')
 
                     </div>
                 </div>
