@@ -66,7 +66,7 @@ class POSController extends BaseController
             ],
             relations: ['clearanceSale' => function ($query) {
                 return $query->active();
-            }],
+            }, 'activeDiscountRules'],
             dataLimit: getWebConfig('pagination_limit'),
         );
         $cartId = 'walk-in-customer-' . rand(10, 1000);
@@ -450,6 +450,7 @@ class POSController extends BaseController
                 'keywords' => $request['name'],
                 'search_from' => 'pos'
             ],
+            relations: ['activeDiscountRules'],
             dataLimit: 'all'
         );
         $data = [

@@ -163,6 +163,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('get-cart-ids', 'getCartIds')->name('get-cart-ids');
             Route::get('clear-cart-ids', 'clearSessionCartIds')->name('clear-cart-ids');
             Route::post('add-to-cart', 'addToCart')->name('add-to-cart');
+            Route::post('add-offer-to-cart', 'addOfferToCart')->name('add-offer-to-cart');
             Route::post('cart-remove', 'removeCart')->name('remove-cart');
             Route::any('cart-empty', 'emptyCart')->name('empty-cart');
             Route::any('change-cart', 'changeCart')->name('change-cart');
@@ -220,6 +221,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('request-restock-list', 'getRequestRestockListView')->name('request-restock-list');
             Route::get('export-restock', 'exportRestockList')->name('restock-export');
             Route::delete('restock-delete/{id}', 'deleteRestock')->name('restock-delete');
+            Route::get('gift-products', 'getGiftProducts')->name('gift-products');
         });
     });
 

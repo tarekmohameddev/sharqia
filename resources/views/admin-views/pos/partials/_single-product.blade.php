@@ -49,6 +49,33 @@
                         data-has-variants="{{ (count(json_decode($product->colors ?? '[]')) > 0 || count(json_decode($product->choice_options ?? '[]')) > 0) ? 'true' : 'false' }}">
                     <i class="fi fi-rr-shopping-cart"></i> {{ translate('add_to_cart') }}
                 </button>
+                
+                @if($product->activeDiscountRules && $product->activeDiscountRules->count() > 0)
+                    <div class="discount-offers mt-2">
+                        @foreach($product->activeDiscountRules as $rule)
+                            <button class="btn btn-success btn-sm w-100 mb-1 action-add-offer-to-cart" 
+                                    data-product-id="{{ $product['id'] }}"
+                                    data-product-name="{{ $product['name'] }}"
+                                    data-product-price="{{ $product['unit_price'] }}"
+                                    data-product-image="{{ getStorageImages(path:$product->thumbnail_full_url, type: 'backend-product') }}"
+                                    data-product-stock="{{ $product['current_stock'] }}"
+                                    data-product-type="{{ $product['product_type'] }}"
+                                    data-product-unit="{{ $product['unit'] }}"
+                                    data-product-tax="{{ $product['tax'] }}"
+                                    data-product-tax-type="{{ $product['tax_type'] }}"
+                                    data-product-tax-model="{{ $product['tax_model'] }}"
+                                    data-rule-id="{{ $rule->id }}"
+                                    data-rule-quantity="{{ $rule->quantity }}"
+                                    data-rule-discount-amount="{{ $rule->discount_amount }}"
+                                    data-rule-discount-type="{{ $rule->discount_type }}"
+                                    data-rule-gift-product-id="{{ $rule->gift_product_id }}"
+                                    data-has-variants="{{ (count(json_decode($product->colors ?? '[]')) > 0 || count(json_decode($product->choice_options ?? '[]')) > 0) ? 'true' : 'false' }}">
+                                <i class="fi fi-rr-tags"></i> +{{ $rule->quantity }} {{ translate('offer') }}
+                                ({{ $rule->discount_display }})
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
             @endif
         </div>
     </div>

@@ -73,6 +73,47 @@ function addToClientCart(productData) {
     );
 }
 
+// Add offer to cart via AJAX
+function addOfferToCart(data) {
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
+    $.ajax({
+        url: '/admin/pos/add-offer-to-cart',
+        method: 'POST',
+        data: data,
+        beforeSend: function () {
+            // Show loading state
+        },
+        success: function (response) {
+            if (response.data) {
+                $('#cart-items').html(response.view);
+                
+                toastMagic.success(
+                    "Offer added to cart successfully!", '',
+                    {
+                        CloseButton: true,
+                        ProgressBar: true,
+                    }
+                );
+                
+                // Reattach event handlers for the updated cart
+                attachClientCartEventHandlers();
+            }
+        },
+        error: function (xhr) {
+            let message = "Error adding offer to cart";
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                message = xhr.responseJSON.error;
+            }
+            toastMagic.error(message);
+        }
+    });
+}
+
 // Remove item from client cart
 function removeFromClientCart(productId, variant = '') {
     clientCart.items = clientCart.items.filter(item => 
@@ -404,6 +445,35 @@ function attachClientCartEventHandlers() {
             
             addToClientCart(productData);
         }
+    });
+
+    // Add offer to cart buttons
+    $('.action-add-offer-to-cart').off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const button = $(this);
+        const hasVariants = button.data('has-variants') === 'true';
+        
+        if (hasVariants) {
+            toastMagic.warning("Offers are not available for products with variants");
+            return;
+        }
+
+        const requiredQuantity = parseInt(button.data('rule-quantity'));
+        const availableStock = parseInt(button.data('product-stock') || 0);
+        
+        // Check stock for physical products
+        if (button.data('product-type') === 'physical' && availableStock < requiredQuantity) {
+            toastMagic.warning("Insufficient stock for this offer. Required: " + requiredQuantity + ", Available: " + availableStock);
+            return;
+        }
+
+        // Add offer to cart via AJAX
+        addOfferToCart({
+            id: button.data('product-id'),
+            rule_id: button.data('rule-id')
+        });
     });
     
     // Quantity change handlers

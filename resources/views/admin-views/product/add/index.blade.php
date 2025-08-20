@@ -22,6 +22,7 @@
             @include("admin-views.product.add._title-description")
             @include("admin-views.product.add._general-setup")
             @include("admin-views.product.add._pricing-others")
+            @include("admin-views.product.add._discount-rules")
             @include("admin-views.product.add._product-variation-setup")
             @include("admin-views.product.add._product-images")
             @include("admin-views.product.add._product-video")

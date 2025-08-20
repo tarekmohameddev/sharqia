@@ -7,6 +7,7 @@ use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Enums\SessionKey;
 use App\Http\Controllers\BaseController;
+use App\Models\ProductDiscountRule;
 use App\Services\CartService;
 use App\Services\POSService;
 use App\Traits\CalculatorTrait;
@@ -435,5 +436,69 @@ class CartController extends BaseController
         $customerCartData = $this->getCustomerCartData(cartName: $cartName);
         $cartItemData = $this->calculateCartItemsData(cartName: $cartName, customerCartData: $customerCartData);
         return array_merge($customerCartData[$cartName], $cartItemData);
+    }
+
+    public function addOfferToCart(Request $request): JsonResponse
+    {
+        $cartId = session(SessionKey::CURRENT_USER);
+        $product = $this->productRepo->getFirstWhere(params: ['id' => $request['id']], relations: ['digitalVariation', 'clearanceSale' => function ($query) {
+            return $query->active();
+        }]);
+
+        $rule = ProductDiscountRule::find($request['rule_id']);
+        if (!$rule) {
+            return response()->json(['error' => 'Invalid discount rule'], 400);
+        }
+
+        // Check stock for required quantity
+        $requiredQuantity = $rule->quantity;
+        if ($product['product_type'] == 'physical' && $product['current_stock'] < $requiredQuantity) {
+            return response()->json(['error' => 'Insufficient stock for this offer'], 400);
+        }
+
+        // Calculate prices and discounts
+        $price = $product['unit_price'];
+        $totalPrice = $price * $requiredQuantity;
+        $ruleDiscount = $rule->calculateDiscount($totalPrice);
+        $unitDiscount = $ruleDiscount / $requiredQuantity;
+
+        // Create unique offer key
+        $offerKey = 'offer_' . $rule->id . '_' . time();
+
+        // Add main product with offer discount
+        $sessionData = $this->cartService->addCartDataOnSession(
+            product: $product,
+            quantity: $requiredQuantity,
+            price: $price,
+            discount: $unitDiscount,
+            variant: null,
+            variations: [],
+            isOffer: true,
+            offerKey: $offerKey
+        );
+
+        // Add gift product if exists
+        if ($rule->gift_product_id) {
+            $giftProduct = $this->productRepo->getFirstWhere(params: ['id' => $rule->gift_product_id]);
+            if ($giftProduct) {
+                $this->cartService->addCartDataOnSession(
+                    product: $giftProduct,
+                    quantity: 1,
+                    price: 0, // Gift product is free
+                    discount: 0,
+                    variant: null,
+                    variations: [],
+                    isOffer: true,
+                    offerKey: $offerKey,
+                    isGift: true
+                );
+            }
+        }
+
+        $cartItems = $this->getCartData(cartName: $cartId);
+        return response()->json([
+            'data' => $sessionData,
+            'view' => view('admin-views.pos.partials._cart', compact('cartId', 'cartItems'))->render()
+        ]);
     }
 }

@@ -115,6 +115,7 @@ class Product extends Model
         'digital_file_ready_storage_type',
         'is_shipping_cost_updated',
         'temp_shipping_cost',
+        'is_gift',
     ];
 
     /**
@@ -356,6 +357,16 @@ class Product extends Model
     public function compareList(): HasMany
     {
         return $this->hasMany(ProductCompare::class);
+    }
+
+    public function discountRules(): HasMany
+    {
+        return $this->hasMany(ProductDiscountRule::class, 'product_id');
+    }
+
+    public function activeDiscountRules(): HasMany
+    {
+        return $this->hasMany(ProductDiscountRule::class, 'product_id')->where('is_active', true)->orderBy('quantity');
     }
 
     public function getNameAttribute($name): string|null
