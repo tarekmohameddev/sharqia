@@ -3233,4 +3233,8 @@ return [
 	"city_is_required" => "City is required",
 	"seller_is_required" => "Seller is required",
 	"sku" => "Sku",
+	"required" => "Required",
+	"Manage_Inhouse_Offer" => "Manage Inhouse Offer",
+	"Manage_Vendor_Offer" => "Manage Vendor Offer",
+	"if_you_turn_off_the_clearance_sale_customers_will_not_get_the_clearance_offer_of_your_products_when_they_want_to_purchase_from_your_store." => "If you turn off the clearance sale customers will not get the clearance offer of your products when they want to purchase from your store.",
 ];

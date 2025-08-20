@@ -7,6 +7,7 @@ use App\Contracts\Repositories\DigitalProductVariationRepositoryInterface;
 use App\Contracts\Repositories\OrderDetailRepositoryInterface;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\ShippingAddressRepositoryInterface;
 use App\Contracts\Repositories\StorageRepositoryInterface;
 use App\Contracts\Repositories\VendorRepositoryInterface;
 use App\Enums\SessionKey;
@@ -16,6 +17,7 @@ use App\Services\CartService;
 use App\Services\OrderDetailsService;
 use App\Services\OrderService;
 use App\Services\POSService;
+use App\Services\ShippingAddressService;
 use App\Traits\CalculatorTrait;
 use App\Traits\CustomerTrait;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
@@ -40,10 +42,12 @@ class POSOrderController extends BaseController
      * @param VendorRepositoryInterface $vendorRepo
      * @param DigitalProductVariationRepositoryInterface $digitalProductVariationRepo
      * @param StorageRepositoryInterface $storageRepo
+     * @param ShippingAddressRepositoryInterface $shippingAddressRepo
      * @param POSService $POSService
      * @param CartService $cartService
      * @param OrderDetailsService $orderDetailsService
      * @param OrderService $orderService
+     * @param ShippingAddressService $shippingAddressService
      */
     public function __construct(
         private readonly ProductRepositoryInterface                 $productRepo,
@@ -53,10 +57,12 @@ class POSOrderController extends BaseController
         private readonly VendorRepositoryInterface                  $vendorRepo,
         private readonly DigitalProductVariationRepositoryInterface $digitalProductVariationRepo,
         private readonly StorageRepositoryInterface                 $storageRepo,
+        private readonly ShippingAddressRepositoryInterface         $shippingAddressRepo,
         private readonly POSService                                 $POSService,
         private readonly CartService                                $cartService,
         private readonly OrderDetailsService                        $orderDetailsService,
         private readonly OrderService                               $orderService,
+        private readonly ShippingAddressService                     $shippingAddressService,
     )
     {
     }
@@ -134,7 +140,65 @@ class POSOrderController extends BaseController
         }
 
         // Handle customer info from different sources
-        if ($request->has('customer_id')) {
+        if ($request->has('customer_data')) {
+            // New flow: customer data from always-visible form
+            $customerData = json_decode($request['customer_data'], true);
+            
+            // Find existing customer by phone or create new
+            $customer = $this->customerRepo->getFirstWhere(['phone' => $customerData['phone']]);
+            
+            if ($customer) {
+                // Update existing customer with new information
+                $this->customerRepo->update($customer->id, [
+                    'f_name' => $customerData['f_name'],
+                    'l_name' => $customerData['l_name'] ?? '',
+                ]);
+                
+                // Update or create shipping address
+                $existingAddress = $this->shippingAddressRepo->getFirstWhere([
+                    'customer_id' => $customer->id, 
+                    'address_type' => 'home'
+                ]);
+                
+                $addressData = $this->shippingAddressService->getAddAddressData(
+                    array_merge($customerData, ['l_name' => '']), 
+                    $customer->id, 
+                    'home'
+                );
+                
+                if ($existingAddress) {
+                    $this->shippingAddressRepo->update($existingAddress->id, $addressData);
+                } else {
+                    $this->shippingAddressRepo->add($addressData);
+                }
+                
+                $userId = $customer->id;
+            } else {
+                // Create new customer
+                $customer = $this->customerRepo->add([
+                    'f_name' => $customerData['f_name'],
+                    'l_name' => $customerData['l_name'] ?? '',
+                    'email' => null, // No email in POS flow
+                    'phone' => $customerData['phone'],
+                    'password' => bcrypt('123456'), // Default password
+                    'is_active' => 1,
+                ]);
+                
+                // Create shipping address
+                $addressData = $this->shippingAddressService->getAddAddressData(
+                    array_merge($customerData, ['l_name' => '']), 
+                    $customer->id, 
+                    'home'
+                );
+                $this->shippingAddressRepo->add($addressData);
+                
+                $userId = $customer->id;
+            }
+            
+            // Store city and seller in session for this order
+            session(['selected_city_id' => $customerData['city_id'], 'selected_seller_id' => $customerData['seller_id']]);
+            
+        } elseif ($request->has('customer_id')) {
             $userId = $request['customer_id'];
             $customerInfo = ['id' => $userId];
         } else {

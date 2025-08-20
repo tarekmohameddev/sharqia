@@ -472,15 +472,52 @@ function attachClientCartEventHandlers() {
 
 // Place order with client cart data
 function placeClientOrder() {
+    // Validate customer information
+    const customerData = {
+        f_name: $('#customer_f_name').val().trim(),
+        phone: $('#customer_phone').val().trim(),
+        city_id: $('#customer_city_id').val(),
+        seller_id: $('#customer_seller_id').val(),
+        address: $('#customer_address').val().trim()
+    };
+    
+    // Validate required fields
+    if (!customerData.f_name) {
+        toastMagic.error('Please enter customer first name');
+        $('#customer_f_name').focus();
+        return;
+    }
+    
+    if (!customerData.phone) {
+        toastMagic.error('Please enter customer phone number');
+        $('#customer_phone').focus();
+        return;
+    }
+    
+    if (!customerData.city_id) {
+        toastMagic.error('Please select a city');
+        $('#customer_city_id').focus();
+        return;
+    }
+    
+    if (!customerData.seller_id) {
+        toastMagic.error('Please select a seller');
+        $('#customer_seller_id').focus();
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('_token', $('meta[name="_token"]').attr('content'));
-    formData.append('customer_id', $('#customer').val() || 0);
+    formData.append('customer_id', 0); // Always 0 for new customer flow
     formData.append('cart_data', JSON.stringify(clientCart));
     formData.append('amount', clientCart.total);
     formData.append('paid_amount', $('.pos-paid-amount-element').val());
     formData.append('type', $('input[name="type"]:checked').val());
-    formData.append('city_id', $('input[name="city_id"]').val());
-    formData.append('seller_id', $('input[name="seller_id"]').val());
+    
+    // Add customer data for automatic creation/update
+    formData.append('customer_data', JSON.stringify(customerData));
+    formData.append('city_id', customerData.city_id);
+    formData.append('seller_id', customerData.seller_id);
     
     $.ajaxSetup({
         headers: {
@@ -506,17 +543,32 @@ function placeClientOrder() {
             } else {
                 // Clear client cart on successful order
                 clearClientCart();
+                // Clear customer form for next order
+                clearCustomerForm();
                 location.reload();
             }
         },
         error: function(xhr) {
             console.error('Order placement failed:', xhr);
-            toastMagic.error('Failed to place order. Please try again.');
+            let errorMessage = 'Failed to place order. Please try again.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+            toastMagic.error(errorMessage);
         },
         complete: function () {
             $("#loading").fadeOut();
         },
     });
+}
+
+// Clear customer form for next order
+function clearCustomerForm() {
+    $('#customer_f_name').val('');
+    $('#customer_phone').val('');
+    $('#customer_city_id').val('').trigger('change');
+    $('#customer_seller_id').val('').trigger('change');
+    $('#customer_address').val('');
 }
 
 // Initialize client cart when document is ready
@@ -1878,6 +1930,25 @@ $(document).on("change", "#customer_city_id, #address_city_id", function () {
                 seller.append('<option value="' + value.id + '">' + value.name + '</option>');
             });
         },
+    });
+});
+
+// Handle city change for the new always-visible customer form
+$(document).on("change", "#customer_city_id", function () {
+    $.get({
+        url: $("#route-admin-pos-get-sellers").data("url"),
+        data: {governorate_id: $(this).val()},
+        success: function (data) {
+            let seller = $("#customer_seller_id");
+            seller.empty();
+            seller.append('<option value="">Select Seller</option>');
+            $.each(data, function (key, value) {
+                seller.append('<option value="' + value.id + '">' + value.name + '</option>');
+            });
+        },
+        error: function() {
+            console.error('Failed to load sellers for selected city');
+        }
     });
 });
 

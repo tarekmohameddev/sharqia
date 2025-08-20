@@ -225,6 +225,57 @@
                         </div>
 
                         <div class="form-group d-flex flex-lg-wrap flex-xl-nowrap gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="text-dark mb-0">{{ translate('customer_Information') }}</h5>
+                                <small class="text-muted">({{ translate('required') }})</small>
+                            </div>
+                        </div>
+
+                        <div id="customer-info-card" class="border rounded p-3 mb-3">
+                            <form id="customer_info_form">
+                                @csrf
+                                <div class="row g-3">
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('first_name') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <input type="text" name="f_name" id="customer_f_name" class="form-control" placeholder="{{ translate('first_name') }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('phone') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <input class="form-control" type="tel" name="phone" id="customer_phone" placeholder="{{ translate('enter_phone_number') }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="city_id" id="customer_city_id" class="custom-select" required>
+                                                <option value="">{{ translate('select') }}</option>
+                                                @foreach($governorates as $governorate)
+                                                    <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <select name="seller_id" id="customer_seller_id" class="custom-select" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('address') }}</label>
+                                            <input type="text" name="address" id="customer_address" class="form-control" placeholder="{{ translate('address') }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Keep existing customer selection for backward compatibility (hidden by default) -->
+                        <div class="form-group d-none" id="legacy-customer-selection">
                             <?php
                             $userId = 0;
                             if (Illuminate\Support\Str::contains(session('current_user'), 'saved-customer')) {
@@ -242,16 +293,9 @@
                                     </option>
                                 @endforeach
                             </select>
-
-                            <button class="btn btn-success rounded text-nowrap" id="add_new_customer" type="button" title="{{ translate('add_new_customer') }}">
-                                {{ translate('add_New_Customer') }}
-                            </button>
-
-                            <button class="btn btn-primary rounded text-nowrap d-none" id="add_new_address" type="button" title="{{ translate('add_new_address') }}">
-                                {{ translate('add_new_address') }}
-                            </button>
                         </div>
 
+                        <!-- Keep the old add customer forms hidden for compatibility -->
                         <div id="add-customer-card" class="border rounded p-3 mt-3 d-none">
                             <form id="customer_form">
                                 @csrf
