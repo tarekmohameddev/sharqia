@@ -200,7 +200,7 @@ class CartService
         return $productQuantity - $quantity;
     }
 
-    public function addCartDataOnSession(object $product, int $quantity, float $price, float $discount, string $variant = null, array $variations = [], bool $isOffer = false, string $offerKey = null, bool $isGift = false): array
+    public function addCartDataOnSession(object $product, int $quantity, float $price, float $discount, string $variant, array $variations): array
     {
         $cartId = session(SessionKey::CURRENT_USER);
         $sessionData = [
@@ -214,11 +214,8 @@ class CartService
             'image' => $product->thumbnail_full_url,
             'discount' => $discount,
             'tax_model' => $product['tax_model'],
-            'variant' => $variant ?? '',
+            'variant' => $variant,
             'variations' => $variations,
-            'isOffer' => $isOffer,
-            'offerKey' => $offerKey,
-            'isGift' => $isGift,
         ];
         if (session()->has($cartId)) {
             $keeper = [];

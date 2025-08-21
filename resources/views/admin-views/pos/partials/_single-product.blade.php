@@ -69,9 +69,15 @@
                                     data-rule-discount-amount="{{ $rule->discount_amount }}"
                                     data-rule-discount-type="{{ $rule->discount_type }}"
                                     data-rule-gift-product-id="{{ $rule->gift_product_id }}"
+                                    @if($rule->giftProduct)
+                                    data-gift-product-name="{{ $rule->giftProduct->name }}"
+                                    data-gift-product-image="{{ getStorageImages(path:$rule->giftProduct->thumbnail_full_url, type: 'backend-product') }}"
+                                    data-gift-product-unit="{{ $rule->giftProduct->unit }}"
+                                    data-gift-product-stock="{{ $rule->giftProduct->current_stock }}"
+                                    @endif
                                     data-has-variants="{{ (count(json_decode($product->colors ?? '[]')) > 0 || count(json_decode($product->choice_options ?? '[]')) > 0) ? 'true' : 'false' }}">
                                 <i class="fi fi-rr-tags"></i> +{{ $rule->quantity }} {{ translate('offer') }}
-                                ({{ $rule->discount_display }})
+                                ({{ $rule->discount_display }})@if($rule->giftProduct) + {{ translate('gift') }}@endif
                             </button>
                         @endforeach
                     </div>

@@ -163,7 +163,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('get-cart-ids', 'getCartIds')->name('get-cart-ids');
             Route::get('clear-cart-ids', 'clearSessionCartIds')->name('clear-cart-ids');
             Route::post('add-to-cart', 'addToCart')->name('add-to-cart');
-            Route::post('add-offer-to-cart', 'addOfferToCart')->name('add-offer-to-cart');
             Route::post('cart-remove', 'removeCart')->name('remove-cart');
             Route::any('cart-empty', 'emptyCart')->name('empty-cart');
             Route::any('change-cart', 'changeCart')->name('change-cart');

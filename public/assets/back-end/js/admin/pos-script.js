@@ -73,52 +73,146 @@ function addToClientCart(productData) {
     );
 }
 
-// Add offer to cart via AJAX
-function addOfferToCart(data) {
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
+// Add offer to client cart
+function addOfferToClientCart(button) {
+    const productData = {
+        id: parseInt(button.data('product-id')),
+        name: button.data('product-name'),
+        price: parseFloat(button.data('product-price')),
+        image: button.data('product-image'),
+        productType: button.data('product-type'),
+        unit: button.data('product-unit'),
+        tax: parseFloat(button.data('product-tax') || 0),
+        taxType: button.data('product-tax-type'),
+        taxModel: button.data('product-tax-model'),
+        stock: parseInt(button.data('product-stock') || 0),
+        variant: '',
+        variations: []
+    };
+
+    const ruleData = {
+        id: parseInt(button.data('rule-id')),
+        quantity: parseInt(button.data('rule-quantity')),
+        discountAmount: parseFloat(button.data('rule-discount-amount')),
+        discountType: button.data('rule-discount-type'),
+        giftProductId: button.data('rule-gift-product-id') || null
+    };
+
+    // Get gift product data from button attributes if exists
+    const giftProductData = ruleData.giftProductId ? {
+        id: parseInt(ruleData.giftProductId),
+        name: button.data('gift-product-name'),
+        image: button.data('gift-product-image'),
+        unit: button.data('gift-product-unit'),
+        stock: parseInt(button.data('gift-product-stock') || 0)
+    } : null;
+
+    // Calculate discount
+    const totalPrice = productData.price * ruleData.quantity;
+    let unitDiscount = 0;
+    
+    if (ruleData.discountType === 'percent') {
+        unitDiscount = (productData.price * ruleData.discountAmount) / 100;
+    } else {
+        unitDiscount = ruleData.discountAmount / ruleData.quantity;
+    }
+
+    // Create unique offer key
+    const offerKey = 'offer_' + ruleData.id + '_' + Date.now();
+
+    // Prepare items to add
+    const itemsToAdd = [];
+
+    // Add main product with offer discount
+    const mainOfferItem = {
+        id: productData.id,
+        name: productData.name + ' (+' + ruleData.quantity + ' Offer)',
+        price: productData.price,
+        image: productData.image,
+        quantity: ruleData.quantity,
+        productType: productData.productType,
+        unit: productData.unit,
+        tax: productData.tax,
+        taxType: productData.taxType,
+        taxModel: productData.taxModel,
+        discount: unitDiscount,
+        discountType: 'flat',
+        variant: '',
+        variations: [],
+        stock: productData.stock,
+        isOffer: true,
+        offerKey: offerKey,
+        isGift: false,
+        ruleId: ruleData.id,
+        isLocked: true // Quantity cannot be changed
+    };
+
+    itemsToAdd.push(mainOfferItem);
+
+    // Add gift product if exists (using preloaded data)
+    if (giftProductData && giftProductData.name) {
+        const giftItem = {
+            id: giftProductData.id,
+            name: giftProductData.name + ' (Gift)',
+            price: 0,
+            image: giftProductData.image,
+            quantity: 1,
+            productType: 'physical',
+            unit: giftProductData.unit,
+            tax: 0,
+            taxType: 'flat',
+            taxModel: 'exclude',
+            discount: 0,
+            discountType: 'flat',
+            variant: '',
+            variations: [],
+            stock: giftProductData.stock,
+            isOffer: true,
+            offerKey: offerKey,
+            isGift: true,
+            ruleId: ruleData.id,
+            isLocked: true
+        };
+
+        itemsToAdd.push(giftItem);
+    }
+
+    // Add all items to cart at once
+    itemsToAdd.forEach(item => {
+        clientCart.items.push(item);
     });
 
-    $.ajax({
-        url: '/admin/pos/add-offer-to-cart',
-        method: 'POST',
-        data: data,
-        beforeSend: function () {
-            // Show loading state
-        },
-        success: function (response) {
-            if (response.data) {
-                $('#cart-items').html(response.view);
-                
-                toastMagic.success(
-                    "Offer added to cart successfully!", '',
-                    {
-                        CloseButton: true,
-                        ProgressBar: true,
-                    }
-                );
-                
-                // Reattach event handlers for the updated cart
-                attachClientCartEventHandlers();
-            }
-        },
-        error: function (xhr) {
-            let message = "Error adding offer to cart";
-            if (xhr.responseJSON && xhr.responseJSON.error) {
-                message = xhr.responseJSON.error;
-            }
-            toastMagic.error(message);
+    calculateCartTotals();
+    updateCartDisplay();
+    saveClientCart();
+    
+    // Show success message
+    const offerMessage = giftProductData && giftProductData.name ? 
+        "Offer with gift added to cart successfully!" : 
+        "Offer added to cart successfully!";
+        
+    toastMagic.success(
+        offerMessage, '',
+        {
+            CloseButton: true,
+            ProgressBar: true,
         }
-    });
+    );
 }
 
 // Remove item from client cart
-function removeFromClientCart(productId, variant = '') {
-    clientCart.items = clientCart.items.filter(item => 
-        !(item.id === productId && item.variant === variant)
-    );
+function removeFromClientCart(productId, variant = '', offerKey = '', isOffer = false) {
+    if (isOffer && offerKey) {
+        // Remove all items with the same offer key
+        clientCart.items = clientCart.items.filter(item => 
+            item.offerKey !== offerKey
+        );
+    } else {
+        // Remove specific item
+        clientCart.items = clientCart.items.filter(item => 
+            !(item.id === productId && item.variant === variant)
+        );
+    }
     
     calculateCartTotals();
     updateCartDisplay();
@@ -134,6 +228,13 @@ function updateClientCartQuantity(productId, variant = '', newQuantity) {
     );
     
     if (item) {
+        // Prevent quantity changes for locked offer items
+        if (item.isLocked) {
+            toastMagic.warning("Cannot change quantity of offer items. Remove the entire offer instead.");
+            updateCartDisplay(); // Reset display to original values
+            return;
+        }
+        
         if (newQuantity <= 0) {
             removeFromClientCart(productId, variant);
             return;
@@ -225,6 +326,15 @@ function updateCartDisplay() {
     }
 
     let cartHTML = `
+        <style>
+            .offer-item {
+                background-color: #f8f9ff !important;
+                border-left: 3px solid #28a745 !important;
+            }
+            .offer-item .badge {
+                font-size: 0.7em;
+            }
+        </style>
         <div class="table-responsive pos-cart-table border">
             <table class="table table-align-middle m-0">
                 <thead class="text-capitalize bg-light">
@@ -247,14 +357,25 @@ function updateCartDisplay() {
     } else {
         clientCart.items.forEach((item, index) => {
             const itemTotal = (item.price - item.discount) * item.quantity;
+            const isOfferItem = item.isOffer || false;
+            const isGiftItem = item.isGift || false;
+            const isLocked = item.isLocked || false;
+            
+            let itemNameDisplay = item.name;
+            if (isGiftItem) {
+                itemNameDisplay += ' <span class="badge bg-success">Gift</span>';
+            } else if (isOfferItem) {
+                itemNameDisplay += ' <span class="badge bg-primary">Offer</span>';
+            }
+            
             cartHTML += `
-                    <tr>
+                    <tr ${isOfferItem ? 'class="offer-item"' : ''}>
                         <td>
                             <div class="media d-flex align-items-center gap-10">
                                 <img class="avatar avatar-sm" src="${item.image}" alt="${item.name} Image">
                                 <div class="media-body">
                                     <h5 class="text-hover-primary mb-0 d-flex flex-wrap gap-2">
-                                        ${item.name.length > 12 ? item.name.substring(0, 12) + '...' : item.name}
+                                        ${(itemNameDisplay.length > 20 ? itemNameDisplay.substring(0, 20) + '...' : itemNameDisplay)}
                                         ${item.taxModel === 'include' ? '<span data-bs-toggle="tooltip" data-bs-title="Tax Included"><img class="info-img" src="/public/assets/back-end/img/info-circle.svg" alt="img"></span>' : ''}
                                     </h5>
                                     <small>${item.variant}</small>
@@ -262,9 +383,12 @@ function updateCartDisplay() {
                             </div>
                         </td>
                         <td>
-                            <input type="number" class="form-control qty client-cart-quantity w-max-content" 
-                                   value="${item.quantity}" min="1" max="${item.productType === 'physical' ? item.stock : 999}"
-                                   data-product-id="${item.id}" data-variant="${item.variant}">
+                            ${isLocked ? 
+                                `<div class="text-center"><strong>${item.quantity}</strong><br><small class="text-muted">Locked</small></div>` :
+                                `<input type="number" class="form-control qty client-cart-quantity w-max-content" 
+                                       value="${item.quantity}" min="1" max="${item.productType === 'physical' ? item.stock : 999}"
+                                       data-product-id="${item.id}" data-variant="${item.variant}">`
+                            }
                         </td>
                         <td>
                             <div>${formatCurrency(itemTotal)}</div>
@@ -272,7 +396,8 @@ function updateCartDisplay() {
                         <td>
                             <div class="d-flex justify-content-center">
                                 <a href="javascript:" class="btn btn-danger rounded-circle icon-btn client-remove-from-cart"
-                                   data-product-id="${item.id}" data-variant="${item.variant}">
+                                   data-product-id="${item.id}" data-variant="${item.variant}" data-offer-key="${item.offerKey || ''}"
+                                   data-is-offer="${isOfferItem}">
                                     <i class="fi fi-rr-trash"></i>
                                 </a>
                             </div>
@@ -469,11 +594,8 @@ function attachClientCartEventHandlers() {
             return;
         }
 
-        // Add offer to cart via AJAX
-        addOfferToCart({
-            id: button.data('product-id'),
-            rule_id: button.data('rule-id')
-        });
+        // Add offer to cart directly
+        addOfferToClientCart(button);
     });
     
     // Quantity change handlers
@@ -489,8 +611,10 @@ function attachClientCartEventHandlers() {
     $('.client-remove-from-cart').off('click').on('click', function() {
         const productId = parseInt($(this).data('product-id'));
         const variant = $(this).data('variant') || '';
+        const offerKey = $(this).data('offer-key') || '';
+        const isOffer = $(this).data('is-offer') === true || $(this).data('is-offer') === 'true';
         
-        removeFromClientCart(productId, variant);
+        removeFromClientCart(productId, variant, offerKey, isOffer);
     });
     
     // Clear cart handler

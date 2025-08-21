@@ -3249,4 +3249,5 @@ return [
 	"discount_can_not_be_more_or_equal_to_the_price" => "Discount can not be more or equal to the price",
 	"The unit price must be greater than 0." => "The unit price must be greater than 0.",
 	"offer" => "Offer",
+	"gift" => "Gift",
 ];
