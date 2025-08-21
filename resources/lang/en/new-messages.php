@@ -3250,4 +3250,8 @@ return [
 	"The unit price must be greater than 0." => "The unit price must be greater than 0.",
 	"offer" => "Offer",
 	"gift" => "Gift",
+	"in-House_Products" => "In-House Products",
+	"in-house_Products" => "In-house Products",
+	"send_notification_svg" => "Send notification svg",
+	"push_notification_svg" => "Push notification svg",
 ];

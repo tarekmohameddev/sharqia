@@ -315,7 +315,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="city_id" id="customer_city_id" class="custom-select" required>
+                                            <select name="city_id" id="add_customer_city_id" class="custom-select" required>
                                                 <option value="">{{ translate('select') }}</option>
                                                 @foreach($governorates as $governorate)
                                                     <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
@@ -326,7 +326,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="seller_id" id="customer_seller_id" class="custom-select" required></select>
+                                            <select name="seller_id" id="add_customer_seller_id" class="custom-select" required></select>
                                         </div>
                                     </div>
                                     <div class="col-12">
@@ -423,6 +423,7 @@
 <span id="route-admin-pos-get-variant-price" data-url="{{ route('admin.pos.get-variant-price') }}"></span>
 <span id="route-admin-pos-change-cart-editable" data-url="{{ route('admin.pos.change-cart').'/?cart_id=:value' }}"></span>
 <span id="route-admin-pos-get-sellers" data-url="{{ route('admin.pos.get-sellers') }}"></span>
+<span id="route-admin-pos-set-shipping" data-url="{{ route('admin.pos.set-shipping') }}"></span>
 <span id="route-admin-customer-add" data-url="{{ route('admin.customer.add') }}"></span>
 <span id="route-admin-customer-address-add" data-url="{{ route('admin.customer.address-add') }}"></span>
 
@@ -466,7 +467,9 @@
 <span id="translate-extra-discount" data-text="{{ translate('extra_Discount') }}"></span>
 <span id="translate-coupon-discount" data-text="{{ translate('coupon_Discount') }}"></span>
 <span id="translate-tax" data-text="{{ translate('tax') }}"></span>
+<span id="translate-shipping-cost" data-text="{{ translate('shipping_cost') }}"></span>
 <span id="translate-total" data-text="{{ translate('total') }}"></span>
+<span id="session-shipping-cost" data-value="{{ session('selected_shipping_cost', 0) }}"></span>
 <span id="translate-paid-by" data-text="{{ translate('paid_By') }}"></span>
 <span id="translate-cash" data-text="{{ translate('cash') }}"></span>
 <span id="translate-card" data-text="{{ translate('card') }}"></span>

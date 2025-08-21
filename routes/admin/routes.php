@@ -155,6 +155,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('quick-view', 'getQuickView')->name('quick-view');
             Route::get('search-product', 'getSearchedProductsView')->name('search-product');
             Route::get('get-sellers', 'getSellers')->name('get-sellers');
+            Route::post('set-shipping', 'setShipping')->name('set-shipping');
         });
 
         Route::controller(CartController::class)->group(function () {
@@ -1162,6 +1163,16 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                 Route::get('details/{id}', 'getDetailsView')->name('details');
                 Route::post('refund-status-update', 'updateRefundStatus')->name('refund-status-update');
             });
+        });
+    });
+
+    // Shipping Cost Management Routes
+    Route::group(['prefix' => 'shipping-cost', 'as' => 'shipping-cost.'], function () {
+        Route::controller(\App\Http\Controllers\Admin\ShippingCostController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::put('{shippingCost}', 'update')->name('update');
+            Route::delete('{shippingCost}', 'destroy')->name('destroy');
         });
     });
 });

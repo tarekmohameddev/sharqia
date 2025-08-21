@@ -827,13 +827,13 @@
                                                 {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['subTotal']), currencyCode: getCurrencyCode()) }}
                                             </td>
                                         </tr>
-                                        @if($order->order_type == 'default_type' && $order?->is_shipping_free != 1)
+                                      
                                             <tr>
                                                 <td class="text-left font-bold">{{ translate('shipping') }}</td>
                                                 <td class="text-right">
                                                     {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['shippingTotal']), currencyCode: getCurrencyCode()) }}</td>
                                             </tr>
-                                        @endif
+                                    
                                         <tr>
                                             <td class="text-left font-bold">{{ translate('coupon_Discount') }}</td>
                                             <td class="text-right">

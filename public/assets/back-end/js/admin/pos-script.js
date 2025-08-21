@@ -8,6 +8,7 @@ let clientCart = {
     discountOnProduct: 0,
     extraDiscount: 0,
     couponDiscount: 0,
+    shippingCost: 0,
     total: 0
 };
 
@@ -16,9 +17,15 @@ function initializeClientCart() {
     const savedCart = sessionStorage.getItem('pos_client_cart');
     if (savedCart) {
         clientCart = JSON.parse(savedCart);
+        // Ensure shipping cost property exists for backward compatibility
+        if (typeof clientCart.shippingCost === 'undefined') {
+            clientCart.shippingCost = 0;
+        }
+        updateShippingCost();
         updateCartDisplay();
     } else {
         // Initialize with empty cart if no saved cart exists
+        updateShippingCost();
         updateCartDisplay();
     }
 }
@@ -26,6 +33,13 @@ function initializeClientCart() {
 // Save cart to session storage
 function saveClientCart() {
     sessionStorage.setItem('pos_client_cart', JSON.stringify(clientCart));
+}
+
+// Update shipping cost based on selected city
+function updateShippingCost() {
+    // Get shipping cost from session
+    const sessionShippingCost = $('#session-shipping-cost').data('value') || 0;
+    clientCart.shippingCost = parseFloat(sessionShippingCost);
 }
 
 // Add product to client cart
@@ -214,6 +228,7 @@ function removeFromClientCart(productId, variant = '', offerKey = '', isOffer = 
         );
     }
     
+    updateShippingCost();
     calculateCartTotals();
     updateCartDisplay();
     saveClientCart();
@@ -247,6 +262,7 @@ function updateClientCartQuantity(productId, variant = '', newQuantity) {
         }
         
         item.quantity = parseInt(newQuantity);
+        updateShippingCost();
         calculateCartTotals();
         updateCartDisplay();
         saveClientCart();
@@ -284,7 +300,7 @@ function calculateCartTotals() {
         clientCart.totalTax += taxAmount;
     });
 
-    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax - clientCart.extraDiscount - clientCart.couponDiscount;
+    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.extraDiscount - clientCart.couponDiscount;
     
     if (clientCart.total < 0) {
         clientCart.total = 0;
@@ -300,6 +316,7 @@ function clearClientCart() {
         discountOnProduct: 0,
         extraDiscount: 0,
         couponDiscount: 0,
+        shippingCost: 0,
         total: 0
     };
     saveClientCart();
@@ -442,6 +459,10 @@ function updateCartDisplay() {
                     <dt class="title-color text-capitalize font-weight-normal">${$("#translate-tax").data("text") || "Tax"} : </dt>
                     <dd>${formatCurrency(clientCart.totalTax)}</dd>
                 </div>
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-shipping-cost").data("text") || "Shipping Cost"} : </dt>
+                    <dd>${formatCurrency(clientCart.shippingCost)}</dd>
+                </div>
                 <div class="d-flex gap-2 border-top justify-content-between pt-2">
                     <dt class="title-color text-capitalize font-weight-bold title-color">${$("#translate-total").data("text") || "Total"} : </dt>
                     <dd class="font-weight-bold title-color">${formatCurrency(clientCart.total)}</dd>
@@ -451,6 +472,7 @@ function updateCartDisplay() {
             <div class="form-group col-12">
                 <input type="hidden" class="form-control total-amount" name="amount" min="0" step="0.01"
                        value="${clientCart.total}" readonly>
+                <input type="hidden" name="shipping_cost" value="${clientCart.shippingCost}">
             </div>
             
             <div class="p-4 bg-section rounded mt-4">
@@ -2112,33 +2134,74 @@ $(".close-alert--message-for-pos").on("click", function () {
     $(".alert--message-for-pos").removeClass("active");
 });
 
-$(document).on("change", "#customer_city_id, #address_city_id", function () {
-    let target = $(this).attr("id") === "customer_city_id" ? "#customer_seller_id" : "#address_seller_id";
+$(document).on("change", "#customer_city_id, #address_city_id, #add_customer_city_id", function () {
+    let target;
+    let cityId = $(this).val();
+    let elementId = $(this).attr("id");
+    
+    // Determine the correct target based on the element ID
+    if (elementId === "customer_city_id") {
+        target = "#customer_seller_id";
+    } else if (elementId === "address_city_id") {
+        target = "#address_seller_id";
+    } else if (elementId === "add_customer_city_id") {
+        target = "#add_customer_seller_id";
+    }
+    
     $.get({
         url: $("#route-admin-pos-get-sellers").data("url"),
-        data: {governorate_id: $(this).val()},
+        data: {governorate_id: cityId},
         success: function (data) {
             let seller = $(target);
             seller.empty();
-            $.each(data, function (key, value) {
-                seller.append('<option value="' + value.id + '">' + value.name + '</option>');
-            });
-        },
-    });
-});
-
-// Handle city change for the new always-visible customer form
-$(document).on("change", "#customer_city_id", function () {
-    $.get({
-        url: $("#route-admin-pos-get-sellers").data("url"),
-        data: {governorate_id: $(this).val()},
-        success: function (data) {
-            let seller = $("#customer_seller_id");
-            seller.empty();
             seller.append('<option value="">Select Seller</option>');
-            $.each(data, function (key, value) {
+            
+            // Handle new response format
+            let sellers = data.sellers || data; // fallback for backward compatibility
+            let shippingCost = data.shipping_cost || 0;
+            
+            $.each(sellers, function (key, value) {
                 seller.append('<option value="' + value.id + '">' + value.name + '</option>');
             });
+            
+            // Only store shipping cost and update cart for the main customer form
+            if (elementId === "customer_city_id") {
+                // Store shipping cost and city ID in session via AJAX
+                $.post({
+                    url: $("#route-admin-pos-set-shipping").data("url"),
+                    data: {
+                        city_id: cityId,
+                        shipping_cost: shippingCost,
+                        _token: $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(data) {
+                        // Update cart summary without page reload
+                        if (data.view) {
+                            $("#cart-summary").empty().html(data.view);
+                            // Reinitialize any necessary functionality
+                            basicFunctionalityForCartSummary();
+                            posUpdateQuantityFunctionality();
+                            removeFromCart();
+                        }
+                        
+                        // Update session shipping cost data and client cart if using client-side cart
+                        if (typeof clientCart !== 'undefined') {
+                            // Update the session shipping cost data element
+                            $('#session-shipping-cost').data('value', shippingCost);
+                            
+                            if (clientCart.items.length > 0) {
+                                updateShippingCost();
+                                calculateCartTotals();
+                                updateCartDisplay();
+                                saveClientCart();
+                            }
+                        }
+                    },
+                    error: function() {
+                        console.error('Failed to update shipping cost');
+                    }
+                });
+            }
         },
         error: function() {
             console.error('Failed to load sellers for selected city');

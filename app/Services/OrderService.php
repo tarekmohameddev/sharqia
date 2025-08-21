@@ -8,7 +8,7 @@ class OrderService
     {
     }
 
-    public function getPOSOrderData(int|string $orderId, array $cart, float $amount, float $paidAmount, string $paymentType, string $addedBy, int $userId, ?int $sellerId = null, ?int $cityId = null): array
+    public function getPOSOrderData(int|string $orderId, array $cart, float $amount, float $paidAmount, string $paymentType, string $addedBy, int $userId, ?int $sellerId = null, ?int $cityId = null, float $shippingCost = 0): array
     {
         return [
             'id' => $orderId,
@@ -30,6 +30,7 @@ class OrderService
             'discount_type' => (isset($cart['coupon_code']) && $cart['coupon_code']) ? 'coupon_discount' : NULL,
             'coupon_discount_bearer' => $cart['coupon_bearer'] ?? 'inhouse',
             'city_id' => $cityId,
+            'shipping_cost' => currencyConverter(amount: $shippingCost),
             'created_at' => now(),
             'updated_at' => now(),
         ];

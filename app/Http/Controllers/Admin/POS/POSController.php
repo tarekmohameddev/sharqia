@@ -7,6 +7,7 @@ use App\Contracts\Repositories\CouponRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryZipCodeRepositoryInterface;
 use App\Models\Governorate;
+use App\Models\CityShippingCost;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Enums\SessionKey;
@@ -96,12 +97,36 @@ class POSController extends BaseController
 
     public function getSellers(Request $request): JsonResponse
     {
-        $governorate = Governorate::with('sellers.shop')->find($request['governorate_id']);
+        $governorate = Governorate::with(['sellers.shop', 'shippingCost'])->find($request['governorate_id']);
         $sellers = $governorate?->sellers->map(fn($seller) => [
             'id' => $seller->id,
             'name' => $seller->shop->name ?? ($seller->f_name . ' ' . $seller->l_name),
         ]);
-        return response()->json($sellers);
+        
+        $shippingCost = $governorate?->shippingCost?->cost ?? 0;
+        
+        return response()->json([
+            'sellers' => $sellers,
+            'shipping_cost' => $shippingCost
+        ]);
+    }
+
+    public function setShipping(Request $request): JsonResponse
+    {
+        session([
+            'selected_city_id' => $request['city_id'],
+            'selected_shipping_cost' => $request['shipping_cost']
+        ]);
+        
+        // Return updated cart summary instead of just success
+        $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
+        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));
+        
+        return response()->json([
+            'success' => true,
+            'view' => view('admin-views.pos.partials._cart-summary', compact('summaryData', 'cartItems'))->render()
+        ]);
     }
 
 
@@ -418,9 +443,11 @@ class POSController extends BaseController
             subTotalCalculation: $subTotalCalculation,
             cartName: $cartName
         );
+        $shippingCost = session('selected_shipping_cost', 0);
+        
         return [
             'countItem' => $subTotalCalculation['countItem'],
-            'total' => $totalCalculation['total'],
+            'total' => $totalCalculation['total'] + $shippingCost,
             'subtotal' => $subTotalCalculation['subtotal'],
             'taxCalculate' => $subTotalCalculation['taxCalculate'],
             'totalTaxShow' => $subTotalCalculation['totalTaxShow'],
@@ -431,6 +458,7 @@ class POSController extends BaseController
             'customerOnHold' => $subTotalCalculation['customerOnHold'] ?? false,
             'couponDiscount' => $totalCalculation['couponDiscount'],
             'extraDiscount' => $totalCalculation['extraDiscount'],
+            'shippingCost' => $shippingCost,
         ];
     }
 

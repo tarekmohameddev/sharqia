@@ -291,6 +291,8 @@ class POSOrderController extends BaseController
             $this->orderDetailRepo->add(data: $orderDetail);
         }
 
+        $shippingCost = $request['shipping_cost'] ?? session('selected_shipping_cost', 0);
+        
         $order = $this->orderService->getPOSOrderData(
             orderId: $orderId,
             cart: $cart,
@@ -301,6 +303,7 @@ class POSOrderController extends BaseController
             userId: $userId,
             sellerId: $sellerId,
             cityId: $cityId,
+            shippingCost: $shippingCost,
         );
         $this->orderRepo->add(data: $order);
         if ($checkProductTypeDigital) {

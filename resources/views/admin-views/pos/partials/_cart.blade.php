@@ -96,6 +96,11 @@
                     <dd>{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: round($cartItems['totalTax'],2) ), currencyCode: getCurrencyCode())}}</dd>
                 </div>
 
+                <div class="d-flex gap-2 justify-content-between">
+                    <dt class="title-color text-capitalize font-weight-normal">{{ translate('shipping_cost') }} : </dt>
+                    <dd>{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $cartItems['shippingCost'] ?? 0), currencyCode: getCurrencyCode())}}</dd>
+                </div>
+
                 <div class="d-flex gap-2 border-top justify-content-between pt-2">
                     <dt class="title-color text-capitalize font-weight-bold title-color">{{ translate('total') }} : </dt>
                     <dd class="font-weight-bold title-color">{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: ($cartItems['total'] + $cartItems['totalTax'] - $cartItems['couponDiscount'])), currencyCode: getCurrencyCode())}}</dd>
@@ -106,6 +111,7 @@
                 <input type="hidden" class="form-control total-amount" name="amount" min="0" step="0.01"
                         value="{{usdToDefaultCurrency(amount: $cartItems['total']+$cartItems['totalTax']-$cartItems['couponDiscount'])}}"
                         readonly>
+                <input type="hidden" name="shipping_cost" value="{{$cartItems['shippingCost'] ?? 0}}">
             </div>
             <div class="p-4 bg-section rounded mt-4">
                 <div>

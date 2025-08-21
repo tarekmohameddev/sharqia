@@ -244,6 +244,7 @@ class OrderController extends BaseController
 
     public function getView(string|int $id, DeliveryCountryCodeService $service, OrderService $orderService): View|RedirectResponse
     {
+
         $countryRestrictStatus = getWebConfig(name: 'delivery_country_restriction');
         $zipRestrictStatus = getWebConfig(name: 'delivery_zip_code_area_restriction');
         $deliveryCountry = $this->deliveryCountryCodeRepo->getList(dataLimit: 'all');

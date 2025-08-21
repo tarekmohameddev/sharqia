@@ -353,6 +353,20 @@
                                         </td>
                                     </tr>
                                     <tr>
+                                        <td class="text-end text-body text-capitalize">
+                                            <strong>{{ translate('shipping_fee') }}</strong>
+                                            @if($order['is_shipping_free'])
+                                                <br>
+                                                ({{ translate('expense_bearer_').($order['free_delivery_bearer'] == 'seller' ? 'vendor' : $order['free_delivery_bearer']) }})
+                                            @endif
+                                        </td>
+                                        <td class="text-end text-dark">
+                                            <strong>
+                                                {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['shippingTotal'])) }}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <td class="text-end text-body"><strong>{{ translate('total') }}</strong></td>
                                         <td class="text-end text-dark">
                                             <strong>{{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['totalAmount']), currencyCode: getCurrencyCode()) }}</strong>
