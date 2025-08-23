@@ -52,9 +52,35 @@
                 @endforeach
             </div>
         @endif
+
+        <!-- Mobile Add to Cart Button (hidden on desktop) -->
+        <div class="add-to-cart-mobile">
+            @if($product['product_type'] == 'physical' && $product['current_stock'] <= 0)
+                <button class="btn btn-secondary btn-sm" disabled>
+                    <i class="fi fi-rr-shopping-cart"></i> {{ translate('out_of_stock') }}
+                </button>
+            @else
+                <button class="btn btn-primary btn-sm action-direct-add-to-cart" 
+                        data-product-id="{{ $product['id'] }}"
+                        data-product-name="{{ $product['name'] }}"
+                        data-product-price="{{ $product['unit_price'] }}"
+                        data-product-image="{{ getStorageImages(path:$product->thumbnail_full_url, type: 'backend-product') }}"
+                        data-product-stock="{{ $product['current_stock'] }}"
+                        data-product-type="{{ $product['product_type'] }}"
+                        data-product-unit="{{ $product['unit'] }}"
+                        data-product-tax="{{ $product['tax'] }}"
+                        data-product-tax-type="{{ $product['tax_type'] }}"
+                        data-product-tax-model="{{ $product['tax_model'] }}"
+                        data-product-discount="{{ getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $product['unit_price']) }}"
+                        data-product-discount-type="{{ $product['discount_type'] }}"
+                        data-has-variants="{{ (count(json_decode($product->colors ?? '[]')) > 0 || count(json_decode($product->choice_options ?? '[]')) > 0) ? 'true' : 'false' }}">
+                    <i class="fi fi-rr-shopping-cart"></i> {{ translate('add_to_cart') }}
+                </button>
+            @endif
+        </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Desktop Action Buttons (hidden on mobile) -->
     <div class="pos-product-item_actions-horizontal">
         @if($product['product_type'] == 'physical' && $product['current_stock'] <= 0)
             <button class="btn btn-secondary btn-sm" disabled>
