@@ -38,6 +38,19 @@
                             <input type="hidden" name="delivery_man_id" value="{{ request('delivery_man_id') }}">
                         @endif
 
+                        <div class="col-sm-6 col-lg-4 col-xl-3">
+                            <div class="form-group">
+                                <label class="form-label" for="is_printed">{{ translate('printed_status') }}</label>
+                                <div class="select-wrapper">
+                                    <select class="form-select" name="is_printed" id="is_printed">
+                                        <option value="all" {{ request('is_printed','all') == 'all' ? 'selected' : '' }}>{{ translate('all') }}</option>
+                                        <option value="1" {{ request('is_printed') === '1' ? 'selected' : '' }}>{{ translate('printed_only') }}</option>
+                                        <option value="0" {{ request('is_printed') === '0' ? 'selected' : '' }}>{{ translate('unprinted_only') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         @if (request('status')=='all' || request('status')=='delivered')
                             <div class="col-sm-6 col-lg-4 col-xl-3">
                                 <div class="form-group">
@@ -143,7 +156,22 @@
                                     <button type="submit" class="btn btn--primary">{{translate('search')}}</button>
                                 </div>
                             </form>
-                            <div class="dropdown">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="select-wrapper">
+                                    <select id="bulk-action-select" class="form-select">
+                                        <option value="">{{ translate('bulk_actions') }}</option>
+                                        <optgroup label="{{ translate('change_status') }}">
+                                            @foreach(\App\Enums\OrderStatus::LIST as $st)
+                                                <option value="status:{{ $st }}">{{ translate(str_replace('_',' ',$st)) }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                        <option value="print:selected">{{ translate('print_selected_invoices') }}</option>
+                                        <option value="print:all">{{ translate('print_all_in_filtered_results') }}</option>
+                                    </select>
+                                </div>
+                                <button id="apply-bulk-action" type="button" class="btn btn--primary">
+                                    {{ translate('apply') }}
+                                </button>
                                 <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType]) }}">
                                     <img width="14" src="{{dynamicAsset(path: 'public/assets/back-end/img/excel.png')}}" class="excel" alt="">
                                     <span class="ps-2">{{ translate('export') }}</span>
@@ -157,11 +185,18 @@
                            class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
                         <thead class="thead-light thead-50 text-capitalize">
                         <tr>
+                            <th>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="checkbox" id="select-all-orders">
+                                    <label class="mb-0" for="select-all-orders">{{ translate('all') }}</label>
+                                </div>
+                            </th>
                             <th class="text-capitalize">{{translate('SL')}}</th>
                             <th class="text-capitalize">{{translate('order_ID')}}</th>
                             <th class="text-capitalize">{{translate('order_Date')}}</th>
                             <th class="text-capitalize">{{translate('customer_info')}}</th>
                             <th class="text-capitalize">{{translate('total_amount')}}</th>
+                            <th class="text-capitalize">{{ translate('printed') }}</th>
                             @if($status == 'all')
                                 <th class="text-capitalize">{{translate('order_Status')}} </th>
                             @else
@@ -174,11 +209,21 @@
                         @foreach($orders as $key=>$order)
                             <tr>
                                 <td>
+                                    <input type="checkbox" class="order-select" value="{{ $order['id'] }}">
+                                </td>
+                                <td>
                                     {{ $orders->firstItem() + $key}}
                                 </td>
                                 <td>
                                     <a class="title-color hover-c1"
                                        href="{{route('vendor.orders.details',$order['id'])}}">{{$order['id']}} {!! $order->order_type == 'POS' ? '<span class="text--primary">(POS)</span>' : '' !!}</a>
+                                </td>
+                                <td>
+                                    @if($order->is_printed)
+                                        <span class="badge badge-success text-bg-success">{{ translate('yes') }}</span>
+                                    @else
+                                        <span class="badge badge-secondary bg-secondary">{{ translate('no') }}</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div>{{date('d M Y',strtotime($order['created_at']))}}</div>
@@ -284,10 +329,81 @@
 
     <span id="message-date-range-text" data-text="{{ translate("invalid_date_range") }}"></span>
     <span id="js-data-example-ajax-url" data-url="{{ route('vendor.orders.customers') }}"></span>
+    <span id="bulk-status-url" data-url="{{ route('vendor.orders.bulk-status') }}"></span>
+    <span id="bulk-invoices-url" data-url="{{ route('vendor.orders.bulk-invoices') }}"></span>
+    <span id="current-order-status" data-status="{{ $status }}"></span>
 @endsection
 
 @push('script')
     <script src="{{dynamicAsset(path: 'public/assets/back-end/vendor/datatables/jquery.dataTables.min.js')}}"></script>
     <script src="{{dynamicAsset(path: 'public/assets/back-end/vendor/datatables/dataTables.bootstrap4.min.js')}}"></script>
     <script src="{{dynamicAsset(path: 'public/assets/back-end/js/vendor/order.js')}}"></script>
+    <script>
+        (function () {
+            const selectAll = document.getElementById('select-all-orders');
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    document.querySelectorAll('.order-select').forEach(cb => {
+                        cb.checked = selectAll.checked;
+                    });
+                });
+            }
+
+            function getSelectedIds() {
+                const ids = [];
+                document.querySelectorAll('.order-select:checked').forEach(cb => ids.push(cb.value));
+                return ids;
+            }
+
+            const applyBtn = document.getElementById('apply-bulk-action');
+            const selectEl = document.getElementById('bulk-action-select');
+            if (applyBtn && selectEl) {
+                applyBtn.addEventListener('click', function () {
+                    const action = selectEl.value;
+                    if (!action) return;
+                    const [type, param] = action.split(':');
+                    if (type === 'status') {
+                        const ids = getSelectedIds();
+                        if (ids.length === 0) {
+                            toastMagic.warning('{{ translate('please_select_at_least_one_order') }}');
+                            return;
+                        }
+                        Swal.fire({
+                            title: '{{ translate('are_you_sure') }}',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#377dff',
+                            cancelButtonColor: '#dd3333',
+                            confirmButtonText: '{{ translate('yes_change') }}'
+                        }).then((result) => {
+                            if (!result.value) return;
+                            $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content') } });
+                            $.post($('#bulk-status-url').data('url'), { ids: ids, status: param }, function () {
+                                toastMagic.success('{{ translate('status_updated_successfully') }}');
+                                location.reload();
+                            }).fail(function () { toastMagic.error('{{ translate('something_went_wrong') }}'); });
+                        });
+                    } else if (type === 'print') {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                        const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = csrf; form.appendChild(csrfInput);
+                        const statusInput = document.createElement('input');
+                        statusInput.type = 'hidden'; statusInput.name = 'status'; statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                        form.appendChild(statusInput);
+                        if (param === 'selected') {
+                            const ids = getSelectedIds();
+                            if (ids.length === 0) { toastMagic.warning('{{ translate('please_select_at_least_one_order') }}'); return; }
+                            ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; form.appendChild(i); });
+                        } else if (param === 'all') {
+                            const applyTo = document.createElement('input'); applyTo.type = 'hidden'; applyTo.name = 'apply_to'; applyTo.value = 'all'; form.appendChild(applyTo);
+                        }
+                        document.body.appendChild(form); form.submit();
+                    }
+                });
+            }
+        })();
+    </script>
 @endpush
