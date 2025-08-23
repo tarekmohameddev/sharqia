@@ -260,17 +260,17 @@
         @media (max-width: 768px) {
             .pos-product-item-horizontal {
                 flex-direction: column;
-                align-items: stretch;
-                padding: 12px;
+                align-items: center;
+                padding: 15px;
                 min-height: auto;
             }
 
             .pos-product-item_thumb-horizontal {
-                width: 60px;
-                height: 60px;
+                width: 80px;
+                height: 80px;
                 align-self: center;
                 margin-right: 0;
-                margin-bottom: 12px;
+                margin-bottom: 15px;
             }
 
             .pos-product-item_content-horizontal {
@@ -279,6 +279,9 @@
                 margin-bottom: 0;
                 flex: none;
                 width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
             }
 
             /* Hide desktop add to cart button, show mobile one */
@@ -287,25 +290,29 @@
             }
 
             .add-to-cart-mobile {
-                display: block;
-                margin-top: 12px;
+                display: flex;
+                justify-content: center;
+                margin-top: 15px;
                 width: 100%;
             }
 
             .add-to-cart-mobile .btn {
                 font-size: 0.8rem;
-                padding: 0.5rem 1rem;
+                padding: 0.5rem 1.5rem;
                 min-height: 40px;
-                width: 100%;
+                width: auto;
+                min-width: 200px;
+                max-width: 280px;
             }
 
             .offers-section {
-                justify-content: flex-start;
-                gap: 6px;
-                margin-top: 10px;
+                justify-content: center;
+                gap: 8px;
+                margin-top: 12px;
                 width: 100%;
                 display: grid;
                 grid-template-columns: 1fr 1fr;
+                max-width: 320px;
             }
 
             .offer-btn {
@@ -314,51 +321,58 @@
                 min-height: 32px;
                 width: 100%;
                 max-width: none;
+                text-align: center;
             }
         }
 
         @media (max-width: 576px) {
             .pos-product-item-horizontal {
-                margin-bottom: 8px;
-                padding: 10px;
+                margin-bottom: 10px;
+                padding: 12px;
             }
 
             .pos-product-item_thumb-horizontal {
-                width: 50px;
-                height: 50px;
+                width: 70px;
+                height: 70px;
+                margin-bottom: 12px;
             }
 
             .pos-product-item_title-horizontal {
                 font-size: 0.9rem;
-                margin-bottom: 4px;
+                margin-bottom: 6px;
             }
 
             .pos-product-item_price-horizontal {
                 font-size: 1rem;
+                margin-bottom: 8px;
             }
 
             .add-to-cart-mobile .btn {
                 font-size: 0.75rem;
-                padding: 0.4rem 0.6rem;
+                padding: 0.4rem 1.2rem;
                 min-height: 36px;
-                width: 100%;
+                width: auto;
+                min-width: 180px;
+                max-width: 250px;
             }
 
             .offers-section {
-                gap: 4px;
-                margin-top: 8px;
+                gap: 6px;
+                margin-top: 10px;
                 width: 100%;
                 display: grid;
                 grid-template-columns: 1fr 1fr;
+                max-width: 280px;
             }
 
             .offer-btn {
                 font-size: 0.6rem !important;
-                padding: 0.3rem 0.4rem !important;
+                padding: 0.3rem 0.5rem !important;
                 min-height: 28px;
                 width: 100%;
                 max-width: none;
                 flex: none;
+                text-align: center;
             }
 
             .offer-btn i {
@@ -368,6 +382,7 @@
             /* If there are 3 or more offers, use single column on very small screens */
             .offers-section:has(.offer-btn:nth-child(3)) {
                 grid-template-columns: 1fr;
+                max-width: 200px;
             }
         }
     </style>
