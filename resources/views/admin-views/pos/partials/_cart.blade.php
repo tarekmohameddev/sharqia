@@ -74,9 +74,11 @@
                 <div class="d-flex gap-2 justify-content-between">
                     <dt class="title-color text-capitalize font-weight-normal">{{ translate('extra_Discount') }} :</dt>
                     <dd>
+                        @if(\App\Utils\Helpers::module_permission_check('discount'))
                         <button id="extra_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-discount">
                             <i class="fi fi-rr-pencil"></i>
                         </button>
+                        @endif
                         {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $cartItems['extraDiscount']), currencyCode: getCurrencyCode()) }}
                     </dd>
                 </div>
@@ -84,9 +86,11 @@
                 <div class="d-flex justify-content-between">
                     <dt class="title-color gap-2 text-capitalize font-weight-normal">{{ translate('coupon_Discount') }} :</dt>
                     <dd>
+                        @if(\App\Utils\Helpers::module_permission_check('discount'))
                         <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
                             <i class="fi fi-rr-pencil"></i>
                         </button>
+                        @endif
                         {{setCurrencySymbol(amount: usdToDefaultCurrency(amount:$cartItems['couponDiscount']), currencyCode: getCurrencyCode())}}
                     </dd>
                 </div>

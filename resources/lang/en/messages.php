@@ -2244,6 +2244,7 @@ return [
 	"blog_management" => "blog management",
 	"help_and_support_section" => "help and support section",
 	"pos_management" => "pos management",
+	"discount_management" => "discount management",
 	"module_permission" => "module permission",
 	"employee_role_setup" => "employee role setup",
 	"create_Role" => "create Role",

@@ -1304,6 +1304,7 @@ enum GlobalConstant
         'system_settings' => 'system_settings',
         '3rd_party_setup' => '3rd_party_setup',
         'themes_and_addons' => 'themes_and_addons',
+        'discount' => 'discount_management',
     ];
 
 

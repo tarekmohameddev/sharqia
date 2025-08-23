@@ -152,6 +152,13 @@ class POSController extends BaseController
      */
     public function updateDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'extraDiscount' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         if ($request['type'] == 'percent' && ($request['discount'] < 0 || $request['discount'] > 100)) {
             $cartItems = $this->getCartData(cartName: $cartId);
@@ -223,6 +230,13 @@ class POSController extends BaseController
      */
     public function getCouponDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'coupon' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         $userId = $this->cartService->getUserId();
         if ($userId != 0) {
