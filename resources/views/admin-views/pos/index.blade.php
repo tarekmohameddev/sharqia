@@ -202,43 +202,44 @@
         .pos-product-item_actions-horizontal {
             display: flex;
             align-items: center;
-            min-width: 180px;
-            max-width: 200px;
+            min-width: 140px;
+            max-width: 160px;
         }
 
-        .buttons-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
+        .pos-product-item_actions-horizontal .btn {
+            font-size: 0.75rem;
+            padding: 0.5rem 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            min-height: 36px;
             width: 100%;
         }
 
-        .buttons-grid .btn {
+        .pos-product-item_actions-horizontal .btn i {
             font-size: 0.7rem;
-            padding: 0.4rem 0.6rem;
+        }
+
+        /* Offers Section Styles */
+        .offers-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .offer-btn {
+            font-size: 0.65rem !important;
+            padding: 0.3rem 0.5rem !important;
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            min-height: 32px;
+            min-height: 28px;
+            flex-shrink: 0;
         }
 
-        .buttons-grid .btn i {
-            font-size: 0.65rem;
-        }
-
-        /* If only one button (add to cart), make it span full width */
-        .buttons-grid:has(.btn:only-child) {
-            grid-template-columns: 1fr;
-        }
-
-        /* If 3 buttons, arrange them properly */
-        .buttons-grid:has(.btn:nth-child(3)) {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .buttons-grid:has(.btn:nth-child(3)) .btn:first-child {
-            grid-column: 1 / -1;
+        .offer-btn i {
+            font-size: 0.6rem;
         }
 
         /* Mobile responsiveness */
@@ -269,28 +270,65 @@
                 max-width: none;
             }
 
-            .buttons-grid {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-
-            .buttons-grid .btn {
+            .pos-product-item_actions-horizontal .btn {
                 font-size: 0.8rem;
                 padding: 0.5rem 1rem;
+                min-height: 40px;
+            }
+
+            .offers-section {
+                justify-content: center;
+                gap: 4px;
+                margin-top: 10px;
+            }
+
+            .offer-btn {
+                font-size: 0.7rem !important;
+                padding: 0.4rem 0.6rem !important;
+                min-height: 32px;
             }
         }
 
         @media (max-width: 576px) {
             .pos-product-item-horizontal {
                 margin-bottom: 8px;
+                padding: 8px;
+            }
+
+            .pos-product-item_thumb-horizontal {
+                width: 50px;
+                height: 50px;
             }
 
             .pos-product-item_title-horizontal {
                 font-size: 0.9rem;
+                margin-bottom: 4px;
             }
 
             .pos-product-item_price-horizontal {
                 font-size: 1rem;
+            }
+
+            .pos-product-item_actions-horizontal .btn {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+                min-height: 36px;
+            }
+
+            .offers-section {
+                gap: 3px;
+                margin-top: 6px;
+            }
+
+            .offer-btn {
+                font-size: 0.6rem !important;
+                padding: 0.25rem 0.4rem !important;
+                min-height: 26px;
+                max-width: calc(50% - 2px);
+            }
+
+            .offer-btn i {
+                font-size: 0.55rem;
             }
         }
     </style>
