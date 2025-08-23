@@ -72,6 +72,9 @@ class OrderRepository implements OrderRepositoryInterface
             ->when(isset($filters['is_guest']), function ($query) use ($filters) {
                 return $query->where('is_guest', $filters['is_guest']);
             })
+            ->when(isset($filters['is_printed']) && $filters['is_printed'] !== 'all', function ($query) use ($filters) {
+                return $query->where('is_printed', (bool)$filters['is_printed']);
+            })
             ->when(isset($filters['customer_type']), function ($query) use ($filters) {
                 return $query->where('is_guest', $filters['customer_type']);
             })

@@ -246,6 +246,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('inhouse-order-filter', 'filterInHouseOrder')->name('inhouse-order-filter');
             Route::post('digital-file-upload-after-sell', 'uploadDigitalFileAfterSell')->name('digital-file-upload-after-sell');
             Route::post('status', 'updateStatus')->name('status');
+            Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
+            Route::get('list-ids', 'listIds')->name('list-ids');
+            Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
         });
     });
 
