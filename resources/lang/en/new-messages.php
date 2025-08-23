@@ -3254,4 +3254,5 @@ return [
 	"in-house_Products" => "In-house Products",
 	"send_notification_svg" => "Send notification svg",
 	"push_notification_svg" => "Push notification svg",
+	"The code field is required." => "The code field is required.",
 ];
