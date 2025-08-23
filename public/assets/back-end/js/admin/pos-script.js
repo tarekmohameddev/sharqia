@@ -444,18 +444,20 @@ function updateCartDisplay() {
                 <div class="d-flex gap-2 justify-content-between">
                     <dt class="title-color text-capitalize font-weight-normal">${$("#translate-extra-discount").data("text") || "Extra Discount"} :</dt>
                     <dd>
-                        <button id="extra_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-discount">
+                        ${$("#discount-permission").data("permission") === "true" ? 
+                        `<button id="extra_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-discount">
                             <i class="fi fi-rr-pencil"></i>
-                        </button>
+                        </button>` : ''}
                         ${formatCurrency(clientCart.extraDiscount)}
                     </dd>
                 </div>
                 <div class="d-flex justify-content-between">
                     <dt class="title-color gap-2 text-capitalize font-weight-normal">${$("#translate-coupon-discount").data("text") || "Coupon Discount"} :</dt>
                     <dd>
-                        <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
+                        ${$("#discount-permission").data("permission") === "true" ? 
+                        `<button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
                             <i class="fi fi-rr-pencil"></i>
-                        </button>
+                        </button>` : ''}
                         ${formatCurrency(clientCart.couponDiscount)}
                     </dd>
                 </div>
