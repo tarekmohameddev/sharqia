@@ -135,6 +135,164 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Horizontal Product Card Styles */
+        .pos-item-wrap-horizontal {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-block-size: 61vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .pos-product-item-horizontal {
+            cursor: pointer;
+            overflow: hidden;
+            border-radius: 8px !important;
+            position: relative;
+            padding: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e0e0e0;
+            min-height: 120px;
+        }
+
+        .pos-product-item-horizontal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .pos-product-item_thumb-horizontal {
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-right: 15px;
+        }
+
+        .pos-product-item_thumb-horizontal img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .pos-product-item_content-horizontal {
+            padding: 0 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .pos-product-item_title-horizontal {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+
+        .pos-product-item_price-horizontal {
+            font-weight: 700;
+            color: #0d6efd;
+            font-size: 1.1rem;
+        }
+
+        .pos-product-item_actions-horizontal {
+            display: flex;
+            align-items: center;
+            min-width: 180px;
+            max-width: 200px;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .buttons-grid .btn {
+            font-size: 0.7rem;
+            padding: 0.4rem 0.6rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 32px;
+        }
+
+        .buttons-grid .btn i {
+            font-size: 0.65rem;
+        }
+
+        /* If only one button (add to cart), make it span full width */
+        .buttons-grid:has(.btn:only-child) {
+            grid-template-columns: 1fr;
+        }
+
+        /* If 3 buttons, arrange them properly */
+        .buttons-grid:has(.btn:nth-child(3)) {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .buttons-grid:has(.btn:nth-child(3)) .btn:first-child {
+            grid-column: 1 / -1;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .pos-product-item-horizontal {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 10px;
+                min-height: auto;
+            }
+
+            .pos-product-item_thumb-horizontal {
+                width: 60px;
+                height: 60px;
+                align-self: center;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            .pos-product-item_content-horizontal {
+                padding: 0;
+                text-align: center;
+                margin-bottom: 10px;
+            }
+
+            .pos-product-item_actions-horizontal {
+                min-width: auto;
+                max-width: none;
+            }
+
+            .buttons-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .buttons-grid .btn {
+                font-size: 0.8rem;
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .pos-product-item-horizontal {
+                margin-bottom: 8px;
+            }
+
+            .pos-product-item_title-horizontal {
+                font-size: 0.9rem;
+            }
+
+            .pos-product-item_price-horizontal {
+                font-size: 1rem;
+            }
+        }
     </style>
 @endpush
 @section('content')
@@ -185,7 +343,7 @@
 
                     <div class="card-body pt-2 pb-80 overflow-hidden" id="items">
                         @if(count($products) > 0)
-                            <div class="pos-item-wrap max-h-100vh-350px">
+                            <div class="pos-item-wrap-horizontal max-h-100vh-350px">
                                 @foreach($products as $product)
                                     @include('admin-views.pos.partials._single-product',['product'=>$product])
                                 @endforeach
