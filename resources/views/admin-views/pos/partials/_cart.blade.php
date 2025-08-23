@@ -113,7 +113,7 @@
                         readonly>
                 <input type="hidden" name="shipping_cost" value="{{$cartItems['shippingCost'] ?? 0}}">
             </div>
-            <div class="p-4 bg-section rounded mt-4">
+            <div class="p-4 bg-section rounded mt-4 d-none">
                 <div>
                     <div class="text-dark d-flex mb-2">{{ translate('paid_By') }}:</div>
                     <ul class="list-unstyled option-buttons d-flex flex-wrap gap-2 align-items-center">

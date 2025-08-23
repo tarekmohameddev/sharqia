@@ -396,7 +396,7 @@
                         {{ translate('product_Section') }}
                     </h4>
 
-                    <div class="px-3 py-30">
+                    <div class="px-3 py-30 d-none">
                         <div class="row gy-1">
                             <div class="col-sm-6">
                                 <div class="input-group d-flex justify-content-end">
@@ -464,7 +464,7 @@
                 <div class="card billing-section-wrap overflow-hidden">
                     <h5 class="p-3 m-0 bg-light">{{ translate('billing_Section') }}</h5>
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex justify-content-end mb-3 d-none">
                             <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2 action-view-all-hold-orders"
                             data-bs-toggle="tooltip" data-bs-title="{{ translate('please_resume_the_order_from_here') }}">
                                 {{ translate('view_All_Hold_Orders') }}

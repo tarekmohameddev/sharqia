@@ -35,7 +35,7 @@
         </div>
     </div>
 @endif
-<div class="d-flex gap-2 flex-wrap mb-3">
+<div class="d-flex gap-2 flex-wrap mb-3 d-none">
     <div class="dropdown flex-grow-1" id="dropdown-order-select">
         <button class="form-control text-start dropdown-toggle d-flex align-items-center justify-content-between" data-bs-toggle="dropdown" id="cart_id_primary">
             {{ session('current_user') }}
