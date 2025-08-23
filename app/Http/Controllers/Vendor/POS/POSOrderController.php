@@ -101,8 +101,42 @@ class POSOrderController extends BaseController
         $orderNote = $request['order_note'] ?? null;
         $cityId = $request['city_id'] ?? null;
 
-        $cart = $request->input('cart', []);
-        $cartItems = $cart['items'] ?? [];
+        // Handle client cart data if present
+        if ($request->has('cart_data')) {
+            $clientCart = json_decode($request['cart_data'], true);
+            $cart = ['items' => []];
+            
+            // Convert client cart items to server cart format
+            foreach ($clientCart['items'] as $item) {
+                $cart['items'][] = [
+                    'id' => $item['id'],
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'image' => $item['image'],
+                    'productType' => $item['productType'],
+                    'unit' => $item['unit'],
+                    'tax' => $item['tax'],
+                    'tax_type' => $item['taxType'],
+                    'tax_model' => $item['taxModel'],
+                    'discount' => $item['discount'],
+                    'discount_type' => $item['discountType'],
+                    'variant' => $item['variant'],
+                    'variations' => $item['variations'],
+                    'productSubtotal' => ($item['price'] - $item['discount']) * $item['quantity']
+                ];
+            }
+            
+            // Include extra discount in the cart data
+            $cart['extraDiscount'] = $clientCart['extraDiscount'] ?? 0;
+            $cart['couponDiscount'] = $clientCart['couponDiscount'] ?? 0;
+            $cartItems = $cart['items'];
+        } else {
+            // Handle traditional server-side cart
+            $cart = $request->input('cart', []);
+            $cartItems = $cart['items'] ?? [];
+        }
+        
         if (empty($cartItems)) {
             ToastMagic::error(translate('cart_empty_warning'));
             return response()->json();

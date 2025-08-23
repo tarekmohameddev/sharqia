@@ -1,5 +1,258 @@
 "use strict";
 
+// Client-side cart management for vendor POS
+let clientCart = {
+    items: [],
+    subtotal: 0,
+    totalTax: 0,
+    discountOnProduct: 0,
+    extraDiscount: 0,
+    couponDiscount: 0,
+    shippingCost: 0,
+    total: 0
+};
+
+// Initialize client cart from session if exists
+function initializeClientCart() {
+    const savedCart = sessionStorage.getItem('vendor_pos_client_cart');
+    if (savedCart) {
+        clientCart = JSON.parse(savedCart);
+        // Ensure shipping cost property exists for backward compatibility
+        if (typeof clientCart.shippingCost === 'undefined') {
+            clientCart.shippingCost = 0;
+        }
+        calculateCartTotals();
+        saveClientCart();
+    }
+}
+
+// Save cart to session storage
+function saveClientCart() {
+    sessionStorage.setItem('vendor_pos_client_cart', JSON.stringify(clientCart));
+}
+
+// Calculate cart totals
+function calculateCartTotals() {
+    clientCart.subtotal = 0;
+    clientCart.totalTax = 0;
+    clientCart.discountOnProduct = 0;
+
+    clientCart.items.forEach(item => {
+        const itemSubtotal = item.price * item.quantity;
+        const itemDiscount = item.discount * item.quantity;
+        
+        clientCart.subtotal += itemSubtotal;
+        clientCart.discountOnProduct += itemDiscount;
+        
+        // Calculate tax
+        let taxAmount = 0;
+        if (item.tax > 0) {
+            if (item.taxType === 'percent') {
+                if (item.taxModel === 'include') {
+                    taxAmount = (itemSubtotal * item.tax) / (100 + item.tax);
+                } else {
+                    taxAmount = (itemSubtotal * item.tax) / 100;
+                }
+            } else {
+                taxAmount = item.tax * item.quantity;
+            }
+        }
+        clientCart.totalTax += taxAmount;
+    });
+
+    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.extraDiscount - clientCart.couponDiscount;
+    
+    if (clientCart.total < 0) {
+        clientCart.total = 0;
+    }
+}
+
+// Update cart summary display function for vendor POS
+function updateCartSummaryDisplay() {
+    // Get currency symbol and position
+    const currencySymbol = $('#get-currency-symbol').data('symbol') || 'EGP';
+    const currencyPosition = $('#get-currency-position').data('position') || 'left';
+    
+    function formatCurrency(amount) {
+        const formattedAmount = parseFloat(amount || 0).toFixed(2);
+        return currencyPosition === 'left' ? `${currencySymbol}${formattedAmount}` : `${formattedAmount}${currencySymbol}`;
+    }
+    
+    // Update subtotal
+    const subtotalElement = $('dt:contains("sub_total")').next('dd');
+    if (subtotalElement.length) {
+        subtotalElement.text(formatCurrency(clientCart.subtotal));
+    }
+    
+    // Update product discount
+    const productDiscountElement = $('dt:contains("product_Discount")').next('dd');
+    if (productDiscountElement.length) {
+        productDiscountElement.text(formatCurrency(clientCart.discountOnProduct));
+    }
+    
+    // Update extra discount - preserve the edit button
+    const extraDiscountElement = $('dt:contains("extra_Discount")').next('dd');
+    if (extraDiscountElement.length) {
+        const editButton = extraDiscountElement.find('button').prop('outerHTML') || '';
+        extraDiscountElement.html(editButton + ' ' + formatCurrency(clientCart.extraDiscount));
+    }
+    
+    // Update coupon discount - preserve the edit button
+    const couponDiscountElement = $('dt:contains("coupon_Discount")').next('dd');
+    if (couponDiscountElement.length) {
+        const editButton = couponDiscountElement.find('button').prop('outerHTML') || '';
+        couponDiscountElement.html(editButton + ' ' + formatCurrency(clientCart.couponDiscount));
+    }
+    
+    // Update tax
+    const taxElement = $('dt:contains("tax")').next('dd');
+    if (taxElement.length) {
+        taxElement.text(formatCurrency(clientCart.totalTax));
+    }
+    
+    // Update shipping cost if exists
+    const shippingElement = $('dt:contains("shipping")').next('dd');
+    if (shippingElement.length) {
+        shippingElement.text(formatCurrency(clientCart.shippingCost));
+    }
+    
+    // Update total
+    const totalElement = $('dt:contains("total")').last().next('dd');
+    if (totalElement.length) {
+        totalElement.text(formatCurrency(clientCart.total));
+    }
+    
+    // Update hidden input fields
+    $('.total-amount').val(clientCart.total);
+    $('input[name="shipping_cost"]').val(clientCart.shippingCost);
+    
+    // Update paid amount fields if they exist
+    $('.pos-paid-amount-element').val(clientCart.total);
+    $('input[type="number"][disabled]').val(clientCart.total);
+}
+
+// Add product to client cart
+function addToClientCart(productData) {
+    const existingItemIndex = clientCart.items.findIndex(item => 
+        item.id === productData.id && item.variant === (productData.variant || '')
+    );
+
+    if (existingItemIndex !== -1) {
+        // Update existing item quantity
+        clientCart.items[existingItemIndex].quantity += productData.quantity || 1;
+    } else {
+        // Add new item
+        const newItem = {
+            id: productData.id,
+            name: productData.name,
+            price: parseFloat(productData.price),
+            image: productData.image,
+            quantity: productData.quantity || 1,
+            productType: productData.productType || 'physical',
+            unit: productData.unit || '',
+            tax: parseFloat(productData.tax || 0),
+            taxType: productData.taxType || 'percent',
+            taxModel: productData.taxModel || 'exclude',
+            discount: parseFloat(productData.discount || 0),
+            discountType: productData.discountType || 'flat',
+            variant: productData.variant || '',
+            variations: productData.variations || [],
+            stock: parseInt(productData.stock || 0)
+        };
+        clientCart.items.push(newItem);
+    }
+
+    calculateCartTotals();
+    updateCartSummaryDisplay();
+    saveClientCart();
+    
+    // Show success message
+    toastMagic.success(
+        $("#message-item-has-been-added-in-your-cart").data("text") || "Item has been added to cart"
+    );
+}
+
+// Remove item from client cart
+function removeFromClientCart(productId, variant = '') {
+    clientCart.items = clientCart.items.filter(item => 
+        !(item.id === productId && item.variant === variant)
+    );
+    
+    calculateCartTotals();
+    updateCartSummaryDisplay();
+    saveClientCart();
+    
+    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text") || "Item removed from cart");
+}
+
+// Update item quantity in client cart
+function updateClientCartQuantity(productId, variant = '', newQuantity) {
+    const item = clientCart.items.find(item => 
+        item.id === productId && item.variant === variant
+    );
+    
+    if (item) {
+        if (newQuantity <= 0) {
+            removeFromClientCart(productId, variant);
+            return;
+        }
+        
+        // Check stock for physical products
+        if (item.productType === 'physical' && newQuantity > item.stock) {
+            toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text") || "Stock limit exceeded");
+            return;
+        }
+        
+        item.quantity = parseInt(newQuantity);
+        calculateCartTotals();
+        updateCartSummaryDisplay();
+        saveClientCart();
+        
+        toastMagic.success($("#message-product-quantity-updated").data("text") || "Quantity updated");
+    }
+}
+
+// Clear client cart
+function clearClientCart() {
+    clientCart = {
+        items: [],
+        subtotal: 0,
+        totalTax: 0,
+        discountOnProduct: 0,
+        extraDiscount: 0,
+        couponDiscount: 0,
+        shippingCost: 0,
+        total: 0
+    };
+    saveClientCart();
+    updateCartSummaryDisplay();
+    toastMagic.info($("#message-cart-is-empty").data("text") || "Cart is empty");
+}
+
+// Initialize on page load
+$(document).ready(function() {
+    initializeClientCart();
+});
+
+// Empty cart function for keyboard shortcut
+function emptyCart() {
+    Swal.fire({
+        title: messageAreYouSure,
+        text: $("#message-you-want-to-remove-all-items-from-cart").data("text"),
+        icon: "warning",
+        showCancelButton: true,
+        cancelButtonColor: "#dd3333",
+        confirmButtonColor: "#161853",
+        cancelButtonText: getNoWord,
+        confirmButtonText: getYesWord,
+        reverseButtons: true,
+    }).then((result) => {
+        if (result.value) {
+            clearClientCart();
+        }
+    });
+}
+
 let elementViewAllHoldOrdersSearch = $(".view_all_hold_orders_search");
 let getYesWord = $("#message-yes-word").data("text");
 let getNoWord = $("#message-no-word").data("text");
@@ -269,16 +522,8 @@ function basicFunctionalityForCartSummary() {
             reverseButtons: true,
         }).then((result) => {
             if (result.value) {
-                $.post(
-                    $("#route-vendor-pos-empty-cart").data("url"),
-                    {
-                        _token: $('meta[name="_token"]').attr("content"),
-                    },
-                    function (data) {
-                        $("#cart-summary").empty().html(data.view);
-                        toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
-                    }
-                );
+                // Clear local cart
+                clearClientCart();
             }
         });
     });
@@ -409,43 +654,54 @@ $(".action-extra-discount").on("click", function (event) {
         toastMagic.error($(this).data('error-message'));
         event.preventDefault();
     } else if (discount > 0) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
-        });
-        $.post({
-            url: $("#route-vendor-pos-update-discount").data("url"),
-            data: {
-                discount: discount,
-                type: type,
-            },
-            beforeSend: function () {
-                $("#loading").fadeIn();
-            },
-            success: function (data) {
-                if (data.extraDiscount === "success") {
-                    toastMagic.success($("#message-extra-discount-added-successfully").data("text"));
-                } else if (data.extraDiscount === "empty") {
-                    toastMagic.warning($("#message-cart-is-empty").data("text"));
-                } else {
-                    toastMagic.warning($("#message-this-discount-is-not-applied-for-this-amount").data("text"));
-                }
-                $('#add-discount').modal('hide');
-                $(".modal-backdrop").addClass("d-none");
-                $("#cart").empty().html(data.view);
-                basicFunctionalityForCartSummary();
-                posUpdateQuantityFunctionality();
-                viewAllHoldOrders("keyup");
-                removeFromCart();
-                $("#search").focus();
-            },
-            complete: function () {
-                $(".modal-backdrop").addClass("d-none");
-                $(".footer-offset").removeClass("modal-open");
-                $("#loading").fadeOut();
-            },
-        });
+        // Check if cart has items
+        if (clientCart.items.length === 0) {
+            toastMagic.warning($("#message-cart-is-empty").data("text") || "Cart is empty");
+            return;
+        }
+
+        // Calculate extra discount based on type
+        let extraDiscountAmount = parseFloat(discount);
+        
+        if (type === 'percent') {
+            // Calculate percentage of subtotal minus product discounts
+            const discountableAmount = clientCart.subtotal - clientCart.discountOnProduct;
+            extraDiscountAmount = (discountableAmount * extraDiscountAmount) / 100;
+        }
+        
+        // Validate discount amount
+        const maxAllowedDiscount = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.couponDiscount;
+        
+        if (extraDiscountAmount > maxAllowedDiscount) {
+            toastMagic.warning($("#message-this-discount-is-not-applied-for-this-amount").data("text") || "This discount cannot be applied for this amount");
+            return;
+        }
+        
+        // Update local cart with extra discount
+        clientCart.extraDiscount = extraDiscountAmount;
+        
+        // Recalculate totals
+        calculateCartTotals();
+        
+        // Save cart to session
+        saveClientCart();
+        
+        // Update cart display - for vendor POS we need to manually update the UI
+        updateCartSummaryDisplay();
+        
+        // Close modal
+        $('#add-discount').modal('hide');
+        $(".modal-backdrop").addClass("d-none");
+        $(".footer-offset").removeClass("modal-open");
+        
+        // Show success message
+        toastMagic.success($("#message-extra-discount-added-successfully").data("text") || "Extra discount added successfully");
+        
+        // Clear discount input for next use
+        $("#dis_amount").val('');
+        
+        // Focus search
+        $("#search").focus();
     } else {
         toastMagic.warning($("#message-amount-can-not-be-negative-or-zero").data("text"));
     }
@@ -606,15 +862,87 @@ dropdownSelect.on(
 
 $("#order-place").submit(function (eventObj) {
     eventObj.preventDefault();
-    let customerValue = $("#customer").val();
-    if (customerValue) {
-        $(this).append(
-            '<input type="hidden" name="customer[id]" value="' +
-            customerValue +
-            '" /> '
-        );
+    
+    // Check if cart has items
+    if (clientCart.items.length === 0) {
+        toastMagic.warning($("#message-cart-is-empty").data("text") || "Cart is empty");
+        return false;
     }
-    return true;
+    
+    let customerValue = $("#customer").val();
+    const formData = new FormData(this);
+    
+    // Add customer ID
+    if (customerValue) {
+        formData.append('customer[id]', customerValue);
+    }
+    
+    // Add client cart data
+    formData.append('cart_data', JSON.stringify(clientCart));
+    formData.append('amount', clientCart.total);
+    
+    // Get order note
+    const orderNote = $('#order_note').val();
+    if (orderNote) {
+        formData.append('order_note', orderNote);
+    }
+    
+    $.ajaxSetup({
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
+        },
+    });
+    
+    $.ajax({
+        url: $(this).attr('action'),
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        beforeSend: function () {
+            $("#loading").fadeIn();
+        },
+        success: function (response) {
+            if (response.checkProductTypeForWalkingCustomer) {
+                $("#add-customer").modal("show");
+                $(".alert--message-for-pos").addClass("active");
+                $(".alert--message-for-pos .warning-message")
+                    .empty()
+                    .html(response.message);
+            } else {
+                // Clear local cart on successful order
+                clientCart = {
+                    items: [],
+                    subtotal: 0,
+                    totalTax: 0,
+                    discountOnProduct: 0,
+                    extraDiscount: 0,
+                    couponDiscount: 0,
+                    shippingCost: 0,
+                    total: 0
+                };
+                saveClientCart();
+                
+                // Clear order note
+                $('#order_note').val('');
+                
+                location.reload();
+            }
+        },
+        error: function(xhr) {
+            console.error('Order placement failed:', xhr);
+            let errorMessage = 'Failed to place order. Please try again.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+            toastMagic.error(errorMessage);
+        },
+        complete: function () {
+            $("#loading").fadeOut();
+        }
+    });
+    
+    return false;
 });
 
 $(function () {
@@ -925,66 +1253,60 @@ function getVariantPrice(type = null) {
 
 function addToCart(form_id = "add-to-cart-form") {
     if (checkAddToCartValidity()) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
+        // Get form data
+        const formData = $("#" + form_id).serializeArray();
+        const productData = {};
+        
+        // Parse form data
+        formData.forEach(field => {
+            productData[field.name] = field.value;
         });
-        $.post({
-            url: $("#route-vendor-pos-add-to-cart").data("url"),
-            data: $("#" + form_id).serializeArray(),
-            beforeSend: function () {
-                $("#loading").fadeIn();
-            },
-            success: function (data) {
-                if (data.data == 1) {
-                    $("#cart-summary").empty().html(data.view);
-                    toastMagic.success($("#message-cart-updated").data("text"));
-                    data.inCartData && data.inCartData == 1
-                        ? $(".in-cart-quantity-field").val(data.requestQuantity)
-                        : "";
-                    removeFromCart();
-                    basicFunctionalityForCartSummary();
-                    return false;
-                } else if (data.data == 0) {
-                    Swal.fire({
-                        icon: "error",
-                        title: $("#message-cart-word").data("text"),
-                        text: $("#message-sorry-product-is-out-of-stock").data(
-                            "text"
-                        ),
-                    });
-                    return false;
-                } else if (data.data == 'custom-error') {
-                    Swal.fire({
-                        icon: "error",
-                        title: data?.title ?? $("#message-cart-word").data("text"),
-                        text: data?.text ?? $("#message-sorry-product-is-out-of-stock").data(
-                            "text"
-                        ),
-                    });
-                    return false;
-                } else {
-                    $(".in-cart-quantity-field").val(data.quantity);
-                    getVariantPrice();
-                    setTimeout(function () {
-                        $(".cart-qty-field").val(1);
-                    }, 500);
-                }
-                $(".close-quick-view-modal").click();
-
-                toastMagic.success($("#message-item-has-been-added-in-your-cart").data("text"));
-                $("#cart").empty().html(data.view);
-                viewAllHoldOrders("keyup");
-                $(".search-result-box").empty().hide();
-                $("#search").val("");
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-            },
-            complete: function () {
-                $("#loading").fadeOut();
-            },
-        });
+        
+        // Extract product information
+        const productInfo = {
+            id: parseInt(productData.id),
+            name: productData.name || '',
+            price: parseFloat(productData.price || 0),
+            image: productData.image || '',
+            quantity: parseInt(productData.quantity || 1),
+            productType: productData.product_type || 'physical',
+            unit: productData.unit || '',
+            tax: parseFloat(productData.tax || 0),
+            taxType: productData.tax_type || 'percent',
+            taxModel: productData.tax_model || 'exclude',
+            discount: parseFloat(productData.discount || 0),
+            discountType: productData.discount_type || 'flat',
+            variant: productData.variant || '',
+            variations: productData.variations ? JSON.parse(productData.variations) : [],
+            stock: parseInt(productData.current_stock || 0)
+        };
+        
+        // Check stock for physical products
+        if (productInfo.productType === 'physical' && productInfo.quantity > productInfo.stock) {
+            Swal.fire({
+                icon: "error",
+                title: $("#message-cart-word").data("text"),
+                text: $("#message-sorry-product-is-out-of-stock").data("text")
+            });
+            return false;
+        }
+        
+        // Add to local cart
+        addToClientCart(productInfo);
+        
+        // Close quick view modal if open
+        $(".close-quick-view-modal").click();
+        
+        // Clear search
+        $(".search-result-box").empty().hide();
+        $("#search").val("");
+        
+        // Reset quantity field
+        setTimeout(function () {
+            $(".cart-qty-field").val(1);
+        }, 500);
+        
+        return false;
     } else {
         Swal.fire({
             type: "info",
@@ -995,32 +1317,11 @@ function addToCart(form_id = "add-to-cart-form") {
 }
 function removeFromCart() {
     $(".remove-from-cart").on("click", function () {
-        let id = $(this).data("id");
-        let variant = $(this).data("variant");
-        $.post(
-            $("#route-vendor-pos-remove-cart").data("url"),
-            {
-                _token: $('meta[name="_token"]').attr("content"),
-                id: id,
-                variant: variant,
-            },
-            function (data) {
-                $("#cart").empty().html(data.view);
-                if (data.errors) {
-                    for (let index = 0; index < data.errors.length; index++) {
-                        setTimeout(() => {
-                            toastMagic.error(data.errors[index].message);
-                        }, index * 500);
-                    }
-                } else {
-                    toastMagic.info($("#message-item-has-been-removed-from-cart").data("text"));
-                    viewAllHoldOrders("keyup");
-                }
-                posUpdateQuantityFunctionality();
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-            }
-        );
+        let id = parseInt($(this).data("id"));
+        let variant = $(this).data("variant") || '';
+        
+        // Remove from local cart
+        removeFromClientCart(id, variant);
     });
 }
 removeFromCart();

@@ -1342,66 +1342,74 @@ $(".action-extra-discount").on("click", function (event) {
         toastMagic.error($(this).data("error-message"));
         event.preventDefault();
     } else if (discount > 0) {
-        $.ajaxSetup({
-            headers: {
-                "X-CSRF-TOKEN": $('meta[name="_token"]').attr("content"),
-            },
-        });
-        $.post({
-            url: $("#route-admin-pos-update-discount").data("url"),
-            data: {
-                discount: discount,
-                type: type,
-            },
-            beforeSend: function () {
-                $("#loading").fadeIn();
-            },
-            success: function (data) {
-                if (data.extraDiscount === "success") {
-                    toastMagic.success(
-                        $("#message-extra-discount-added-successfully").data(
-                            "text"
-                        ), '',
-                        {
-                            CloseButton: true,
-                            ProgressBar: true,
-                        }
-                    );
-                }else if((data.cart === "empty")){
-                     toastMagic.warning(
-                        $("#message-please-add-product-in-cart-before-applying-discount").data("text"), '',
-                        {
-                            CloseButton: true,
-                            ProgressBar: true,
-                        }
-                    );
+        // Check if cart has items
+        if (clientCart.items.length === 0) {
+            toastMagic.warning(
+                $("#message-cart-is-empty").data("text") || "Cart is empty", '',
+                {
+                    CloseButton: true,
+                    ProgressBar: true,
                 }
-                 else if (data.extraDiscount === "empty") {
-                    toastMagic.warning(
-                        $("#message-cart-is-empty").data("text"), '',
-                        {
-                            CloseButton: true,
-                            ProgressBar: true,
-                        }
-                    );
-                } else {
-                    toastMagic.warning($("#message-this-discount-is-not-applied-for-this-amount").data("text"));
+            );
+            return;
+        }
+
+        // Calculate extra discount based on type
+        let extraDiscountAmount = parseFloat(discount);
+        
+        if (type === 'percent') {
+            // Calculate percentage of subtotal minus product discounts
+            const discountableAmount = clientCart.subtotal - clientCart.discountOnProduct;
+            extraDiscountAmount = (discountableAmount * extraDiscountAmount) / 100;
+        }
+        
+        // Validate discount amount
+        const maxAllowedDiscount = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.couponDiscount;
+        
+        if (extraDiscountAmount > maxAllowedDiscount) {
+            toastMagic.warning(
+                $("#message-this-discount-is-not-applied-for-this-amount").data("text") || "This discount cannot be applied for this amount",
+                '',
+                {
+                    CloseButton: true,
+                    ProgressBar: true,
                 }
-                $("#add-discount").modal("hide");
-                $(".modal-backdrop").addClass("d-none");
-                $("#cart").empty().html(data.view);
-                reinitializeTooltips();
-                basicFunctionalityForCartSummary();
-                posUpdateQuantityFunctionality();
-                removeFromCart();
-                $("#search").focus();
-            },
-            complete: function () {
-                $(".modal-backdrop").addClass("d-none");
-                $(".footer-offset").removeClass("modal-open");
-                $("#loading").fadeOut();
-            },
-        });
+            );
+            return;
+        }
+        
+        // Update local cart with extra discount
+        clientCart.extraDiscount = extraDiscountAmount;
+        
+        // Recalculate totals
+        calculateCartTotals();
+        
+        // Save cart to session
+        saveClientCart();
+        
+        // Update display
+        updateCartDisplay();
+        
+        // Close modal
+        $("#add-discount").modal("hide");
+        $(".modal-backdrop").addClass("d-none");
+        $(".footer-offset").removeClass("modal-open");
+        
+        // Show success message
+        toastMagic.success(
+            $("#message-extra-discount-added-successfully").data("text") || "Extra discount added successfully",
+            '',
+            {
+                CloseButton: true,
+                ProgressBar: true,
+            }
+        );
+        
+        // Clear discount input for next use
+        $("#dis_amount").val('');
+        
+        // Focus search
+        $("#search").focus();
     } else {
         toastMagic.warning($("#message-amount-can-not-be-negative-or-zero").data("text"));
     }
