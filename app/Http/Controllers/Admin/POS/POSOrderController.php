@@ -124,6 +124,12 @@ class POSOrderController extends BaseController
                     'productSubtotal' => ($item['price'] - $item['discount']) * $item['quantity']
                 ];
             }
+            
+            // Handle extra discount - prefer separate fields over cart data
+            $cart['ext_discount'] = $request->get('ext_discount', $clientCart['extraDiscount'] ?? 0);
+            $cart['ext_discount_type'] = $request->get('ext_discount_type', ($cart['ext_discount'] > 0 ? 'amount' : null));
+            $cart['coupon_discount'] = $clientCart['couponDiscount'] ?? 0;
+            
             $cartItems = $cart['items'];
         } else {
             // Handle traditional server-side cart

@@ -7,6 +7,8 @@ let clientCart = {
     totalTax: 0,
     discountOnProduct: 0,
     extraDiscount: 0,
+    extraDiscountValue: 0,
+    extraDiscountType: null,
     couponDiscount: 0,
     shippingCost: 0,
     total: 0
@@ -220,6 +222,8 @@ function clearClientCart() {
         totalTax: 0,
         discountOnProduct: 0,
         extraDiscount: 0,
+        extraDiscountValue: 0,
+        extraDiscountType: null,
         couponDiscount: 0,
         shippingCost: 0,
         total: 0
@@ -662,11 +666,13 @@ $(".action-extra-discount").on("click", function (event) {
 
         // Calculate extra discount based on type
         let extraDiscountAmount = parseFloat(discount);
+        let extraDiscountValue = parseFloat(discount); // Store original value for backend
         
         if (type === 'percent') {
             // Calculate percentage of subtotal minus product discounts
             const discountableAmount = clientCart.subtotal - clientCart.discountOnProduct;
-            extraDiscountAmount = (discountableAmount * extraDiscountAmount) / 100;
+            extraDiscountAmount = (discountableAmount * extraDiscountValue) / 100;
+            // For percentage, we keep the original percentage value for the backend
         }
         
         // Validate discount amount
@@ -678,7 +684,9 @@ $(".action-extra-discount").on("click", function (event) {
         }
         
         // Update local cart with extra discount
-        clientCart.extraDiscount = extraDiscountAmount;
+        clientCart.extraDiscount = extraDiscountAmount; // Calculated amount for display
+        clientCart.extraDiscountValue = extraDiscountValue; // Original value for backend
+        clientCart.extraDiscountType = type; // Store the original discount type
         
         // Recalculate totals
         calculateCartTotals();
@@ -881,6 +889,10 @@ $("#order-place").submit(function (eventObj) {
     formData.append('cart_data', JSON.stringify(clientCart));
     formData.append('amount', clientCart.total);
     
+    // Add extra discount fields separately
+    formData.append('ext_discount', clientCart.extraDiscountValue || clientCart.extraDiscount);
+    formData.append('ext_discount_type', clientCart.extraDiscountType || (clientCart.extraDiscount > 0 ? 'amount' : null));
+    
     // Get order note
     const orderNote = $('#order_note').val();
     if (orderNote) {
@@ -917,6 +929,8 @@ $("#order-place").submit(function (eventObj) {
                     totalTax: 0,
                     discountOnProduct: 0,
                     extraDiscount: 0,
+                    extraDiscountValue: 0,
+                    extraDiscountType: null,
                     couponDiscount: 0,
                     shippingCost: 0,
                     total: 0
