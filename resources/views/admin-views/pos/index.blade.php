@@ -148,13 +148,16 @@
 
         .pos-product-item-horizontal {
             cursor: pointer;
-            overflow: hidden;
+            overflow: visible;
             border-radius: 8px !important;
             position: relative;
             padding: 15px;
             transition: transform 0.2s, box-shadow 0.2s;
             border: 1px solid #e0e0e0;
-            min-height: 120px;
+            min-height: auto;
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
         }
 
         .pos-product-item-horizontal:hover {
@@ -181,8 +184,10 @@
             padding: 0 15px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 6px;
+            flex: 1;
+            min-width: 0;
         }
 
         .pos-product-item_title-horizontal {
@@ -201,9 +206,11 @@
 
         .pos-product-item_actions-horizontal {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             min-width: 140px;
             max-width: 160px;
+            flex-shrink: 0;
+            margin-top: 2px;
         }
 
         .pos-product-item_actions-horizontal .btn {
@@ -225,6 +232,7 @@
             flex-wrap: wrap;
             gap: 6px;
             margin-top: 8px;
+            width: 100%;
         }
 
         .offer-btn {
@@ -236,6 +244,7 @@
             text-overflow: ellipsis;
             min-height: 28px;
             flex-shrink: 0;
+            max-width: fit-content;
         }
 
         .offer-btn i {
@@ -247,7 +256,7 @@
             .pos-product-item-horizontal {
                 flex-direction: column;
                 align-items: stretch;
-                padding: 10px;
+                padding: 12px;
                 min-height: auto;
             }
 
@@ -256,43 +265,54 @@
                 height: 60px;
                 align-self: center;
                 margin-right: 0;
-                margin-bottom: 10px;
+                margin-bottom: 12px;
             }
 
             .pos-product-item_content-horizontal {
                 padding: 0;
                 text-align: center;
-                margin-bottom: 10px;
+                margin-bottom: 0;
+                flex: none;
+                width: 100%;
             }
 
             .pos-product-item_actions-horizontal {
                 min-width: auto;
                 max-width: none;
+                align-self: stretch;
+                margin-top: 12px;
+                width: 100%;
             }
 
             .pos-product-item_actions-horizontal .btn {
                 font-size: 0.8rem;
                 padding: 0.5rem 1rem;
                 min-height: 40px;
+                width: 100%;
             }
 
             .offers-section {
-                justify-content: center;
-                gap: 4px;
+                justify-content: flex-start;
+                gap: 6px;
                 margin-top: 10px;
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
             }
 
             .offer-btn {
                 font-size: 0.7rem !important;
                 padding: 0.4rem 0.6rem !important;
                 min-height: 32px;
+                width: 100%;
+                max-width: none;
             }
         }
 
         @media (max-width: 576px) {
             .pos-product-item-horizontal {
                 margin-bottom: 8px;
-                padding: 8px;
+                padding: 10px;
             }
 
             .pos-product-item_thumb-horizontal {
@@ -311,24 +331,35 @@
 
             .pos-product-item_actions-horizontal .btn {
                 font-size: 0.75rem;
-                padding: 0.4rem 0.8rem;
+                padding: 0.4rem 0.6rem;
                 min-height: 36px;
+                width: 100%;
             }
 
             .offers-section {
-                gap: 3px;
-                margin-top: 6px;
+                gap: 4px;
+                margin-top: 8px;
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
             }
 
             .offer-btn {
                 font-size: 0.6rem !important;
-                padding: 0.25rem 0.4rem !important;
-                min-height: 26px;
-                max-width: calc(50% - 2px);
+                padding: 0.3rem 0.4rem !important;
+                min-height: 28px;
+                width: 100%;
+                max-width: none;
+                flex: none;
             }
 
             .offer-btn i {
                 font-size: 0.55rem;
+            }
+
+            /* If there are 3 or more offers, use single column on very small screens */
+            .offers-section:has(.offer-btn:nth-child(3)) {
+                grid-template-columns: 1fr;
             }
         }
     </style>
