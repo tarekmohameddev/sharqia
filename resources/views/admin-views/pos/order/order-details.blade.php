@@ -102,6 +102,15 @@
                             </div>
                         </div>
 
+                        @if ($order->order_note !=null)
+                            <div class="mt-2 mb-4 w-100 d-block">
+                                <div class="gap-10">
+                                    <h5>{{ translate('order_Note') }}:</h5>
+                                    <div class="text-justify">{{ $order->order_note }}</div>
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="table-responsive datatable-custom">
                             <table
                                 class="table fs-12 table-hover table-borderless align-middle">

@@ -520,6 +520,14 @@
                                             <input type="text" name="address" id="customer_address" class="form-control" placeholder="{{ translate('address') }}">
                                         </div>
                                     </div>
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('order_note') }}</label>
+                                            <textarea class="form-control" id="order_note" name="order_note" rows="2" placeholder="{{ translate('add_any_special_instructions_or_notes_for_this_order') }}"></textarea>
+                                            
+                                        </div>
+                                    </div>
+
                                 </div>
                             </form>
                         </div>

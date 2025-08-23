@@ -730,6 +730,9 @@ function placeClientOrder() {
     formData.append('paid_amount', $('.pos-paid-amount-element').val());
     formData.append('type', $('input[name="type"]:checked').val());
     
+    // Add order note
+    formData.append('order_note', $('#order_note').val());
+    
     // Add customer data for automatic creation/update
     formData.append('customer_data', JSON.stringify(customerData));
     formData.append('city_id', customerData.city_id);

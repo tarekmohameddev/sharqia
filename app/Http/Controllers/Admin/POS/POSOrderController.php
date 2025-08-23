@@ -97,6 +97,7 @@ class POSOrderController extends BaseController
         $paidAmount = $request['type'] == 'cash' ? ($request['paid_amount'] ?? 0) : $amount;
         $sellerId = $request['seller_id'];
         $cityId = $request['city_id'];
+        $orderNote = $request['order_note'] ?? null;
 
         // Handle client cart data if present
         if ($request->has('cart_data')) {
@@ -304,6 +305,7 @@ class POSOrderController extends BaseController
             sellerId: $sellerId,
             cityId: $cityId,
             shippingCost: $shippingCost,
+            orderNote: $orderNote,
         );
         $this->orderRepo->add(data: $order);
         if ($checkProductTypeDigital) {

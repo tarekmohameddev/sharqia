@@ -173,6 +173,12 @@
             </div>
         </div>
 
+        <!-- Order Note Section -->
+        <div class="form-group mt-3">
+            <label for="order_note" class="text-dark">{{ translate('order_note') }}:</label>
+            <textarea class="form-control" id="order_note" name="order_note" rows="2" placeholder="{{ translate('add_any_special_instructions_or_notes_for_this_order') }}"></textarea>
+        </div>
+
         <div class="d-flex gap-2 justify-content-between align-items-center pt-3 bottom-sticky-buttons z-index-1">
             @if($cartItems['countItem'])
                 <span class="btn btn-danger btn-block action-empty-cart">

@@ -247,6 +247,7 @@ return [
 	"qty" => "qty",
 	"total" => "total",
 	"order_note" => "order note",
+	"add_any_special_instructions_or_notes_for_this_order" => "Add any special instructions or notes for this order",
 	"sub_total" => "sub total",
 	"tax" => "tax",
 	"shipping" => "shipping",

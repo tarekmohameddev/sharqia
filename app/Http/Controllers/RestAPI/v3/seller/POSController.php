@@ -314,6 +314,7 @@ class POSController extends Controller
         $couponCode = $request['coupon_code'];
         $paymentMethod = $request['payment_method'];
         $paidAmount = currencyConverter(amount: $request['paid_amount'] ?? 0);
+        $orderNote = $request['order_note'] ?? null;
 
         $isDigitalProduct = self::isDigitalProductExist(cartList: $carts);
         if ($customerId == 0 && $isDigitalProduct) {
@@ -390,6 +391,7 @@ class POSController extends Controller
             'coupon_code' => $couponCode ?? null,
             'discount_type' => (isset($carts['coupon_code']) && $carts['coupon_code']) ? 'coupon_discount' : NULL,
             'coupon_discount_bearer' => $carts['coupon_bearer'] ?? 'inhouse',
+            'order_note' => $orderNote,
             'created_at' => now(),
             'updated_at' => now(),
         ];

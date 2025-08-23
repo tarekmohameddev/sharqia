@@ -176,6 +176,13 @@ $orderTotalPriceSummary = \App\Utils\OrderManager::getOrderTotalPriceSummary(ord
     <div class="d-flex flex-row justify-content-between border-top">
         <span class="mt-2">{{ translate('paid_by') }}: {{ translate($order->payment_method) }}</span>
     </div>
+    @if($order->order_note)
+        <span class="dashed-hr"></span>
+        <div>
+            <strong>{{ translate('order_note') }}:</strong><br>
+            <span style="white-space: pre-wrap; word-wrap: break-word;">{{ $order->order_note }}</span>
+        </div>
+    @endif
     <span class="dashed-hr"></span>
     <h5 class="text-center pt-3 text-uppercase">
         """{{ translate('thank_you') }}"""
