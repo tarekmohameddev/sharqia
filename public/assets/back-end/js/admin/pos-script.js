@@ -407,17 +407,12 @@ function calculateCartTotals() {
         clientCart.totalTax += taxAmount;
     });
 
-    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.extraDiscount - clientCart.couponDiscount;
-    
-    if (clientCart.total < 0) {
-        clientCart.total = 0;
-    }
-
-    // Category rules: compute discount and gifts, combine with manual extra discount
+    // Category rules: compute discount and gifts first, before computing total
     const rulesMap = (typeof window !== 'undefined') ? (window.CATEGORY_RULES_MAP || {}) : {};
     const deals = computeCategoryDeals(clientCart.items, rulesMap);
     ensureCategoryGifts(deals.giftsToEnsure);
 
+    // Combine with manual extra discount
     let manualAmount = 0;
     const typedManual = parseFloat(clientCart.extraDiscountValue || 0);
     if (clientCart.extraDiscountType === 'percent') {
@@ -429,6 +424,12 @@ function calculateCartTotals() {
         manualAmount = parseFloat(clientCart.extraDiscount || 0);
     }
     clientCart.extraDiscount = parseFloat(deals.discountAmount || 0) + parseFloat(isNaN(manualAmount) ? 0 : manualAmount);
+
+    // Now compute total using the updated extraDiscount
+    clientCart.total = clientCart.subtotal - clientCart.discountOnProduct + clientCart.totalTax + clientCart.shippingCost - clientCart.extraDiscount - clientCart.couponDiscount;
+    if (clientCart.total < 0) {
+        clientCart.total = 0;
+    }
 }
 
 // Clear client cart
@@ -601,6 +602,8 @@ function updateCartDisplay() {
                 <input type="hidden" class="form-control total-amount" name="amount" min="0" step="0.01"
                        value="${clientCart.total}" readonly>
                 <input type="hidden" name="shipping_cost" value="${clientCart.shippingCost}">
+                <input type="hidden" name="ext_discount" value="${clientCart.extraDiscount}">
+                <input type="hidden" name="ext_discount_type" value="amount">
             </div>
             
             <div class="p-4 bg-section rounded mt-4 d-none">
