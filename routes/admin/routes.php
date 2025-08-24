@@ -154,6 +154,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('coupon-discount', 'getCouponDiscount')->name('coupon-discount');
             Route::get('quick-view', 'getQuickView')->name('quick-view');
             Route::get('search-product', 'getSearchedProductsView')->name('search-product');
+            Route::get('get-sellers', 'getSellers')->name('get-sellers');
+            Route::post('set-shipping', 'setShipping')->name('set-shipping');
         });
 
         Route::controller(CartController::class)->group(function () {
@@ -219,6 +221,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('request-restock-list', 'getRequestRestockListView')->name('request-restock-list');
             Route::get('export-restock', 'exportRestockList')->name('restock-export');
             Route::delete('restock-delete/{id}', 'deleteRestock')->name('restock-delete');
+            Route::get('gift-products', 'getGiftProducts')->name('gift-products');
         });
     });
 
@@ -243,6 +246,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('inhouse-order-filter', 'filterInHouseOrder')->name('inhouse-order-filter');
             Route::post('digital-file-upload-after-sell', 'uploadDigitalFileAfterSell')->name('digital-file-upload-after-sell');
             Route::post('status', 'updateStatus')->name('status');
+            Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
+            Route::get('list-ids', 'listIds')->name('list-ids');
+            Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
         });
     });
 
@@ -334,6 +340,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('customer-list-search', 'getCustomerList')->name('customer-list-search');
             Route::get('customer-list-without-all-customer', 'getCustomerListWithoutAllCustomerName')->name('customer-list-without-all-customer');
             Route::post('add', 'add')->name('add');
+            Route::post('address-add', 'addAddress')->name('address-add');
         });
 
         Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
@@ -1159,6 +1166,16 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                 Route::get('details/{id}', 'getDetailsView')->name('details');
                 Route::post('refund-status-update', 'updateRefundStatus')->name('refund-status-update');
             });
+        });
+    });
+
+    // Shipping Cost Management Routes
+    Route::group(['prefix' => 'shipping-cost', 'as' => 'shipping-cost.'], function () {
+        Route::controller(\App\Http\Controllers\Admin\ShippingCostController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::put('{shippingCost}', 'update')->name('update');
+            Route::delete('{shippingCost}', 'destroy')->name('destroy');
         });
     });
 });

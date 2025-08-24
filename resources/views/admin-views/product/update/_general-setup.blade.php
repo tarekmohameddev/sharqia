@@ -199,7 +199,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-9">
+            <div class="col-md-6">
                 <div class="form-group">
                     <label class="form-label d-flex align-items-center gap-2">
                         {{ translate('search_tags') }}
@@ -213,6 +213,26 @@
                     <input type="text" class="form-control" name="tags" placeholder="{{ translate('enter_tag') }}"
                            value="@foreach($product->tags as $c) {{ $c->tag.','}} @endforeach"
                            data-role="tagsinput">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <div class="form-control min-h-40 d-flex align-items-center flex-wrap justify-content-between gap-2">
+                        <label class="form-label mb-0" for="is_gift">
+                            {{ translate('gift_product') }}
+                            <span class="tooltip-icon cursor-pointer" data-bs-toggle="tooltip"
+                                  aria-label="{{ translate('mark_this_product_as_a_gift_product_that_can_be_given_free_with_offers') }}"
+                                  data-bs-title="{{ translate('mark_this_product_as_a_gift_product_that_can_be_given_free_with_offers') }}">
+                                <i class="fi fi-sr-info"></i>
+                            </span>
+                        </label>
+                        <div>
+                            <label class="switcher">
+                                <input type="checkbox" class="switcher_input" name="is_gift" id="is_gift" {{ $product->is_gift ? 'checked' : '' }}>
+                                <span class="switcher_control"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

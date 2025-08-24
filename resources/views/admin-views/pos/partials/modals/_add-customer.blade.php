@@ -21,22 +21,6 @@
                         </div>
                         <div class="col-12 col-lg-6">
                             <div class="form-group">
-                                <label class="form-label mb-1">{{ translate('last_name') }}
-                                    <span class="input-label-secondary text-danger">*</span></label>
-                                <input type="text" name="l_name" class="form-control" value="{{ old('l_name') }}"
-                                       placeholder="{{ translate('last_name') }}" required>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6">
-                            <div class="form-group">
-                                <label class="form-label mb-1">{{ translate('email') }} <span
-                                        class="input-label-secondary text-danger">*</span></label>
-                                <input type="email" name="email" class="form-control" value="{{ old('email') }}"
-                                       placeholder="{{ translate('ex').': ex@example.com' }}" required>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6">
-                            <div class="form-group">
                                 <label class="form-label mb-1">{{ translate('phone') }} <span
                                         class="input-label-secondary text-danger">*</span></label>
                                 <input class="form-control"
@@ -46,38 +30,22 @@
                         </div>
                         <div class="col-12 col-lg-6">
                             <div class="form-group">
-                                <label class="form-label mb-1">{{ translate('country') }}</label>
-                                <select name="country" class="custom-select" data-live-search="true">
-                                    @foreach($countries as $country)
-                                        <option value="{{ $country['name'] }}">{{ $country['name'] }}</option>
+                                <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
+                                <select name="city_id" id="city_id" class="custom-select" data-live-search="true" required>
+                                    <option value="">{{ translate('select') }}</option>
+                                    @foreach($governorates as $governorate)
+                                        <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
                         <div class="col-12 col-lg-6">
                             <div class="form-group">
-                                <label class="form-label mb-1">{{ translate('city') }}</label>
-                                <input type="text" name="city" class="form-control" value="{{ old('city') }}"
-                                       placeholder="{{ translate('city') }}">
+                                <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
+                                <select name="seller_id" id="seller_id" class="custom-select" required></select>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6">
-                            <div class="form-group">
-                                <label class="form-label mb-1">{{ translate('zip_code') }}</label>
-                                @if($zipCodes)
-                                    <select name="zip" class="form-control js-select2-custom" data-live-search="true">
-                                        @foreach($zipCodes as $code)
-                                            <option
-                                                value="{{ $code->zipcode }}">{{ $code->zipcode }}</option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <input type="text" name="zip_code" class="form-control"
-                                           value="{{ old('zip_code') }}" placeholder="{{ translate('zip_code') }}">
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6">
+                        <div class="col-12">
                             <div class="form-group">
                                 <label class="form-label mb-1">{{ translate('address') }}</label>
                                 <input type="text" name="address" class="form-control" value="{{ old('address') }}"

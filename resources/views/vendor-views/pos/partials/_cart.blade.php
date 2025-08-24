@@ -1,5 +1,6 @@
 <form action="{{route('vendor.pos.order-place')}}" id='order-place' method="post" >
     @csrf
+    <input type="hidden" name="cart" value='@json(["items" => $cartItems["cartItemValue"]])'>
     <div id="cart">
         <div class="table-responsive pos-cart-table border">
             <table class="table table-align-middle m-0">
@@ -72,9 +73,11 @@
                 <div class="d-flex gap-2 justify-content-between">
                     <dt class="title-color text-capitalize font-weight-normal">{{ translate('extra_Discount') }} :</dt>
                     <dd>
+                        @if(\App\Utils\Helpers::module_permission_check('discount'))
                         <button id="extra_discount" class="btn btn-sm p-0" type="button" data-toggle="modal" data-target="#add-discount">
                             <i class="tio-edit"></i>
                         </button>
+                        @endif
                         {{setCurrencySymbol(amount: usdToDefaultCurrency(amount:$cartItems['extraDiscount']), currencyCode: getCurrencyCode())}}
                     </dd>
                 </div>
@@ -82,9 +85,11 @@
                 <div class="d-flex justify-content-between">
                     <dt class="title-color gap-2 text-capitalize font-weight-normal">{{ translate('coupon_Discount') }} :</dt>
                     <dd>
+                        @if(\App\Utils\Helpers::module_permission_check('discount'))
                         <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-toggle="modal" data-target="#add-coupon-discount">
                             <i class="tio-edit"></i>
                         </button>
+                        @endif
                         {{setCurrencySymbol(amount: usdToDefaultCurrency(amount:$cartItems['couponDiscount']), currencyCode: getCurrencyCode())}}
                     </dd>
                 </div>
@@ -170,6 +175,12 @@
                     <dd class="font-weight-bold title-color">{{ setCurrencySymbol(amount: 0) }}</dd>
                 </div>
             </div>
+        </div>
+
+        <!-- Order Note Section -->
+        <div class="form-group mt-3">
+            <label for="order_note" class="text-dark">{{ translate('order_note') }}:</label>
+            <textarea class="form-control" id="order_note" name="order_note" rows="2" placeholder="{{ translate('add_any_special_instructions_or_notes_for_this_order') }}"></textarea>
         </div>
 
         <div class="d-flex gap-2 justify-content-between align-items-center pt-3 bottom-sticky-buttons z-index-1">

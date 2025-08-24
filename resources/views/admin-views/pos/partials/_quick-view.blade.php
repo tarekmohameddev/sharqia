@@ -1,5 +1,5 @@
 <div class="modal-header border-0 pb-0 d-flex justify-content-end">
-    <button type="button" class="btn-close border-0 btn-circle bg-section2 shadow-none" data-bs-dismiss="modal"
+    <button type="button" class="btn-close border-0 btn-circle bg-section2 shadow-none close-quick-view-modal" data-bs-dismiss="modal"
         aria-label="Close">
     </button>
 </div>
@@ -101,6 +101,17 @@
                     ?>
 
                     <input type="hidden" name="id" value="{{ $product->id }}">
+                    <input type="hidden" name="product_name" value="{{ $product->name }}">
+                    <input type="hidden" name="product_price" value="{{ $product->unit_price }}">
+                    <input type="hidden" name="product_image" value="{{ getStorageImages(path: $product->thumbnail_full_url, type: 'backend-product') }}">
+                    <input type="hidden" name="product_type" value="{{ $product->product_type }}">
+                    <input type="hidden" name="product_unit" value="{{ $product->unit }}">
+                    <input type="hidden" name="product_tax" value="{{ $product->tax }}">
+                    <input type="hidden" name="product_tax_type" value="{{ $product->tax_type }}">
+                    <input type="hidden" name="product_tax_model" value="{{ $product->tax_model }}">
+                    <input type="hidden" name="product_discount" value="{{ getProductPriceByType(product: $product, type: 'discounted_amount', result: 'value', price: $product->unit_price) }}">
+                    <input type="hidden" name="product_discount_type" value="{{ $product->discount_type }}">
+                    <input type="hidden" name="product_stock" value="{{ $product->current_stock }}">
                     <div class="variant-change">
                         <div class="position-relative mb-4">
                             @if (count(json_decode($product->colors)) > 0)

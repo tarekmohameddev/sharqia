@@ -6,6 +6,8 @@ use App\Contracts\Repositories\CategoryRepositoryInterface;
 use App\Contracts\Repositories\CouponRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryZipCodeRepositoryInterface;
+use App\Models\Governorate;
+use App\Models\CityShippingCost;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Enums\SessionKey;
@@ -23,6 +25,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use App\Models\CategoryDiscountRule;
+use App\Models\Product;
 
 class POSController extends BaseController
 {
@@ -65,7 +69,7 @@ class POSController extends BaseController
             ],
             relations: ['clearanceSale' => function ($query) {
                 return $query->active();
-            }],
+            }, 'activeDiscountRules.giftProduct'],
             dataLimit: getWebConfig('pagination_limit'),
         );
         $cartId = 'walk-in-customer-' . rand(10, 1000);
@@ -77,8 +81,30 @@ class POSController extends BaseController
         $order = $this->orderRepo->getFirstWhere(params: ['id' => session(SessionKey::LAST_ORDER)]);
         $totalHoldOrder = $summaryData['totalHoldOrders'];
 
-        $countries = getWebConfig(name: 'delivery_country_restriction') ? $this->get_delivery_country_array() : COUNTRIES;
-        $zipCodes = getWebConfig(name: 'delivery_zip_code_area_restriction') ? $this->deliveryZipCodeRepo->getListWhere(dataLimit: 'all') : 0;
+        $governorates = Governorate::all();
+
+        // Build category discount rules map for client-side POS
+        $rawCategoryRules = CategoryDiscountRule::with(['giftProduct'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
+        $categoryRulesMap = [];
+        foreach ($rawCategoryRules as $rule) {
+            $gift = null;
+            if ($rule->giftProduct) {
+                $gift = [
+                    'id' => $rule->giftProduct->id,
+                    'name' => $rule->giftProduct->name,
+                    'image' => getStorageImages(path: $rule->giftProduct->thumbnail_full_url, type: 'backend-product'),
+                    'unit' => $rule->giftProduct->unit,
+                    'stock' => (int) ($rule->giftProduct->current_stock ?? 0),
+                ];
+            }
+            $categoryRulesMap[$rule->category_id][] = [
+                'id' => $rule->id,
+                'quantity' => (int) $rule->quantity,
+                'discountAmount' => (float) $rule->discount_amount,
+                'giftProduct' => $gift,
+            ];
+        }
+
         return view('admin-views.pos.index', compact(
             'categories',
             'categoryId',
@@ -90,9 +116,43 @@ class POSController extends BaseController
             'cartItems',
             'order',
             'totalHoldOrder',
-            'countries',
-            'zipCodes'
+            'governorates',
+            'categoryRulesMap'
         ));
+    }
+
+    public function getSellers(Request $request): JsonResponse
+    {
+        $governorate = Governorate::with(['sellers.shop', 'shippingCost'])->find($request['governorate_id']);
+        $sellers = $governorate?->sellers->map(fn($seller) => [
+            'id' => $seller->id,
+            'name' => $seller->shop->name ?? ($seller->f_name . ' ' . $seller->l_name),
+        ]);
+        
+        $shippingCost = $governorate?->shippingCost?->cost ?? 0;
+        
+        return response()->json([
+            'sellers' => $sellers,
+            'shipping_cost' => $shippingCost
+        ]);
+    }
+
+    public function setShipping(Request $request): JsonResponse
+    {
+        session([
+            'selected_city_id' => $request['city_id'],
+            'selected_shipping_cost' => $request['shipping_cost']
+        ]);
+        
+        // Return updated cart summary instead of just success
+        $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
+        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));
+        
+        return response()->json([
+            'success' => true,
+            'view' => view('admin-views.pos.partials._cart-summary', compact('summaryData', 'cartItems'))->render()
+        ]);
     }
 
 
@@ -118,6 +178,13 @@ class POSController extends BaseController
      */
     public function updateDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'extraDiscount' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         if ($request['type'] == 'percent' && ($request['discount'] < 0 || $request['discount'] > 100)) {
             $cartItems = $this->getCartData(cartName: $cartId);
@@ -189,6 +256,13 @@ class POSController extends BaseController
      */
     public function getCouponDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'coupon' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         $userId = $this->cartService->getUserId();
         if ($userId != 0) {
@@ -409,9 +483,11 @@ class POSController extends BaseController
             subTotalCalculation: $subTotalCalculation,
             cartName: $cartName
         );
+        $shippingCost = session('selected_shipping_cost', 0);
+        
         return [
             'countItem' => $subTotalCalculation['countItem'],
-            'total' => $totalCalculation['total'],
+            'total' => $totalCalculation['total'] + $shippingCost,
             'subtotal' => $subTotalCalculation['subtotal'],
             'taxCalculate' => $subTotalCalculation['taxCalculate'],
             'totalTaxShow' => $subTotalCalculation['totalTaxShow'],
@@ -422,6 +498,7 @@ class POSController extends BaseController
             'customerOnHold' => $subTotalCalculation['customerOnHold'] ?? false,
             'couponDiscount' => $totalCalculation['couponDiscount'],
             'extraDiscount' => $totalCalculation['extraDiscount'],
+            'shippingCost' => $shippingCost,
         ];
     }
 
@@ -441,6 +518,7 @@ class POSController extends BaseController
                 'keywords' => $request['name'],
                 'search_from' => 'pos'
             ],
+            relations: ['activeDiscountRules.giftProduct'],
             dataLimit: 'all'
         );
         $data = [

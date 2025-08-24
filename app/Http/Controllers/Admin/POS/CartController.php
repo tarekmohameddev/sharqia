@@ -436,4 +436,6 @@ class CartController extends BaseController
         $cartItemData = $this->calculateCartItemsData(cartName: $cartName, customerCartData: $customerCartData);
         return array_merge($customerCartData[$cartName], $cartItemData);
     }
+
+
 }

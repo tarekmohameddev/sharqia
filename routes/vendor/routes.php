@@ -174,6 +174,8 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::post(Order::UPDATE_AMOUNT_DATE[URI], 'updateAmountDate')->name('amount-date-update');
                     Route::post(Order::DIGITAL_FILE_UPLOAD_AFTER_SELL[URI], 'uploadDigitalFileAfterSell')->name('digital-file-upload-after-sell');
                     Route::post(Order::UPDATE_STATUS[URI], 'updateStatus')->name('status');
+                    Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
+                    Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
                 });
             });
 

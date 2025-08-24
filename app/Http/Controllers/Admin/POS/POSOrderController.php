@@ -7,6 +7,7 @@ use App\Contracts\Repositories\DigitalProductVariationRepositoryInterface;
 use App\Contracts\Repositories\OrderDetailRepositoryInterface;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\ShippingAddressRepositoryInterface;
 use App\Contracts\Repositories\StorageRepositoryInterface;
 use App\Contracts\Repositories\VendorRepositoryInterface;
 use App\Enums\SessionKey;
@@ -16,6 +17,7 @@ use App\Services\CartService;
 use App\Services\OrderDetailsService;
 use App\Services\OrderService;
 use App\Services\POSService;
+use App\Services\ShippingAddressService;
 use App\Traits\CalculatorTrait;
 use App\Traits\CustomerTrait;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
@@ -40,10 +42,12 @@ class POSOrderController extends BaseController
      * @param VendorRepositoryInterface $vendorRepo
      * @param DigitalProductVariationRepositoryInterface $digitalProductVariationRepo
      * @param StorageRepositoryInterface $storageRepo
+     * @param ShippingAddressRepositoryInterface $shippingAddressRepo
      * @param POSService $POSService
      * @param CartService $cartService
      * @param OrderDetailsService $orderDetailsService
      * @param OrderService $orderService
+     * @param ShippingAddressService $shippingAddressService
      */
     public function __construct(
         private readonly ProductRepositoryInterface                 $productRepo,
@@ -53,10 +57,12 @@ class POSOrderController extends BaseController
         private readonly VendorRepositoryInterface                  $vendorRepo,
         private readonly DigitalProductVariationRepositoryInterface $digitalProductVariationRepo,
         private readonly StorageRepositoryInterface                 $storageRepo,
+        private readonly ShippingAddressRepositoryInterface         $shippingAddressRepo,
         private readonly POSService                                 $POSService,
         private readonly CartService                                $cartService,
         private readonly OrderDetailsService                        $orderDetailsService,
         private readonly OrderService                               $orderService,
+        private readonly ShippingAddressService                     $shippingAddressService,
     )
     {
     }
@@ -88,17 +94,138 @@ class POSOrderController extends BaseController
     public function placeOrder(Request $request): JsonResponse
     {
         $amount = $request['amount'];
-        $paidAmount = $request['type'] == 'cash' ? ($request['paid_amount'] ?? 0) : null;
-        $cartId = session(SessionKey::CURRENT_USER);
-        $condition = $this->POSService->checkConditions(amount: $amount, paidAmount: $paidAmount);
-        if ($condition == 'true') {
+        $paidAmount = $request['type'] == 'cash' ? ($request['paid_amount'] ?? 0) : $amount;
+        $sellerId = $request['seller_id'];
+        $cityId = $request['city_id'];
+        $orderNote = $request['order_note'] ?? null;
+
+        // Handle client cart data if present
+        if ($request->has('cart_data')) {
+            $clientCart = json_decode($request['cart_data'], true);
+            $cart = ['items' => []];
+            
+            // Convert client cart items to server cart format
+            foreach ($clientCart['items'] as $item) {
+                $cart['items'][] = [
+                    'id' => $item['id'],
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'image' => $item['image'],
+                    'productType' => $item['productType'],
+                    'unit' => $item['unit'],
+                    'tax' => $item['tax'],
+                    'tax_type' => $item['taxType'],
+                    'tax_model' => $item['taxModel'],
+                    'discount' => $item['discount'],
+                    'discount_type' => $item['discountType'],
+                    'variant' => $item['variant'],
+                    'variations' => $item['variations'],
+                    'productSubtotal' => ($item['price'] - $item['discount']) * $item['quantity']
+                ];
+            }
+            
+            // Handle extra discount - prefer separate fields over cart data
+            $cart['ext_discount'] = $request->get('ext_discount', $clientCart['extraDiscount'] ?? 0);
+            $cart['ext_discount_type'] = $request->get('ext_discount_type', ($cart['ext_discount'] > 0 ? 'amount' : null));
+            $cart['coupon_discount'] = $clientCart['couponDiscount'] ?? 0;
+            
+            $cartItems = $cart['items'];
+        } else {
+            // Handle traditional server-side cart
+            $cart = $request->input('cart', []);
+            $cartItems = $cart['items'] ?? [];
+        }
+        
+        if (empty($cartItems)) {
+            ToastMagic::error(translate('cart_empty_warning'));
             return response()->json();
         }
-        $userId = $this->cartService->getUserId();
-        $checkProductTypeDigital = $this->cartService->checkProductTypeDigital(cartId: $cartId);
-        if ($userId == 0 && $checkProductTypeDigital) {
-            return response()->json(['checkProductTypeForWalkingCustomer' => true, 'message' => translate('To_order_digital_product') . ',' . translate('_kindly_fill_up_the_“Add_New_Customer”_form') . '.']);
+        if ($amount <= 0) {
+            ToastMagic::error(translate('amount_cannot_be_lees_then_0'));
+            return response()->json();
         }
+
+        // Handle customer info from different sources
+        if ($request->has('customer_data')) {
+            // New flow: customer data from always-visible form
+            $customerData = json_decode($request['customer_data'], true);
+            
+            // Find existing customer by phone or create new
+            $customer = $this->customerRepo->getFirstWhere(['phone' => $customerData['phone']]);
+            
+            if ($customer) {
+                // Update existing customer with new information
+                $this->customerRepo->update($customer->id, [
+                    'f_name' => $customerData['f_name'],
+                    'l_name' => $customerData['l_name'] ?? '',
+                ]);
+                
+                // Update or create shipping address
+                $existingAddress = $this->shippingAddressRepo->getFirstWhere([
+                    'customer_id' => $customer->id, 
+                    'address_type' => 'home'
+                ]);
+                
+                $addressData = $this->shippingAddressService->getAddAddressData(
+                    array_merge($customerData, ['l_name' => '']), 
+                    $customer->id, 
+                    'home'
+                );
+                
+                if ($existingAddress) {
+                    $this->shippingAddressRepo->update($existingAddress->id, $addressData);
+                } else {
+                    $this->shippingAddressRepo->add($addressData);
+                }
+                
+                $userId = $customer->id;
+            } else {
+                // Create new customer
+                $customer = $this->customerRepo->add([
+                    'f_name' => $customerData['f_name'],
+                    'l_name' => $customerData['l_name'] ?? '',
+                    'email' => null, // No email in POS flow
+                    'phone' => $customerData['phone'],
+                    'password' => bcrypt('123456'), // Default password
+                    'is_active' => 1,
+                ]);
+                
+                // Create shipping address
+                $addressData = $this->shippingAddressService->getAddAddressData(
+                    array_merge($customerData, ['l_name' => '']), 
+                    $customer->id, 
+                    'home'
+                );
+                $this->shippingAddressRepo->add($addressData);
+                
+                $userId = $customer->id;
+            }
+            
+            // Store city and seller in session for this order
+            session(['selected_city_id' => $customerData['city_id'], 'selected_seller_id' => $customerData['seller_id']]);
+            
+        } elseif ($request->has('customer_id')) {
+            $userId = $request['customer_id'];
+            $customerInfo = ['id' => $userId];
+        } else {
+            $customerInfo = $request->input('customer', []);
+            $userId = $customerInfo['id'] ?? 0;
+        }
+        if ($userId == 0 && isset($customerInfo['phone'])) {
+            $customer = $this->customerRepo->updateOrCreate(
+                ['phone' => $customerInfo['phone']],
+                [
+                    'f_name' => $customerInfo['f_name'] ?? '',
+                    'l_name' => $customerInfo['l_name'] ?? '',
+                    'email' => $customerInfo['email'] ?? null,
+                    'phone' => $customerInfo['phone'],
+                    'password' => bcrypt('123456'),
+                ]
+            );
+            $userId = $customer['id'];
+        }
+
         if ($request['type'] == 'wallet' && $userId != 0) {
             $customerBalance = $this->customerRepo->getFirstWhere(params: ['id' => $userId]) ?? 0;
             if ($customerBalance['wallet_balance'] >= currencyConverter(amount: $amount)) {
@@ -108,65 +235,83 @@ class POSOrderController extends BaseController
                 return response()->json();
             }
         }
-        $cart = session($cartId);
+
+        $checkProductTypeDigital = false;
+        foreach ($cartItems as $ci) {
+            $productTypeCheck = $this->productRepo->getFirstWhere(params: ['id' => $ci['id']]);
+            if ($productTypeCheck && $productTypeCheck['product_type'] == 'digital') {
+                $checkProductTypeDigital = true;
+            }
+        }
+        if ($userId == 0 && $checkProductTypeDigital) {
+            return response()->json(['checkProductTypeForWalkingCustomer' => true, 'message' => translate('To_order_digital_product') . ',' . translate('_kindly_fill_up_the_“Add_New_Customer”_form') . '.']);
+        }
+
         $orderId = 100000 + $this->orderRepo->getList()->count() + 1;
         $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId]);
         if ($order) {
             $orderId = $this->orderRepo->getList(orderBy: ['id' => 'DESC'])->first()->id + 1;
         }
-        foreach ($cart as $item) {
-            if (is_array($item)) {
-                $product = $this->productRepo->getFirstWhere(params: ['id' => $item['id']], relations: ['clearanceSale' => function ($query) {
-                    return $query->active();
-                }]);
-                if ($product) {
-                    $tax = $this->getTaxAmount($item['price'], $product['tax']);
-                    $price = $product['tax_model'] == 'include' ? $item['price'] - $tax : $item['price'];
-
-                    $digitalProductVariation = $this->digitalProductVariationRepo->getFirstWhere(params: ['product_id' => $item['id'], 'variant_key' => $item['variant']], relations: ['storage']);
-                    if ($product['product_type'] == 'digital' && $digitalProductVariation) {
-                        $price = $product['tax_model'] == 'include' ? $digitalProductVariation['price'] - $tax : $digitalProductVariation['price'];
-
-                        if ($product['digital_product_type'] == 'ready_product') {
-                            $getStoragePath = $this->storageRepo->getFirstWhere(params: [
-                                'data_id' => $digitalProductVariation['id'],
-                                "data_type" => "App\Models\DigitalProductVariation",
-                            ]);
-                            $product['digital_file_ready'] = $digitalProductVariation['file'];
-                            $product['storage_path'] = $getStoragePath ? $getStoragePath['value'] : 'public';
-                        }
-                    } elseif ($product['digital_product_type'] == 'ready_product' && !empty($product['digital_file_ready'])) {
-                        $product['storage_path'] = $product['digital_file_ready_storage_type'] ?? 'public';
-                    }
-                    $orderDetail = $this->orderDetailsService->getPOSOrderDetailsData(
-                        orderId: $orderId, item: $item,
-                        product: $product, price: $price, tax: $tax
-                    );
-                    if ($item['variant'] != null) {
-                        $variantData = $this->POSService->getVariantData(
-                            type: $item['variant'],
-                            variation: json_decode($product['variation'], true),
-                            quantity: $item['quantity']
-                        );
-                        $this->productRepo->update(id: $product['id'], data: ['variation' => json_encode($variantData)]);
-                    }
-
-                    if ($product['product_type'] == 'physical') {
-                        $currentStock = $product['current_stock'] - $item['quantity'];
-                        $this->productRepo->update(id: $product['id'], data: ['current_stock' => $currentStock]);
-                    }
-                    $this->orderDetailRepo->add(data: $orderDetail);
-                }
+        foreach ($cartItems as $item) {
+            $product = $this->productRepo->getFirstWhere(params: ['id' => $item['id']], relations: ['clearanceSale' => function ($query) {
+                return $query->active();
+            }]);
+            if (!$product) {
+                continue;
             }
+            $tax = $this->getTaxAmount($item['price'], $product['tax']);
+            $price = $product['tax_model'] == 'include' ? $item['price'] - $tax : $item['price'];
+
+            $digitalProductVariation = $this->digitalProductVariationRepo->getFirstWhere(params: ['product_id' => $item['id'], 'variant_key' => $item['variant']], relations: ['storage']);
+            if ($product['product_type'] == 'digital' && $digitalProductVariation) {
+                $price = $product['tax_model'] == 'include' ? $digitalProductVariation['price'] - $tax : $digitalProductVariation['price'];
+
+                if ($product['digital_product_type'] == 'ready_product') {
+                    $getStoragePath = $this->storageRepo->getFirstWhere(params: [
+                        'data_id' => $digitalProductVariation['id'],
+                        "data_type" => "App\Models\DigitalProductVariation",
+                    ]);
+                    $product['digital_file_ready'] = $digitalProductVariation['file'];
+                    $product['storage_path'] = $getStoragePath ? $getStoragePath['value'] : 'public';
+                }
+            } elseif ($product['digital_product_type'] == 'ready_product' && !empty($product['digital_file_ready'])) {
+                $product['storage_path'] = $product['digital_file_ready_storage_type'] ?? 'public';
+            }
+
+            $orderDetail = $this->orderDetailsService->getPOSOrderDetailsData(
+                orderId: $orderId, item: $item,
+                product: $product, price: $price, tax: $tax
+            );
+            if ($item['variant'] != null) {
+                $variantData = $this->POSService->getVariantData(
+                    type: $item['variant'],
+                    variation: json_decode($product['variation'], true),
+                    quantity: $item['quantity']
+                );
+                $this->productRepo->update(id: $product['id'], data: ['variation' => json_encode($variantData)]);
+            }
+
+            if ($product['product_type'] == 'physical') {
+                $currentStock = $product['current_stock'] - $item['quantity'];
+                $this->productRepo->update(id: $product['id'], data: ['current_stock' => $currentStock]);
+            }
+            $this->orderDetailRepo->add(data: $orderDetail);
         }
+
+        $shippingCost = $request['shipping_cost'] ?? session('selected_shipping_cost', 0);
+        
         $order = $this->orderService->getPOSOrderData(
             orderId: $orderId,
             cart: $cart,
             amount: $amount,
-            paidAmount: $request['type'] == 'cash' ? $paidAmount : $amount,
+            paidAmount: $paidAmount,
             paymentType: $request['type'],
             addedBy: 'admin',
-            userId: $userId
+            userId: $userId,
+            sellerId: $sellerId,
+            cityId: $cityId,
+            shippingCost: $shippingCost,
+            orderNote: $orderNote,
         );
         $this->orderRepo->add(data: $order);
         if ($checkProductTypeDigital) {
@@ -182,11 +327,9 @@ class POSOrderController extends BaseController
             ];
             event(new DigitalProductDownloadEvent(email: $order->customer['email'], data: $data));
         }
-        session()->forget($cartId);
-        session(['last_order' => $orderId]);
-        $this->cartService->getNewCartId();
+
         ToastMagic::success(translate('order_placed_successfully'));
-        return response()->json();
+        return response()->json(['order_id' => $orderId]);
     }
 
     public function cancelOrder(Request $request): JsonResponse

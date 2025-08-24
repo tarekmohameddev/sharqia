@@ -103,6 +103,8 @@
                                     </div>
                                 </div>
 
+                                @include('admin-views.category.partials._discount-rules', ['category' => $category])
+
                                 @if ($category['parent_id'] == 0 || ($category['position'] == 1 && theme_root_path() == 'theme_aster'))
                                 <div class="col-lg-6 mt-4 mt-lg-0 from_part_2">
                                     <div

@@ -114,6 +114,8 @@
                                 </div>
                             </div>
 
+                            @include('admin-views.category.partials._discount-rules')
+
                             <div class="d-flex flex-wrap gap-3 justify-content-end">
                                 <button type="reset" id="reset"
                                         class="btn btn-secondary min-w-120">{{ translate('reset') }}</button>

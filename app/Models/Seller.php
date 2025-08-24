@@ -6,6 +6,7 @@ use App\Traits\StorageTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -112,6 +113,11 @@ class Seller extends Authenticatable
             ->where(['coupon_bearer' => 'seller', 'status' => 1])
             ->whereDate('start_date', '<=', date('Y-m-d'))
             ->whereDate('expire_date', '>=', date('Y-m-d'));
+    }
+
+    public function governorate_coverages(): BelongsToMany
+    {
+        return $this->belongsToMany(Governorate::class, 'seller_governorate_coverages', 'seller_id', 'governorate_id');
     }
 
     public function getImageFullUrlAttribute(): array
