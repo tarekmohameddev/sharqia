@@ -726,6 +726,81 @@ function attachClientCartEventHandlers() {
         }
     });
 
+    // Quick quantity buttons (2/3/5/10)
+    $('.action-add-quantity-to-cart').off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = $(this);
+        const hasVariants = button.data('has-variants') === 'true';
+        const quantity = parseInt(button.data('quantity')) || 1;
+
+        if (hasVariants) {
+            // For variant products, open quick view to select options
+            quickView(button.data('product-id'));
+            return;
+        }
+
+        const productData = {
+            id: parseInt(button.data('product-id')),
+            name: button.data('product-name'),
+            price: parseFloat(button.data('product-price')),
+            image: button.data('product-image'),
+            productType: button.data('product-type'),
+            categoryId: parseInt(button.data('product-category-id') || 0),
+            unit: button.data('product-unit'),
+            tax: parseFloat(button.data('product-tax') || 0),
+            taxType: button.data('product-tax-type'),
+            taxModel: button.data('product-tax-model'),
+            discount: parseFloat(button.data('product-discount') || 0),
+            discountType: button.data('product-discount-type'),
+            stock: parseInt(button.data('product-stock') || 0),
+            variant: '',
+            variations: []
+        };
+
+        // Stock check for physical products
+        if (productData.productType === 'physical') {
+            if (productData.stock <= 0 || quantity > productData.stock) {
+                toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text"));
+                return;
+            }
+        }
+
+        // If item exists, set its quantity to the selected amount; else add new with that quantity
+        const existingItem = clientCart.items.find(item => item.id === productData.id && item.variant === '');
+        if (existingItem) {
+            updateClientCartQuantity(productData.id, '', quantity);
+        } else {
+            const newItem = {
+                id: productData.id,
+                name: productData.name,
+                price: parseFloat(productData.price),
+                image: productData.image,
+                quantity: quantity,
+                productType: productData.productType,
+                unit: productData.unit || '',
+                tax: parseFloat(productData.tax || 0),
+                taxType: productData.taxType || 'percent',
+                taxModel: productData.taxModel || 'exclude',
+                discount: parseFloat(productData.discount || 0),
+                discountType: productData.discountType || 'flat',
+                variant: '',
+                variations: [],
+                categoryId: parseInt(productData.categoryId || 0),
+                stock: parseInt(productData.stock || 0)
+            };
+            clientCart.items.push(newItem);
+            calculateCartTotals();
+            updateCartDisplay();
+            saveClientCart();
+            toastMagic.success(
+                $("#message-item-has-been-added-in-your-cart").data("text"), '',
+                { CloseButton: true, ProgressBar: true }
+            );
+        }
+    });
+
     // Add offer to cart buttons
     $('.action-add-offer-to-cart').off('click').on('click', function(e) {
         e.preventDefault();
