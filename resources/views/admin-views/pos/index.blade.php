@@ -277,7 +277,6 @@
                 padding: 0;
                 text-align: center;
                 margin-bottom: 0;
-                flex: none;
                 width: 100%;
                 display: flex;
                 flex-direction: column;
