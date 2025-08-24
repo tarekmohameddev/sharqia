@@ -747,6 +747,7 @@
     <script src="{{ dynamicAsset(path: 'public/assets/back-end/js/admin/pos-script.js') }}"></script>
     <script>
         "use strict";
+        window.CATEGORY_RULES_MAP = @json($categoryRulesMap ?? []);
         document.addEventListener('DOMContentLoaded', function () {
             @if($order)
             const modalElement = document.getElementById('print-invoice');

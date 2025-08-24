@@ -82,6 +82,16 @@ class Category extends Model
         return $this->hasMany(Product::class, 'sub_sub_category_id', 'id');
     }
 
+    public function discountRules(): HasMany
+    {
+        return $this->hasMany(CategoryDiscountRule::class, 'category_id', 'id');
+    }
+
+    public function activeDiscountRules(): HasMany
+    {
+        return $this->hasMany(CategoryDiscountRule::class, 'category_id', 'id')->where('is_active', true)->orderBy('quantity', 'desc');
+    }
+
     public function getNameAttribute($name): string|null
     {
         if (strpos(url()->current(), '/admin') || strpos(url()->current(), '/vendor') || strpos(url()->current(), '/seller')) {

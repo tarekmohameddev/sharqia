@@ -3301,4 +3301,12 @@ return [
 	"printed_only" => "Printed only",
 	"unprinted_only" => "Unprinted only",
 	"printed" => "Printed",
+	"category_discount_rules" => "Category discount rules",
+	"create_quantity_based_discount_rules_for_this_category" => "Create quantity based discount rules for this category",
+	"ex: 20" => "Ex: 20",
+	"category_name_is_required" => "Category name is required",
+	"category_image_must_be_jpg_jpeg_png" => "Category image must be jpg jpeg png",
+	"category_image_must_not_exceed_2mb" => "Category image must not exceed 2mb",
+	"category_priority_is_required" => "Category priority is required",
+	"category_updated_successfully" => "Category updated successfully",
 ];

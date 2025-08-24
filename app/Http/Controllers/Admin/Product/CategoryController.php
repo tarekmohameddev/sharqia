@@ -13,6 +13,7 @@ use App\Http\Requests\Admin\CategoryAddRequest;
 use App\Http\Requests\Admin\CategoryUpdateRequest;
 use App\Services\CategoryService;
 use App\Services\ProductService;
+use App\Models\CategoryDiscountRule;
 use App\Traits\PaginatorTrait;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
 use Illuminate\Contracts\View\View;
@@ -73,6 +74,21 @@ class CategoryController extends BaseController
         $savedCategory = $this->categoryRepo->add(data: $dataArray);
         $this->translationRepo->add(request: $request, model: 'App\Models\Category', id: $savedCategory->id);
 
+        // Handle category discount rules
+        if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
+            foreach ($request['category_discount_rules'] as $ruleData) {
+                if (!empty($ruleData['quantity']) && isset($ruleData['discount_amount'])) {
+                    CategoryDiscountRule::create([
+                        'category_id' => $savedCategory->id,
+                        'quantity' => (int) $ruleData['quantity'],
+                        'discount_amount' => (float) $ruleData['discount_amount'],
+                        'gift_product_id' => !empty($ruleData['gift_product_id']) ? (int) $ruleData['gift_product_id'] : null,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+        }
+
         updateSetupGuideCacheKey(key: 'category_setup', panel: 'admin');
         ToastMagic::success(translate('category_added_successfully'));
         return back();
@@ -84,6 +100,22 @@ class CategoryController extends BaseController
         $dataArray = $categoryService->getUpdateData(request: $request, data: $category);
         $this->categoryRepo->update(id: $request['id'], data: $dataArray);
         $this->translationRepo->update(request: $request, model: 'App\Models\Category', id: $request['id']);
+
+        // Update category discount rules
+        CategoryDiscountRule::where('category_id', $category->id)->delete();
+        if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
+            foreach ($request['category_discount_rules'] as $ruleData) {
+                if (!empty($ruleData['quantity']) && isset($ruleData['discount_amount'])) {
+                    CategoryDiscountRule::create([
+                        'category_id' => $category->id,
+                        'quantity' => (int) $ruleData['quantity'],
+                        'discount_amount' => (float) $ruleData['discount_amount'],
+                        'gift_product_id' => !empty($ruleData['gift_product_id']) ? (int) $ruleData['gift_product_id'] : null,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+        }
 
         updateSetupGuideCacheKey(key: 'category_setup', panel: 'admin');
         ToastMagic::success(translate('category_updated_successfully'));

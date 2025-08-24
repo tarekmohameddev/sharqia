@@ -14,6 +14,107 @@ let clientCart = {
     total: 0
 };
 
+// Compute category-based deals: greedy apply highest thresholds first, multiples allowed
+function computeCategoryDeals(items, categoryRulesMap) {
+    const byCategory = {};
+    items.forEach(item => {
+        if (!item || item.isGift) return;
+        const catId = parseInt(item.categoryId || 0);
+        if (!catId) return;
+        byCategory[catId] = byCategory[catId] || { count: 0 };
+        byCategory[catId].count += parseInt(item.quantity || 0);
+    });
+
+    let totalDiscount = 0;
+    const gifts = [];
+
+    Object.keys(byCategory).forEach(catId => {
+        const rules = (categoryRulesMap && categoryRulesMap[catId]) ? categoryRulesMap[catId].slice().sort((a,b)=>b.quantity-a.quantity) : [];
+        if (!rules.length) return;
+        let remaining = byCategory[catId].count;
+        for (const rule of rules) {
+            if (remaining < rule.quantity) continue;
+            const times = Math.floor(remaining / rule.quantity);
+            if (times <= 0) continue;
+            // Only flat amount supported
+            totalDiscount += (parseFloat(rule.discountAmount || 0) * times);
+            if (rule.giftProduct && rule.giftProduct.id) {
+                gifts.push({ categoryId: parseInt(catId), ruleId: rule.id, gift: rule.giftProduct, quantity: times });
+            }
+            remaining = remaining % rule.quantity;
+        }
+    });
+
+    return { discountAmount: totalDiscount, giftsToEnsure: gifts };
+}
+
+function ensureCategoryGifts(giftsToEnsure) {
+    const desired = {};
+    (giftsToEnsure || []).forEach(g => {
+        const key = `cat_${g.categoryId}_rule_${g.ruleId}_gift_${g.gift.id}`;
+        desired[key] = (desired[key] || 0) + g.quantity;
+    });
+
+    // Current gifts in cart
+    const currentCounts = {};
+    clientCart.items.forEach(item => {
+        if (item && item.isGift && item.offerKey) {
+            currentCounts[item.offerKey] = (currentCounts[item.offerKey] || 0) + (item.quantity || 0);
+        }
+    });
+
+    // Add missing
+    (giftsToEnsure || []).forEach(g => {
+        const giftKey = `cat_${g.categoryId}_rule_${g.ruleId}_gift_${g.gift.id}`;
+        const have = currentCounts[giftKey] || 0;
+        const need = g.quantity || 0;
+        if (have < need) {
+            const missing = need - have;
+            for (let i = 0; i < missing; i++) {
+                clientCart.items.push({
+                    id: g.gift.id,
+                    name: (g.gift.name || '') + ' (Gift)',
+                    price: 0,
+                    image: g.gift.image,
+                    quantity: 1,
+                    productType: 'physical',
+                    unit: g.gift.unit,
+                    tax: 0,
+                    taxType: 'flat',
+                    taxModel: 'exclude',
+                    discount: 0,
+                    discountType: 'flat',
+                    variant: '',
+                    variations: [],
+                    stock: g.gift.stock || 0,
+                    categoryId: 0,
+                    isOffer: true,
+                    offerKey: giftKey,
+                    isGift: true,
+                    isLocked: true
+                });
+            }
+        }
+    });
+
+    // Remove extras
+    const remainingDesired = { ...desired };
+    const filtered = [];
+    clientCart.items.forEach(item => {
+        if (!item || !item.isGift || !item.offerKey) {
+            filtered.push(item);
+            return;
+        }
+        const want = remainingDesired[item.offerKey] || 0;
+        if (want > 0) {
+            remainingDesired[item.offerKey] = want - 1;
+            filtered.push(item);
+        }
+        // else drop it
+    });
+    clientCart.items = filtered;
+}
+
 // Initialize client cart from session if exists
 function initializeClientCart() {
     const savedCart = sessionStorage.getItem('pos_client_cart');
@@ -70,6 +171,7 @@ function addToClientCart(productData) {
             discountType: productData.discountType || 'flat',
             variant: productData.variant || '',
             variations: productData.variations || [],
+            categoryId: parseInt(productData.categoryId || 0),
             stock: parseInt(productData.stock || 0)
         };
         clientCart.items.push(newItem);
@@ -97,6 +199,7 @@ function addOfferToClientCart(button) {
         price: parseFloat(button.data('product-price')),
         image: button.data('product-image'),
         productType: button.data('product-type'),
+        categoryId: parseInt(button.data('product-category-id') || 0),
         unit: button.data('product-unit'),
         tax: parseFloat(button.data('product-tax') || 0),
         taxType: button.data('product-tax-type'),
@@ -156,6 +259,7 @@ function addOfferToClientCart(button) {
         variant: '',
         variations: [],
         stock: productData.stock,
+        categoryId: productData.categoryId,
         isOffer: true,
         offerKey: offerKey,
         isGift: false,
@@ -183,6 +287,7 @@ function addOfferToClientCart(button) {
             variant: '',
             variations: [],
             stock: giftProductData.stock,
+            categoryId: 0,
             isOffer: true,
             offerKey: offerKey,
             isGift: true,
@@ -307,6 +412,23 @@ function calculateCartTotals() {
     if (clientCart.total < 0) {
         clientCart.total = 0;
     }
+
+    // Category rules: compute discount and gifts, combine with manual extra discount
+    const rulesMap = (typeof window !== 'undefined') ? (window.CATEGORY_RULES_MAP || {}) : {};
+    const deals = computeCategoryDeals(clientCart.items, rulesMap);
+    ensureCategoryGifts(deals.giftsToEnsure);
+
+    let manualAmount = 0;
+    const typedManual = parseFloat(clientCart.extraDiscountValue || 0);
+    if (clientCart.extraDiscountType === 'percent') {
+        const base = clientCart.subtotal - clientCart.discountOnProduct;
+        manualAmount = (base * (isNaN(typedManual) ? 0 : typedManual)) / 100;
+    } else if (!isNaN(typedManual) && typedManual > 0) {
+        manualAmount = typedManual;
+    } else if (clientCart.extraDiscount && !deals.discountAmount) {
+        manualAmount = parseFloat(clientCart.extraDiscount || 0);
+    }
+    clientCart.extraDiscount = parseFloat(deals.discountAmount || 0) + parseFloat(isNaN(manualAmount) ? 0 : manualAmount);
 }
 
 // Clear client cart
@@ -579,6 +701,7 @@ function attachClientCartEventHandlers() {
                 price: parseFloat(button.data('product-price')),
                 image: button.data('product-image'),
                 productType: button.data('product-type'),
+                categoryId: parseInt(button.data('product-category-id') || 0),
                 unit: button.data('product-unit'),
                 tax: parseFloat(button.data('product-tax') || 0),
                 taxType: button.data('product-tax-type'),
@@ -2004,7 +2127,8 @@ function addToCart(form_id = "add-to-cart-form") {
             discountType: productDiscountType || 'flat',
             stock: productStock,
             variant: variant,
-            variations: variations
+            variations: variations,
+            categoryId: parseInt($(`.action-select-product[data-id="${productId}"] .action-direct-add-to-cart`).data('product-category-id') || 0)
         };
         
         // Check if this exact variant already exists in cart

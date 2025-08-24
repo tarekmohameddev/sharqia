@@ -25,6 +25,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use App\Models\CategoryDiscountRule;
+use App\Models\Product;
 
 class POSController extends BaseController
 {
@@ -80,6 +82,29 @@ class POSController extends BaseController
         $totalHoldOrder = $summaryData['totalHoldOrders'];
 
         $governorates = Governorate::all();
+
+        // Build category discount rules map for client-side POS
+        $rawCategoryRules = CategoryDiscountRule::with(['giftProduct'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
+        $categoryRulesMap = [];
+        foreach ($rawCategoryRules as $rule) {
+            $gift = null;
+            if ($rule->giftProduct) {
+                $gift = [
+                    'id' => $rule->giftProduct->id,
+                    'name' => $rule->giftProduct->name,
+                    'image' => getStorageImages(path: $rule->giftProduct->thumbnail_full_url, type: 'backend-product'),
+                    'unit' => $rule->giftProduct->unit,
+                    'stock' => (int) ($rule->giftProduct->current_stock ?? 0),
+                ];
+            }
+            $categoryRulesMap[$rule->category_id][] = [
+                'id' => $rule->id,
+                'quantity' => (int) $rule->quantity,
+                'discountAmount' => (float) $rule->discount_amount,
+                'giftProduct' => $gift,
+            ];
+        }
+
         return view('admin-views.pos.index', compact(
             'categories',
             'categoryId',
@@ -91,7 +116,8 @@ class POSController extends BaseController
             'cartItems',
             'order',
             'totalHoldOrder',
-            'governorates'
+            'governorates',
+            'categoryRulesMap'
         ));
     }
 
