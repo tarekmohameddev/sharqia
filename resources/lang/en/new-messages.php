@@ -3309,4 +3309,5 @@ return [
 	"category_image_must_not_exceed_2mb" => "Category image must not exceed 2mb",
 	"category_priority_is_required" => "Category priority is required",
 	"category_updated_successfully" => "Category updated successfully",
+	"product_images_is_required" => "Product images is required",
 ];

@@ -27,6 +27,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use App\Models\CategoryDiscountRule;
 
 class POSOrderController extends BaseController
 {
@@ -123,6 +124,8 @@ class POSOrderController extends BaseController
                     'discount_type' => $item['discountType'],
                     'variant' => $item['variant'],
                     'variations' => $item['variations'],
+                    'category_id' => $item['categoryId'] ?? 0,
+                    'is_gift' => (bool)($item['isGift'] ?? false),
                     'productSubtotal' => ($item['price'] - $item['discount']) * $item['quantity']
                 ];
             }
@@ -234,6 +237,92 @@ class POSOrderController extends BaseController
                 $this->productRepo->update(id: $product['id'], data: ['current_stock' => $currentStock]);
             }
             $this->orderDetailRepo->add(data: $orderDetail);
+        }
+
+        // Server-side extra discount calculation (category rules + manual extra)
+        $couponDiscount = (float)($cart['coupon_discount'] ?? 0);
+        $totals = [
+            'subtotal' => 0.0,
+            'productDiscount' => 0.0,
+            'totalTax' => 0.0,
+        ];
+        foreach ($cartItems as $ci) {
+            $itemSubtotal = (float)$ci['price'] * (int)$ci['quantity'];
+            $itemDiscount = (float)$ci['discount'] * (int)$ci['quantity'];
+            $totals['subtotal'] += $itemSubtotal;
+            $totals['productDiscount'] += $itemDiscount;
+            // tax calculation
+            $taxAmount = 0.0;
+            $tax = (float)($ci['tax'] ?? 0);
+            $taxType = $ci['tax_type'] ?? 'percent';
+            $taxModel = $ci['tax_model'] ?? 'exclude';
+            if ($tax > 0) {
+                if ($taxType === 'percent') {
+                    if ($taxModel === 'include') {
+                        $taxAmount = ($itemSubtotal * $tax) / (100 + $tax);
+                    } else {
+                        $taxAmount = ($itemSubtotal * $tax) / 100;
+                    }
+                } else {
+                    $taxAmount = $tax * (int)$ci['quantity'];
+                }
+            }
+            $totals['totalTax'] += $taxAmount;
+        }
+
+        // Category rules discount (exclude gifts)
+        $categoryCounts = [];
+        foreach ($cartItems as $ci) {
+            if (!empty($ci['is_gift'])) { continue; }
+            $catId = (int)($ci['category_id'] ?? 0);
+            if ($catId <= 0) { continue; }
+            $categoryCounts[$catId] = ($categoryCounts[$catId] ?? 0) + (int)$ci['quantity'];
+        }
+        $categoryDiscount = 0.0;
+        if (!empty($categoryCounts)) {
+            $rules = CategoryDiscountRule::whereIn('category_id', array_keys($categoryCounts))
+                ->where('is_active', true)
+                ->orderBy('quantity', 'desc')
+                ->get()
+                ->groupBy('category_id');
+            foreach ($categoryCounts as $catId => $count) {
+                $remaining = $count;
+                $catRules = ($rules[$catId] ?? collect())->sortByDesc('quantity');
+                foreach ($catRules as $rule) {
+                    if ($remaining < (int)$rule->quantity) { continue; }
+                    $times = intdiv($remaining, (int)$rule->quantity);
+                    if ($times <= 0) { continue; }
+                    $categoryDiscount += ((float)$rule->discount_amount) * $times;
+                    $remaining = $remaining % (int)$rule->quantity;
+                }
+            }
+        }
+
+        // Manual extra discount (only if cashier explicitly set it)
+        $manualExtra = 0.0;
+        $manualExtraSet = (int)$request->get('manual_extra_set', 0) === 1;
+        $extType = $manualExtraSet ? ($cart['ext_discount_type'] ?? $request->get('ext_discount_type')) : null;
+        $extVal = $manualExtraSet ? (float)($cart['ext_discount'] ?? $request->get('ext_discount', 0)) : 0.0;
+        if ($manualExtraSet) {
+            if ($extType === 'percent') {
+                $base = max(0.0, $totals['subtotal'] - $totals['productDiscount']);
+                $manualExtra = ($base * $extVal) / 100.0;
+            } elseif ($extVal > 0) {
+                $manualExtra = $extVal;
+            }
+        }
+
+        $totalExtraDiscount = (float)$categoryDiscount + (float)$manualExtra;
+        $cart['ext_discount'] = $totalExtraDiscount;
+        $cart['ext_discount_type'] = $totalExtraDiscount > 0 ? 'amount' : null;
+
+        // Recompute order amount server-side to ensure consistency
+        $serverAmount = $totals['subtotal'] - $totals['productDiscount'] + $totals['totalTax'] - (float)$couponDiscount - (float)$totalExtraDiscount;
+        if ($serverAmount < 0) { $serverAmount = 0; }
+        $amount = $serverAmount;
+        // Force paid amount to match total to avoid change amount in POS flow
+        if ($request['type'] == 'cash') {
+            $paidAmount = $amount;
         }
 
         $order = $this->orderService->getPOSOrderData(

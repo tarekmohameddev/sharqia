@@ -420,8 +420,6 @@ function calculateCartTotals() {
         manualAmount = (base * (isNaN(typedManual) ? 0 : typedManual)) / 100;
     } else if (!isNaN(typedManual) && typedManual > 0) {
         manualAmount = typedManual;
-    } else if (clientCart.extraDiscount && !deals.discountAmount) {
-        manualAmount = parseFloat(clientCart.extraDiscount || 0);
     }
     clientCart.extraDiscount = parseFloat(deals.discountAmount || 0) + parseFloat(isNaN(manualAmount) ? 0 : manualAmount);
 
@@ -630,7 +628,7 @@ function updateCartDisplay() {
                         <dd>
                             <input type="number" class="form-control text-end pos-paid-amount-element remove-spin" 
                                    placeholder="Ex: 1000" value="${clientCart.total}" name="paid_amount"
-                                   min="${clientCart.total}" data-currency-position="left" data-currency-symbol="${currencySymbol}">
+                                   min="${clientCart.total}" max="${clientCart.total}" data-currency-position="left" data-currency-symbol="${currencySymbol}">
                         </dd>
                     </div>
                     <div class="d-flex gap-2 justify-content-between align-items-center">
@@ -937,9 +935,11 @@ function placeClientOrder() {
     formData.append('paid_amount', $('.pos-paid-amount-element').val());
     formData.append('type', $('input[name="type"]:checked').val());
     
-    // Add extra discount fields separately
-    formData.append('ext_discount', clientCart.extraDiscountValue || clientCart.extraDiscount);
-    formData.append('ext_discount_type', clientCart.extraDiscountType || (clientCart.extraDiscount > 0 ? 'amount' : null));
+    // Add manual extra discount fields separately (avoid sending category portion)
+    const manualExtraSet = Boolean(clientCart.extraDiscountType);
+    formData.append('manual_extra_set', manualExtraSet ? 1 : 0);
+    formData.append('ext_discount', manualExtraSet ? (clientCart.extraDiscountValue || 0) : 0);
+    formData.append('ext_discount_type', manualExtraSet ? clientCart.extraDiscountType : null);
     
     // Add order note
     formData.append('order_note', $('#order_note').val());
@@ -1450,6 +1450,11 @@ function basicFunctionalityForCartSummary() {
         .on("input", function () {
             let minimumAmount = parseFloat($(this).attr("min")) || 0;
             let GivenAmount = parseFloat($(this).val()) || 0;
+            // Prevent overpayment/change: cap at total
+            if (GivenAmount > minimumAmount) {
+                GivenAmount = minimumAmount;
+                $(this).val(minimumAmount);
+            }
             let currencyPosition = $(this).data("currency-position");
             let currencySymbol = $(this).data("currency-symbol");
             let decimalPoint = $('#get-decimal-point').data('decimal-point')
@@ -1460,7 +1465,7 @@ function basicFunctionalityForCartSummary() {
                 $("#submit_order").prop("disabled", false);
             }
 
-            let amount = Number(GivenAmount - minimumAmount).toFixed(decimalPoint);
+            let amount = Number(0).toFixed(decimalPoint);
             let result = "";
 
             if (currencyPosition?.toString() === "left") {
