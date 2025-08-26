@@ -431,7 +431,7 @@ function calculateCartTotals() {
 }
 
 // Clear client cart
-function clearClientCart() {
+function clearClientCart(toastOptions) {
     clientCart = {
         items: [],
         subtotal: 0,
@@ -446,7 +446,19 @@ function clearClientCart() {
     };
     saveClientCart();
     updateCartDisplay();
-    toastMagic.info($("#message-cart-is-empty").data("text"));
+    // Toast handling (defaults to previous behavior)
+    const defaultMessage = $("#message-cart-is-empty").data("text") || "Cart is empty";
+    const shouldShowToast = !toastOptions || toastOptions.show !== false;
+    if (shouldShowToast) {
+        const allowedTypes = ["success", "info", "warning", "error"];
+        const type = toastOptions && allowedTypes.includes(toastOptions.type) ? toastOptions.type : "info";
+        const message = (toastOptions && toastOptions.message) ? toastOptions.message : defaultMessage;
+        if (typeof toastMagic[type] === "function") {
+            toastMagic[type](message);
+        } else {
+            toastMagic.info(message);
+        }
+    }
 }
 
 // Update cart display
@@ -971,8 +983,8 @@ function placeClientOrder() {
                     .empty()
                     .html(response.message);
             } else {
-                // Clear client cart on successful order
-                clearClientCart();
+                // Clear client cart on successful order with success toast
+                clearClientCart({ show: true, type: 'success', message: ($("#message-order-created").data("text") || "Order created!") });
                 // Clear customer form for next order
                 clearCustomerForm();
                 location.reload();
