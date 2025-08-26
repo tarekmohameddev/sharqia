@@ -273,7 +273,7 @@
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/late-delivery*')?'active' : ''}}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                href="javascript:" title="{{ translate('late_delivery_requests') }}">
-                                <i class="tio-time-20 nav-icon"></i>
+                                <i class="fi fi-rr-time-forward nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     {{ translate('late_delivery_requests') }}
                                 </span>

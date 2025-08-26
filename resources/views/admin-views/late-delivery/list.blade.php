@@ -115,7 +115,7 @@
         if (status === 'rejected') {
             const note = prompt('{{ translate('please_enter_rejected_note') }}');
             if (note === null || note.trim() === '') {
-                toastr.error('{{ translate('The_rejected_note_field_is_required') }}');
+                toastMagic.error('{{ translate('The_rejected_note_field_is_required') }}');
                 return;
             }
             payload.rejected_note = note.trim();
@@ -131,11 +131,11 @@
             url: '{{ route('admin.late-delivery.status-update') }}',
             data: payload
         }).done(function (res) {
-            toastr.success(res.message || '{{ translate('status_updated_successfully') }}');
+            toastMagic.success(res.message || '{{ translate('status_updated_successfully') }}');
             window.location.reload();
         }).fail(function (xhr) {
             const msg = xhr.responseJSON?.errors?.[0]?.message || xhr.responseJSON?.error || '{{ translate('something_went_wrong') }}';
-            toastr.error(msg);
+            toastMagic.error(msg);
         }).always(function () {
             $btn.prop('disabled', false);
         });

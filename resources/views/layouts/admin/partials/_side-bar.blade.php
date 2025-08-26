@@ -165,8 +165,8 @@
                     </ul>
                 </li>
 
-                <li class="{{ (Request::is('admin/refund-section/*') || Request::is('admin/late-delivery/*')) ? 'sub-menu-opened' : '' }}">
-                    <a class="nav-link nav-link-toggle {{ (Request::is('admin/refund-section/refund/*') || Request::is('admin/late-delivery/*')) ? 'active' : '' }}"
+                <li class="{{ Request::is('admin/refund-section/*') ? 'sub-menu-opened' : '' }}">
+                    <a class="nav-link nav-link-toggle {{ Request::is('admin/refund-section/refund/*') ? 'active' : '' }}"
                        href="javascript:" title="{{ translate('refund_Requests') }}">
                         <i class="fi fi-sr-refund-alt"></i>
                         <span
@@ -229,15 +229,30 @@
                             </a>
                         </li>
                     </ul>
-                    <ul class="nav nav-sub">
+                </li>
+                <li class="{{ Request::is('admin/late-delivery/*') ? 'sub-menu-opened' : '' }}">
+                    <a class="nav-link nav-link-toggle {{ Request::is('admin/late-delivery/*') ? 'active' : '' }}"
+                       href="javascript:" title="{{ translate('late_delivery_requests') }}">
+                        <i class="fi fi-sr-time-forward"></i>
+                        <span
+                            class="aside-mini-hidden-element flex-grow-1 d-flex justify-content-between align-items-center">
+                            <span class="text-truncate max-w-180">
+                                {{ translate('late_delivery_requests') }}
+                            </span>
+                            <i class="fi fi-sr-angle-down"></i>
+                        </span>
+                    </a>
+                    <ul class="aside-submenu navbar-nav">
                         <li class="nav-item px-3 py-2 fw-semibold text-dark bg-section2 aside-mini-show-element">{{ translate('late_delivery_requests') }}</li>
                         <li class="nav-item">
                             <a class="nav-link {{ Request::is('admin/late-delivery/list/pending') ? 'active' : '' }}"
                                href="{{ route('admin.late-delivery.list',['pending']) }}"
                                title="{{ translate('pending') }}">
-                                <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate">
+                                <span class="text-truncate flex-grow-1">
                                     {{ translate('pending') }}
+                                </span>
+                                <span class="badge fw-bold badge-danger badge-sm text-bg-danger">
+                                    {{ \App\Models\LateDeliveryRequest::where('status','pending')->count() }}
                                 </span>
                             </a>
                         </li>
@@ -245,24 +260,30 @@
                             <a class="nav-link {{ Request::is('admin/late-delivery/list/in_progress') ? 'active' : '' }}"
                                href="{{ route('admin.late-delivery.list',['in_progress']) }}"
                                title="{{ translate('in_progress') }}">
-                                <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate">{{ translate('in_progress') }}</span>
+                                <span class="text-truncate flex-grow-1">{{ translate('in_progress') }}</span>
+                                <span class="badge fw-bold badge-info badge-sm text-bg-info">
+                                    {{ \App\Models\LateDeliveryRequest::where('status','in_progress')->count() }}
+                                </span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {{ Request::is('admin/late-delivery/list/resolved') ? 'active' : '' }}"
                                href="{{ route('admin.late-delivery.list',['resolved']) }}"
                                title="{{ translate('resolved') }}">
-                                <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate">{{ translate('resolved') }}</span>
+                                <span class="text-truncate flex-grow-1">{{ translate('resolved') }}</span>
+                                <span class="badge fw-bold badge-success badge-sm text-bg-success">
+                                    {{ \App\Models\LateDeliveryRequest::where('status','resolved')->count() }}
+                                </span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {{ Request::is('admin/late-delivery/list/rejected') ? 'active' : '' }}"
                                href="{{ route('admin.late-delivery.list',['rejected']) }}"
                                title="{{ translate('rejected') }}">
-                                <span class="tio-circle nav-indicator-icon"></span>
-                                <span class="text-truncate">{{ translate('rejected') }}</span>
+                                <span class="text-truncate flex-grow-1">{{ translate('rejected') }}</span>
+                                <span class="badge fw-bold badge-danger badge-sm text-bg-danger">
+                                    {{ \App\Models\LateDeliveryRequest::where('status','rejected')->count() }}
+                                </span>
                             </a>
                         </li>
                     </ul>

@@ -3329,4 +3329,5 @@ return [
 	"The_rejected_note_field_is_required" => "The rejected note field is required",
 	"enter_resolved_note_if_any" => "Enter resolved note if any",
 	"resolved_late_delivery_requests" => "Resolved late delivery requests",
+	"late_delivery_request_list" => "Late delivery request list",
 ];

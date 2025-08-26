@@ -581,10 +581,10 @@
                     _token: '{{ csrf_token() }}'
                 }
             }).done(function (res) {
-                toastr.success(res.message ?? '{{ translate('late_delivery_request_created') }}');
+                toastMagic.success(res.message ?? '{{ translate('late_delivery_request_created') }}');
             }).fail(function (xhr) {
                 const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
-                toastr.error(msg);
+                toastMagic.error(msg);
             });
         });
     </script>

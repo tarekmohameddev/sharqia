@@ -36,7 +36,7 @@ class LateDeliveryController extends BaseController
 			filters: ['status' => $status],
 			whereHas: 'order',
 			whereHasFilters: ['seller_is' => 'seller', 'seller_id' => $vendorId],
-			relations: ['order'],
+			relations: ['order', 'order.seller', 'customer'],
 			dataLimit: getWebConfig('pagination_limit'),
 		);
 		return view(LateDeliveryView::INDEX[VIEW], compact('lateList', 'status'));
