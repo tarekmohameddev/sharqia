@@ -250,6 +250,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('list-ids', 'listIds')->name('list-ids');
             Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
             Route::post('create-refund/{orderId}', 'createRefundRequest')->name('create-refund');
+            Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund');
+            Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund');
+            Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order');
         });
     });
 
@@ -1164,8 +1167,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::controller(RefundController::class)->group(function () {
                 Route::get('list/{status}', 'index')->name('list');
                 Route::get('export/{status}', 'exportList')->name('export');
-                Route::get('details/{id}', 'getDetailsView')->name('details');
-                Route::post('refund-status-update', 'updateRefundStatus')->name('refund-status-update');
             });
         });
     });

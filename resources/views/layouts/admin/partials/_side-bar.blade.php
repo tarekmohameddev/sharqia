@@ -187,7 +187,7 @@
                                     {{ translate('pending') }}
                                 </span>
                                 <span class="badge fw-bold badge-danger badge-sm text-bg-danger">
-                                    {{ \App\Models\RefundRequest::where('status','pending')->count() }}
+                                    {{ \App\Models\OrderRefund::where('status','pending')->count() }}
                                 </span>
                             </a>
                         </li>

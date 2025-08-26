@@ -3375,4 +3375,13 @@ return [
 	"no_cities_available" => "No cities available",
 	"all_cities_already_have_shipping_costs_assigned" => "All cities already have shipping costs assigned",
 	"go_back_to_list" => "Go back to list",
+	"print_order" => "Print order",
+	"Refund_request_approved_successfully" => "Refund request approved successfully",
+	"already_applied_for_refund_request!!" => "Already applied for refund request!!",
+	"you_want_to_approve_this_refund_request" => "You want to approve this refund request",
+	"yes_approve_it" => "Yes approve it",
+	"you_want_to_reject_this_refund_request" => "You want to reject this refund request",
+	"yes_reject_it" => "Yes reject it",
+	"you_want_to_process_this_refund" => "You want to process this refund",
+	"yes_refund_it" => "Yes refund it",
 ];

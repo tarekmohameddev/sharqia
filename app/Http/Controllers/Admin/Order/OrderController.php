@@ -48,6 +48,7 @@ use App\Contracts\Repositories\LoyaltyPointTransactionRepositoryInterface;
 use App\Contracts\Repositories\OrderExpectedDeliveryHistoryRepositoryInterface;
 use App\Models\RefundRequest;
 use App\Events\RefundEvent;
+use App\Models\OrderRefund;
 
 class OrderController extends BaseController
 {
@@ -183,32 +184,80 @@ class OrderController extends BaseController
             return response()->json(['error' => translate('Order_not_found')], 404);
         }
 
-        $createdCount = 0;
-        foreach ($order->details as $orderDetail) {
-            if ((int)$orderDetail['refund_request'] === 0) {
-                $refundRequest = new RefundRequest();
-                $refundRequest->order_details_id = $orderDetail['id'];
-                $refundRequest->customer_id = $order['customer_id'] ?? 0;
-                $refundRequest->status = 'pending';
-                $refundRequest->amount = OrderManager::getRefundDetailsForSingleOrderDetails(orderDetailsId: $orderDetail['id'])['total_refundable_amount'];
-                $refundRequest->product_id = $orderDetail['product_id'];
-                $refundRequest->order_id = $order['id'];
-                $refundRequest->refund_reason = $request->input('reason', 'Created by admin');
-                $refundRequest->save();
-
-                $this->orderDetailRepo->update(id: $orderDetail['id'], data: ['refund_request' => 1]);
-
-                event(new RefundEvent(status: 'refund_request', order: $order, refund: $refundRequest, orderDetails: $orderDetail));
-
-                $createdCount++;
-            }
-        }
-
-        if ($createdCount === 0) {
+        // Check if a refund request already exists for this order
+        $existingRefund = OrderRefund::where('order_id', $orderId)->first();
+        if ($existingRefund) {
             return response()->json(['error' => translate('already_applied_for_refund_request!!')], 422);
         }
 
-        return response()->json(['message' => translate('refund_requested_successful!!'), 'created' => $createdCount]);
+        // Calculate total refundable amount for the order
+        $totalRefundableAmount = 0;
+        foreach ($order->details as $orderDetail) {
+            $totalRefundableAmount += OrderManager::getRefundDetailsForSingleOrderDetails(orderDetailsId: $orderDetail['id'])['total_refundable_amount'];
+        }
+
+        // Create a single refund request for the entire order
+        $orderRefund = new OrderRefund();
+        $orderRefund->order_id = $order->id;
+        $orderRefund->customer_id = $order->customer_id ?? 0;
+        $orderRefund->status = 'pending';
+        $orderRefund->amount = $totalRefundableAmount;
+        $orderRefund->admin_note = $request->input('reason', 'Created by admin');
+        $orderRefund->save();
+
+        // Optionally, update the order details to indicate a refund has been requested
+        foreach ($order->details as $orderDetail) {
+            $this->orderDetailRepo->update(id: $orderDetail['id'], data: ['refund_request' => 1]);
+        }
+
+        // Optionally, dispatch an event
+        // event(new RefundEvent(status: 'refund_request', order: $order, refund: $orderRefund));
+
+        return response()->json(['message' => translate('refund_requested_successful!!')]);
+    }
+
+    public function approveRefund(Request $request, int $refundId): JsonResponse
+    {
+        $orderRefund = OrderRefund::find($refundId);
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'approved';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_approved_successfully')]);
+    }
+
+    public function rejectRefund(Request $request, int $refundId): JsonResponse
+    {
+        $orderRefund = OrderRefund::find($refundId);
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'rejected';
+        $orderRefund->admin_note = $request->input('reason', $orderRefund->admin_note);
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_rejected_successfully')]);
+    }
+
+    public function refundOrder(Request $request, int $refundId): JsonResponse
+    {
+        $orderRefund = OrderRefund::find($refundId);
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        if ($orderRefund->status != 'approved') {
+            return response()->json(['error' => translate('Refund_request_must_be_approved_first')], 422);
+        }
+
+        $orderRefund->status = 'refunded';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Order_refunded_successfully')]);
     }
 
 
