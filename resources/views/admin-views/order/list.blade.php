@@ -162,7 +162,7 @@
                                     <div class="input-group">
                                         <input id="datatableSearch_" type="search" name="searchValue"
                                             class="form-control" placeholder="{{ translate('search_by_Order_ID') }}"
-                                            aria-label="Search by Order ID" value="{{ $searchValue }}">
+                                            aria-label="Search by customer phone or order id" value="{{ $searchValue }}">
                                         <div class="input-group-append search-submit">
                                             <button type="submit">
                                                 <i class="fi fi-rr-search"></i>

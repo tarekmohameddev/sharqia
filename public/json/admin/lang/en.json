@@ -1554,7 +1554,7 @@
             "nbspnbspnbspnbspnbspnbsp": "Nbspnbspnbspnbspnbspnbsp",
             "wallet": "Wallet",
             "offline_payments": "Offline payments",
-            "search_by_order_id": "Search by order id",
+            "search_by_order_id": "Search by phone number or order id",
             "export": "Export",
             "excel": "Excel",
             "Download_PDF": "Download PDF",

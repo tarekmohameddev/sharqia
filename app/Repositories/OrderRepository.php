@@ -131,7 +131,14 @@ class OrderRepository implements OrderRepositoryInterface
                 return $query->where(function ($query) use ($searchValue) {
                     return $query->where('id', 'like', "%{$searchValue}%")
                         ->orWhere('order_status', 'like', "%{$searchValue}%")
-                        ->orWhere('transaction_ref', 'like', "%{$searchValue}%");
+                        ->orWhere('transaction_ref', 'like', "%{$searchValue}%")
+                        // search by related customer phone
+                        ->orWhereHas('customer', function ($q) use ($searchValue) {
+                            $q->where('phone', 'like', "%{$searchValue}%");
+                        })
+                        // search by phone inside JSON shipping/billing address data
+                        ->orWhere('shipping_address_data->phone', 'like', "%{$searchValue}%")
+                        ->orWhere('billing_address_data->phone', 'like', "%{$searchValue}%");
                 });
             })
             ->when(isset($filters['whereHas_deliveryMan']), function ($query) use ($filters) {
