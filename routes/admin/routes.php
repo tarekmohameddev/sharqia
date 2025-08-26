@@ -249,6 +249,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
             Route::get('list-ids', 'listIds')->name('list-ids');
             Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
+            Route::post('create-refund/{orderId}', 'createRefundRequest')->name('create-refund');
         });
     });
 

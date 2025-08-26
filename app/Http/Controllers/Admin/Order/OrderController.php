@@ -46,6 +46,8 @@ use App\Contracts\Repositories\DeliveryCountryCodeRepositoryInterface;
 use App\Contracts\Repositories\DeliveryManTransactionRepositoryInterface;
 use App\Contracts\Repositories\LoyaltyPointTransactionRepositoryInterface;
 use App\Contracts\Repositories\OrderExpectedDeliveryHistoryRepositoryInterface;
+use App\Models\RefundRequest;
+use App\Events\RefundEvent;
 
 class OrderController extends BaseController
 {
@@ -172,6 +174,41 @@ class OrderController extends BaseController
             'dateType',
             'stats',
         ));
+    }
+
+    public function createRefundRequest(Request $request, int $orderId): JsonResponse
+    {
+        $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId], relations: ['details']);
+        if (!$order) {
+            return response()->json(['error' => translate('Order_not_found')], 404);
+        }
+
+        $createdCount = 0;
+        foreach ($order->details as $orderDetail) {
+            if ((int)$orderDetail['refund_request'] === 0) {
+                $refundRequest = new RefundRequest();
+                $refundRequest->order_details_id = $orderDetail['id'];
+                $refundRequest->customer_id = $order['customer_id'] ?? 0;
+                $refundRequest->status = 'pending';
+                $refundRequest->amount = OrderManager::getRefundDetailsForSingleOrderDetails(orderDetailsId: $orderDetail['id'])['total_refundable_amount'];
+                $refundRequest->product_id = $orderDetail['product_id'];
+                $refundRequest->order_id = $order['id'];
+                $refundRequest->refund_reason = $request->input('reason', 'Created by admin');
+                $refundRequest->save();
+
+                $this->orderDetailRepo->update(id: $orderDetail['id'], data: ['refund_request' => 1]);
+
+                event(new RefundEvent(status: 'refund_request', order: $order, refund: $refundRequest, orderDetails: $orderDetail));
+
+                $createdCount++;
+            }
+        }
+
+        if ($createdCount === 0) {
+            return response()->json(['error' => translate('already_applied_for_refund_request!!')], 422);
+        }
+
+        return response()->json(['message' => translate('refund_requested_successful!!'), 'created' => $createdCount]);
     }
 
 

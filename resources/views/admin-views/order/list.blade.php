@@ -387,6 +387,10 @@
                                                     href="{{ route('admin.orders.generate-invoice', [$order['id']]) }}">
                                                     <i class="fi fi-sr-down-to-line"></i>
                                                 </a>
+                                                <button type="button" class="btn btn-outline-danger btn-outline-danger-dark icon-btn js-create-refund"
+                                                    data-order-id="{{ $order['id'] }}" title="{{ translate('refund_request') }}">
+                                                    <i class="fi fi-rr-undo"></i>
+                                                </button>
                                                 <button type="button" class="btn btn-outline-warning btn-outline-warning-dark icon-btn js-flag-late"
                                                     data-order-id="{{ $order['id'] }}" title="{{ translate('flag_as_late') }}">
                                                     <i class="fi fi-rr-time-forward"></i>
@@ -585,6 +589,31 @@
             }).fail(function (xhr) {
                 const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
                 toastMagic.error(msg);
+            });
+        });
+        $(document).on('click', '.js-create-refund', function () {
+            const orderId = $(this).data('order-id');
+            Swal.fire({
+                title: '{{ translate('are_you_sure') }}',
+                text: '{{ translate('refund_request') }}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#377dff',
+                cancelButtonColor: '#dd3333',
+                confirmButtonText: '{{ translate('yes') }}'
+            }).then((result) => {
+                if (!result.value) return;
+                $.post({
+                    url: '{{ url('admin/orders/create-refund') }}/' + orderId,
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    }
+                }).done(function (res) {
+                    toastMagic.success(res.message ?? '{{ translate('refund_requested_successful!!') }}');
+                }).fail(function (xhr) {
+                    const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                    toastMagic.error(msg);
+                });
             });
         });
     </script>
