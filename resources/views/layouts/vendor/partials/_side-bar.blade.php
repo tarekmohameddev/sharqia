@@ -4,6 +4,7 @@
     use App\Enums\ViewPaths\Vendor\Profile;
     use App\Enums\ViewPaths\Vendor\Refund;
     use App\Enums\ViewPaths\Vendor\Review;
+    use App\Models\LateDeliveryRequest;
     use App\Enums\ViewPaths\Vendor\DeliveryMan;
     use App\Enums\ViewPaths\Vendor\EmergencyContact;
     use App\Models\Order;
@@ -263,6 +264,62 @@
                                                 {{RefundRequest::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','rejected')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/late-delivery*')?'active' : ''}}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                               href="javascript:" title="{{ translate('late_delivery_requests') }}">
+                                <i class="tio-time-20 nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    {{ translate('late_delivery_requests') }}
+                                </span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('vendor/late-delivery*')?'block' : 'none'}}">
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/pending')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['pending']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('pending') }}
+                                            <span class="badge badge-soft-danger badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','pending')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/in_progress')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['in_progress']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('in_progress') }}
+                                            <span class="badge badge-soft-info badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','in_progress')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/resolved')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['resolved']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('resolved') }}
+                                            <span class="badge badge-soft-success badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','resolved')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/rejected')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['rejected']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('rejected') }}
+                                            <span class="badge badge-danger badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','rejected')->count() }}
                                             </span>
                                         </span>
                                     </a>

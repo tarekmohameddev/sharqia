@@ -387,6 +387,10 @@
                                                     href="{{ route('admin.orders.generate-invoice', [$order['id']]) }}">
                                                     <i class="fi fi-sr-down-to-line"></i>
                                                 </a>
+                                                <button type="button" class="btn btn-outline-warning btn-outline-warning-dark icon-btn js-flag-late"
+                                                    data-order-id="{{ $order['id'] }}" title="{{ translate('flag_as_late') }}">
+                                                    <i class="fi fi-rr-time-forward"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -567,5 +571,21 @@
                 });
             }
         })();
+    </script>
+    <script>
+        $(document).on('click', '.js-flag-late', function () {
+            const orderId = $(this).data('order-id');
+            $.post({
+                url: '{{ url('admin/late-delivery/flag') }}/' + orderId,
+                data: {
+                    _token: '{{ csrf_token() }}'
+                }
+            }).done(function (res) {
+                toastr.success(res.message ?? '{{ translate('late_delivery_request_created') }}');
+            }).fail(function (xhr) {
+                const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                toastr.error(msg);
+            });
+        });
     </script>
 @endpush

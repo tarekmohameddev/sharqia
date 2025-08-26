@@ -127,6 +127,13 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::get(Refund::EXPORT[URI] . '/{status}', 'exportList')->name('export');
                 });
             });
+
+            Route::group(['prefix' => 'late-delivery', 'as' => 'late-delivery.'], function () {
+                Route::controller(\App\Http\Controllers\Vendor\LateDeliveryController::class)->group(function () {
+                    Route::get(\App\Enums\ViewPaths\Vendor\LateDelivery::INDEX[URI] . '/{status}', 'index')->name('index');
+                    Route::post(\App\Enums\ViewPaths\Vendor\LateDelivery::UPDATE_STATUS[URI], 'updateStatus')->name('update-status');
+                });
+            });
             /* product */
             Route::group(['prefix' => 'products', 'as' => 'products.'], function () {
                 Route::controller(ProductController::class)->group(function () {

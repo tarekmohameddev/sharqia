@@ -1169,6 +1169,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
         });
     });
 
+    Route::group(['prefix' => 'late-delivery', 'as' => 'late-delivery.', 'middleware' => ['module:order_management']], function () {
+        Route::controller(\App\Http\Controllers\Admin\Order\LateDeliveryController::class)->group(function () {
+            Route::get('list/{status}', 'index')->name('list');
+            Route::post('flag/{orderId}', 'flag')->name('flag');
+            Route::post('status-update', 'updateStatus')->name('status-update');
+        });
+    });
+
     // Shipping Cost Management Routes
     Route::group(['prefix' => 'shipping-cost', 'as' => 'shipping-cost.'], function () {
         Route::controller(\App\Http\Controllers\Admin\ShippingCostController::class)->group(function () {
