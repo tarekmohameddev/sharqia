@@ -1068,7 +1068,7 @@
                                         Request::is('admin/seo-settings/'.SiteMap::SITEMAP[URI]) ||
                                         Request::is('admin/seo-settings/robots-meta-content*') ||
                                         Request::is('admin/error-logs/'.ErrorLogs::INDEX[URI]) ||
-                                        Request::is('admin/business-settings/delivery-restriction'))?'block':'none'}}">
+                                            Request::is('admin/business-settings/delivery-restriction'))?'block':'none'}}">
                                     <li class="nav-item {{(
                                             Request::is('admin/business-settings/web-config') ||
                                             Request::is('admin/product-settings')||
@@ -1115,6 +1115,7 @@
                                             </span>
                                         </a>
                                     </li>
+
                                 </ul>
                             </li>
                             <li class="navbar-vertical-aside-has-menu ">
@@ -1381,6 +1382,7 @@
                                 </li>
                             @endif
                         @endif
+
                         <li class="nav-item pt-5">
                         </li>
                     </ul>

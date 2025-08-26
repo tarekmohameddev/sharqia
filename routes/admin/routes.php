@@ -1187,4 +1187,20 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::delete('{shippingCost}', 'destroy')->name('destroy');
         });
     });
+
+    // City Zone Shipping Management Routes (with unique prefix)
+    Route::group(['prefix' => 'shipping', 'as' => 'shipping.'], function () {
+        Route::group(['prefix' => 'city-zone-shipping', 'as' => 'city-zone-shipping.'], function () {
+            Route::controller(\App\Http\Controllers\Admin\Shipping\CityZoneShippingController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('store', 'store')->name('store');
+                Route::get('{cityZoneShipping}/edit', 'edit')->name('edit');
+                Route::put('{cityZoneShipping}', 'update')->name('update');
+                Route::delete('{cityZoneShipping}', 'destroy')->name('destroy');
+                Route::get('{cityZoneShipping}', 'show')->name('show');
+                Route::post('update-status', 'updateStatus')->name('update-status');
+            });
+        });
+    });
 });

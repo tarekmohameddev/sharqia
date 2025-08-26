@@ -1348,6 +1348,20 @@
                 </li>
             @endif
 
+            <!-- City Zone Shipping Management as main item under System Settings -->
+            @if(Helpers::module_permission_check('business_settings'))
+                <li>
+                    <a class="nav-link {{ Request::is('admin/shipping/city-zone-shipping*') ? 'active' : '' }}"
+                       href="{{ route('admin.shipping.city-zone-shipping.index') }}"
+                       title="{{ translate('city_zone_shipping_management') }}">
+                        <i class="fi fi-sr-shipping-fast"></i>
+                        <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                            {{ translate('city_zone_shipping_management') }}
+                        </span>
+                    </a>
+                </li>
+            @endif
+
             <?php $checkSetupGuideRequirements = checkSetupGuideRequirements(panel: 'admin'); ?>
 
             <li class="nav-item {{ $checkSetupGuideRequirements['completePercent'] < 100 ? 'pt-5 mt-5 d-none d-lg-block' : '' }}">
