@@ -6,6 +6,8 @@ This feature adds bulk actions and a printed-state tracker for Orders in both Ad
 - **Bulk status updates**: Change status for multiple selected orders with safe transition rules.
 - **Merged invoice download**: Generate a single PDF containing invoices for selected orders, or all orders from the current filtered result set.
 - **Printed tracking**: New `is_printed` flag on orders; visible in list and filterable.
+- **Print Unprinted button**: One-click download of merged invoices for only unprinted orders in the current filtered result; marks included orders as printed.
+- **Top stats summary**: A summary row shows counts for total orders, this month, today, printed, and unprinted.
 
 ### Data Model
 - **orders.is_printed**: boolean (default false)
@@ -14,12 +16,16 @@ This feature adds bulk actions and a printed-state tracker for Orders in both Ad
 
 ### UI Changes
 - Admin: `resources/views/admin-views/order/list.blade.php`
+  - Top stats summary row (cards): total, this month, today, printed, unprinted
   - Checkbox column with Select All
   - Bulk actions dropdown (change status, print selected, print all)
+  - Print Unprinted button beside bulk actions
   - Printed column (Yes/No)
   - Printed status filter (All, Printed only, Unprinted only)
 - Vendor: `resources/views/vendor-views/order/list.blade.php`
   - Same additions as Admin
+  - Includes the top stats summary row
+  - Includes the Print Unprinted button next to bulk actions
 
 ### Status Transition Rules
 Allowed transitions only:
@@ -42,9 +48,30 @@ Additional vendor constraint:
   - POST `vendor/orders/bulk-invoices` → `Vendor\Order\OrderController@bulkInvoices`
   - GET  `vendor/orders/generate-invoice/{id}` → single invoice (also marks printed)
 
+Button wiring:
+- Print Unprinted posts to the existing bulk-invoices endpoints with `apply_to=all` and `is_printed=0`, preserving current query filters (status, date range, seller, customer, etc.).
+
+### Stats Summary
+- Visible at the top of the orders list (Admin and Vendor).
+- Shows five numbers:
+  - Total orders
+  - Total orders this month
+  - Total orders today
+  - Printed orders
+  - Unprinted orders
+- Counts respect the viewing context:
+  - Admin: respects optional `seller_id`/`seller_is` filter when set.
+  - Vendor: automatically scoped to the authenticated seller.
+- Implementation:
+  - Repository: `OrderRepository::getCountWhere(array $filters)` computes counts efficiently.
+  - Controllers compute and pass `stats` to the views:
+    - Admin: `App\Http\Controllers\Admin\Order\OrderController@index`
+    - Vendor: `App\Http\Controllers\Vendor\Order\OrderController@getListView`
+
 ### Printing Behavior
 - Single invoice: downloads PDF and marks `is_printed = 1` for that order.
 - Merged invoices: compiles all selected (or all filtered) orders into one PDF, downloads it, then marks each included order as printed.
+- Print Unprinted: compiles only orders where `is_printed = 0` within the current filtered result, downloads a merged PDF, then marks those orders as printed.
 
 ### Filtering
 - Orders list accepts `is_printed` filter:
@@ -58,6 +85,7 @@ Additional vendor constraint:
    - Change status → confirm → updates allowed orders.
    - Print selected → downloads a merged PDF of selected orders.
    - Print all in filtered results → downloads a merged PDF of all orders matching current filters.
+   - Print unprinted → downloads a merged PDF of only the unprinted orders matching current filters.
 
 ### Notes
 - Printed status is a historical flag and is not reset on subsequent order edits.

@@ -134,6 +134,30 @@ class OrderController extends BaseController
             ]);
         }
 
+        // Stats section
+        $countBaseFilters = [
+            'seller_id' => $vendorId,
+            'seller_is' => $vendorIs,
+        ];
+        $startOfMonth = Carbon::now()->startOfMonth()->startOfDay();
+        $endOfMonth = Carbon::now()->endOfMonth()->endOfDay();
+        $startOfDay = Carbon::now()->startOfDay();
+        $endOfDay = Carbon::now()->endOfDay();
+
+        $stats = [
+            'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
+            'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfMonth,
+                'created_at_to' => $endOfMonth,
+            ]),
+            'today' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfDay,
+                'created_at_to' => $endOfDay,
+            ]),
+            'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
+            'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
+        ];
+
         return view('admin-views.order.list', compact(
             'orders',
             'searchValue',
@@ -146,6 +170,7 @@ class OrderController extends BaseController
             'vendorId',
             'customerId',
             'dateType',
+            'stats',
         ));
     }
 

@@ -91,4 +91,11 @@ interface OrderRepositoryInterface extends RepositoryInterface
     public function getTopCustomerList(array $filters = [] , array $relations = [], int|string $dataLimit = DEFAULT_DATA_LIMIT, int $offset = null): Collection|LengthAwarePaginator;
     public function getListWhereBetween(array $filters = [], string $selectColumn = null, string $whereBetween = null, array $whereBetweenFilters = [], array $relations = [], int|string $dataLimit = DEFAULT_DATA_LIMIT, int $offset = null): Collection|LengthAwarePaginator;
 
+    /**
+     * Returns count of orders matching filters. Mirrors getListWhere filters.
+     * @param array $filters
+     * @return int
+     */
+    public function getCountWhere(array $filters = []): int;
+
 }

@@ -3310,4 +3310,9 @@ return [
 	"category_priority_is_required" => "Category priority is required",
 	"category_updated_successfully" => "Category updated successfully",
 	"product_images_is_required" => "Product images is required",
+	"print_unprinted" => "Print unprinted",
+	"total_orders_this_month" => "Total orders this month",
+	"total_orders_today" => "Total orders today",
+	"printed_orders" => "Printed orders",
+	"unprinted_orders" => "Unprinted orders",
 ];

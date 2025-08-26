@@ -129,6 +129,30 @@ class OrderController extends BaseController
         $vendorId = $request['seller_id'];
         $customerId = $request['customer_id'];
 
+        // Stats section for vendor
+        $countBaseFilters = [
+            'seller_is' => 'seller',
+            'seller_id' => $seller['id'],
+        ];
+        $startOfMonth = Carbon::now()->startOfMonth()->startOfDay();
+        $endOfMonth = Carbon::now()->endOfMonth()->endOfDay();
+        $startOfDay = Carbon::now()->startOfDay();
+        $endOfDay = Carbon::now()->endOfDay();
+
+        $stats = [
+            'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
+            'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfMonth,
+                'created_at_to' => $endOfMonth,
+            ]),
+            'today' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfDay,
+                'created_at_to' => $endOfDay,
+            ]),
+            'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
+            'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
+        ];
+
         return view(Order::LIST[VIEW], compact(
             'orders',
             'searchValue',
@@ -144,7 +168,8 @@ class OrderController extends BaseController
             'seller',
             'customer',
             'sellerPos',
-            'deliveryManId'
+            'deliveryManId',
+            'stats'
         ));
     }
 

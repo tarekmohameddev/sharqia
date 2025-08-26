@@ -610,4 +610,25 @@ class OrderRepository implements OrderRepositoryInterface
 
         return $dataLimit == 'all' ? $query->get() : $query->paginate($dataLimit)->appends($filters);
     }
+
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->order
+            ->when(isset($filters['seller_is']) && $filters['seller_is'] != 'all', function ($query) use ($filters) {
+                return $query->where('seller_is', $filters['seller_is']);
+            })
+            ->when(isset($filters['seller_id']) && $filters['seller_id'] != 'all', function ($query) use ($filters) {
+                return $query->where('seller_id', $filters['seller_id']);
+            })
+            ->when(isset($filters['order_status']) && $filters['order_status'] != 'all', function ($query) use ($filters) {
+                return $query->where('order_status', $filters['order_status']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->when(isset($filters['is_printed']) && $filters['is_printed'] !== 'all', function ($query) use ($filters) {
+                return $query->where('is_printed', (bool)$filters['is_printed']);
+            })
+            ->count();
+    }
 }

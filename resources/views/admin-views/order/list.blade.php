@@ -23,6 +23,40 @@
             </div>
             <div class="card">
                 <div class="card-body">
+                    @isset($stats)
+                        <div class="row g-3 mb-3">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['total'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders_this_month') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['this_month'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders_today') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['today'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('printed_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['printed'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('unprinted_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['unprinted'] }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    @endisset
                     <form action="{{ route('admin.orders.list', ['status' => request('status')]) }}" id="form-data"
                         method="GET">
                         <div class="row g-3">
@@ -187,6 +221,9 @@
                                 </div>
                                 <button id="apply-bulk-action" type="button" class="btn btn-primary">
                                     {{ translate('apply') }}
+                                </button>
+                                <button id="print-unprinted" type="button" class="btn btn-outline-secondary text-nowrap">
+                                    {{ translate('print_unprinted') }}
                                 </button>
                             </div>
 
@@ -491,6 +528,42 @@
                         document.body.appendChild(form);
                         form.submit();
                     }
+                });
+            }
+
+            const unprintedBtn = document.getElementById('print-unprinted');
+            if (unprintedBtn) {
+                unprintedBtn.addEventListener('click', function () {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                    const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrf;
+                    form.appendChild(csrfInput);
+
+                    const statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'status';
+                    statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                    form.appendChild(statusInput);
+
+                    const applyTo = document.createElement('input');
+                    applyTo.type = 'hidden';
+                    applyTo.name = 'apply_to';
+                    applyTo.value = 'all';
+                    form.appendChild(applyTo);
+
+                    const isPrinted = document.createElement('input');
+                    isPrinted.type = 'hidden';
+                    isPrinted.name = 'is_printed';
+                    isPrinted.value = '0';
+                    form.appendChild(isPrinted);
+
+                    document.body.appendChild(form);
+                    form.submit();
                 });
             }
         })();
