@@ -122,8 +122,6 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
             Route::group(['prefix' => 'refund', 'as' => 'refund.'], function () {
                 Route::controller(RefundController::class)->group(function () {
                     Route::get(Refund::INDEX[URI] . '/{status}', 'index')->name('index');
-                    Route::get(Refund::DETAILS[URI] . '/{id}', 'getDetailsView')->name('details');
-                    Route::post(Refund::UPDATE_STATUS[URI], 'updateStatus')->name('update-status');
                     Route::get(Refund::EXPORT[URI] . '/{status}', 'exportList')->name('export');
                 });
             });
@@ -183,6 +181,9 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::post(Order::UPDATE_STATUS[URI], 'updateStatus')->name('status');
                     Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
                     Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
+                    Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund');
+                    Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund');
+                    Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order');
                 });
             });
 

@@ -24,6 +24,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UploadDigitalFileAfterSellRequest;
 use App\Models\ReferralCustomer;
+use App\Models\OrderRefund;
 use App\Repositories\WalletTransactionRepository;
 use App\Services\DeliveryCountryCodeService;
 use App\Services\DeliveryManTransactionService;
@@ -753,6 +754,62 @@ class OrderController extends BaseController
             ToastMagic::error(translate('digital_file_upload_failed'));
         }
         return back();
+    }
+
+    public function approveRefund(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'approved';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_approved_successfully')]);
+    }
+
+    public function rejectRefund(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'rejected';
+        $orderRefund->admin_note = $request->input('reason', $orderRefund->admin_note);
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_rejected_successfully')]);
+    }
+
+    public function refundOrder(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        if ($orderRefund->status != 'approved') {
+            return response()->json(['error' => translate('Refund_request_must_be_approved_first')], 422);
+        }
+
+        $orderRefund->status = 'refunded';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Order_refunded_successfully')]);
     }
 
 

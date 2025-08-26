@@ -57,9 +57,9 @@
                         <th>{{translate('SL')}}</th>
                         <th class="text-center">{{translate('refund_id')}}</th>
                         <th>{{translate('order_ID')}} </th>
-                        <th>{{translate('product_Info')}}</th>
                         <th>{{translate('customer_Info')}}</th>
                         <th>{{translate('total_Amount')}}</th>
+                        <th class="text-center">{{translate('status')}}</th>
                         <th class="text-center">{{translate('action')}}</th>
                     </tr>
                     </thead>
@@ -68,11 +68,9 @@
                         <tr>
                             <td> {{$refundList->firstItem()+$key}}</td>
                             <td class="text-center">
-
-                                <a class="title-color hover-c1"
-                                   href="{{route('vendor.refund.details',['id'=>$refund['id']])}}">
+                                <span class="title-color">
                                     {{$refund['id']}}
-                                </a>
+                                </span>
                             </td>
                             <td>
                                 <a class="title-color hover-c1"
@@ -81,26 +79,7 @@
                                 </a>
                             </td>
                             <td>
-                                @if ($refund->product!=null)
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <a href="{{route('vendor.products.view',[$refund->product->id])}}">
-                                            <img src="{{getStorageImages(path: $refund?->product?->thumbnail_full_url ,type:'backend-product')}}"
-                                                 class="avatar border" alt="">
-                                        </a>
-                                        <div class="d-flex flex-column gap-1">
-                                            <a href="{{route('vendor.products.view',[$refund->product->id])}}"
-                                               class="title-color font-weight-bold hover-c1">
-                                                {{Str::limit($refund->product->name,35)}}
-                                            </a>
-                                            <span class="fs-12">{{ translate('qty') }} : {{ $refund->orderDetails->qty }}</span>
-                                        </div>
-                                    </div>
-                                @else
-                                    {{translate('product_name_not_found')}}
-                                @endif
-                            </td>
-                            <td>
-                                @if ($refund->customer !=null)
+                                @if ($refund->customer != null)
                                     <div class="d-flex flex-column gap-1">
                                         <a href="javascript:" class="title-color font-weight-bold hover-c1">
                                             {{$refund->customer->f_name. ' '.$refund->customer->l_name}}
@@ -110,7 +89,6 @@
                                         @else
                                             <a href="mailto:{{$refund->customer['email']}}" class="title-color hover-c1 fs-12">{{$refund->customer['email']}}</a>
                                         @endif
-
                                     </div>
                                 @else
                                     <a href="javascript:" class="title-color hover-c1">
@@ -121,12 +99,41 @@
                             <td>
                                 {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $refund->amount), currencyCode: getCurrencyCode()) }}
                             </td>
+                            <td class="text-center">
+                                <span class="badge {{ $refund->status == 'approved' ? 'badge-soft-success' : ($refund->status == 'rejected' ? 'badge-soft-danger' : 'badge-soft-warning') }}">
+                                    {{ translate($refund->status) }}
+                                </span>
+                            </td>
                             <td>
-                                <div class="d-flex justify-content-center">
-                                    <a class="btn btn-outline--primary btn-sm"
-                                       title="{{translate('view')}}"
-                                       href="{{route('vendor.refund.details',['id'=>$refund['id']])}}">
-                                        <i class="tio-invisible"></i>
+                                <div class="d-flex justify-content-center gap-2">
+                                    @if ($refund->status == 'pending')
+                                        <a class="btn btn-outline--success btn-sm js-approve-refund"
+                                           title="{{ translate('approve') }}"
+                                           data-id="{{ $refund->id }}"
+                                           data-url="{{ route('vendor.orders.approve-refund', ['refundId' => $refund->id]) }}">
+                                            <i class="tio-checkmark-circle"></i>
+                                        </a>
+                                        <a class="btn btn-outline--danger btn-sm js-reject-refund"
+                                           title="{{ translate('reject') }}"
+                                           data-id="{{ $refund->id }}"
+                                           data-url="{{ route('vendor.orders.reject-refund', ['refundId' => $refund->id]) }}">
+                                            <i class="tio-clear-circle"></i>
+                                        </a>
+                                    @elseif ($refund->status == 'approved')
+                                        <a class="btn btn-outline--primary btn-sm js-refund-order"
+                                           title="{{ translate('refund') }}"
+                                           data-id="{{ $refund->id }}"
+                                           data-url="{{ route('vendor.orders.refund-order', ['refundId' => $refund->id]) }}">
+                                            <i class="tio-money"></i>
+                                        </a>
+                                    @endif
+                                    
+                                    <!-- Print button for order details -->
+                                    <a class="btn btn-outline--secondary btn-sm"
+                                       title="{{ translate('print_order') }}"
+                                       href="{{ route('vendor.orders.generate-invoice', ['id' => $refund->order_id]) }}"
+                                       target="_blank">
+                                        <i class="tio-print"></i>
                                     </a>
                                 </div>
                             </td>
@@ -146,3 +153,120 @@
         </div>
     </div>
 @endsection
+
+@push('script')
+<script>
+    $(document).ready(function() {
+        // Handle approve refund
+        $(document).on('click', '.js-approve-refund', function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const refundId = button.data('id');
+            const url = button.data('url');
+            
+            Swal.fire({
+                title: '{{ translate("are_you_sure") }}?',
+                text: '{{ translate("you_want_to_approve_this_refund_request") }}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: '{{ translate("yes_approve_it") }}',
+                cancelButtonText: '{{ translate("cancel") }}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            toastMagic.success(response.message);
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            const response = JSON.parse(xhr.responseText);
+                            toastMagic.error(response.error || '{{ translate("something_went_wrong") }}');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Handle reject refund
+        $(document).on('click', '.js-reject-refund', function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const refundId = button.data('id');
+            const url = button.data('url');
+            
+            Swal.fire({
+                title: '{{ translate("are_you_sure") }}?',
+                text: '{{ translate("you_want_to_reject_this_refund_request") }}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: '{{ translate("yes_reject_it") }}',
+                cancelButtonText: '{{ translate("cancel") }}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            toastMagic.success(response.message);
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            const response = JSON.parse(xhr.responseText);
+                            toastMagic.error(response.error || '{{ translate("something_went_wrong") }}');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Handle refund order
+        $(document).on('click', '.js-refund-order', function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const refundId = button.data('id');
+            const url = button.data('url');
+            
+            Swal.fire({
+                title: '{{ translate("are_you_sure") }}?',
+                text: '{{ translate("you_want_to_process_this_refund") }}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: '{{ translate("yes_refund_it") }}',
+                cancelButtonText: '{{ translate("cancel") }}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            toastMagic.success(response.message);
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            const response = JSON.parse(xhr.responseText);
+                            toastMagic.error(response.error || '{{ translate("something_went_wrong") }}');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+@endpush

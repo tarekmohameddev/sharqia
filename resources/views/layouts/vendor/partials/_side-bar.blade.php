@@ -8,7 +8,7 @@
     use App\Enums\ViewPaths\Vendor\DeliveryMan;
     use App\Enums\ViewPaths\Vendor\EmergencyContact;
     use App\Models\Order;
-    use App\Models\RefundRequest;
+    use App\Models\OrderRefund;
     use App\Models\Shop;
     use App\Enums\ViewPaths\Vendor\Order as OrderEnum;
     $shop=Shop::where(['seller_id'=>auth('seller')->id()])->first();
@@ -218,7 +218,7 @@
                                         <span class="text-truncate">
                                           {{ translate('pending') }}
                                             <span class="badge badge-soft-danger badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','pending')->count() }}
                                             </span>
@@ -233,7 +233,7 @@
                                         <span class="text-truncate">
                                            {{ translate('approved') }}
                                             <span class="badge badge-soft-info badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','approved')->count() }}
                                             </span>
@@ -247,7 +247,7 @@
                                         <span class="text-truncate">
                                            {{ translate('refunded') }}
                                             <span class="badge badge-soft-success badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','refunded')->count() }}
                                             </span>
@@ -261,7 +261,7 @@
                                         <span class="text-truncate">
                                            {{ translate('rejected') }}
                                             <span class="badge badge-danger badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','rejected')->count() }}
                                             </span>
