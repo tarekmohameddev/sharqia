@@ -217,38 +217,38 @@
     <body>
         <div class="invoice-container">
             <!-- Header Section -->
-            <div class="header-section" style="align-items: center; padding-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    @if(isset($vendor) && $vendor['shop'] && $vendor['shop']['image'])
-                        <img class="company-logo" style="width: 60px; height: 60px; margin-bottom: 0;"
-                             src="{{ getStorageImages(path: $vendor['shop']['image'], type:'shop') }}"
-                             alt="{{ $vendor['shop']['name'] ?? 'اسم المتجر' }}">
-                    @elseif(isset($invoiceSettings['invoice_logo_status']) && $invoiceSettings['invoice_logo_status'] == 1)
+            <div class="header-section" style="align-items: center; padding-bottom: 6px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                        @if(isset($vendor) && $vendor['shop'] && $vendor['shop']['image'])
+                            <img class="company-logo" style="width: 40px; height: 40px; margin-bottom: 0;"
+                                 src="{{ getStorageImages(path: $vendor['shop']['image'], type:'shop') }}"
+                                 alt="{{ $vendor['shop']['name'] ?? 'اسم المتجر' }}">
+                        @elseif(isset($invoiceSettings['invoice_logo_status']) && $invoiceSettings['invoice_logo_status'] == 1)
                             @if(isset($invoiceSettings['invoice_logo_type']) && $invoiceSettings['invoice_logo_type'] == 'default')
-                            <img class="company-logo" style="width: 60px; height: 60px; margin-bottom: 0;"
+                                <img class="company-logo" style="width: 40px; height: 40px; margin-bottom: 0;"
                                      src="{{ getStorageImages(path: getWebConfig(name: 'company_web_logo_png'), type:'backend-logo') }}"
-                                 alt="شركة ذهب للألبان">
+                                     alt="شركة ذهب للألبان">
                             @elseif(isset($invoiceSettings['invoice_logo_type']) && $invoiceSettings['invoice_logo_type'] == 'custom' && isset($invoiceSettings['image']))
-                            <img class="company-logo" style="width: 60px; height: 60px; margin-bottom: 0;"
+                                <img class="company-logo" style="width: 40px; height: 40px; margin-bottom: 0;"
                                      src="{{ getStorageImages(path: imagePathProcessing(imageData:  $invoiceSettings['image'], path:'company'), type: 'backend-logo') }}"
-                                 alt="شركة ذهب للألبان">
-                        @endif
+                                     alt="شركة ذهب للألبان">
+                            @endif
                         @endif
 
-                            <div>
-                        @if(isset($vendor) && $vendor['shop'])
-                            <div class="company-name" style="margin-bottom: 3px;">{{ $vendor['shop']['name'] ?? 'اسم المتجر' }}</div>
-                        @else
-                            <div class="company-name" style="margin-bottom: 3px;">{{ getWebConfig('company_name') ?? 'شركة ذهب للألبان' }}</div>
-                        @endif
-                        <div class="hotline">الخط الساخن: {{ getWebConfig('company_phone') ?? '01270005957' }}</div>
+                        <div class="company-line" style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
+                            @if(isset($vendor) && $vendor['shop'])
+                                <span class="company-name" style="margin: 0;">{{ $vendor['shop']['name'] ?? 'اسم المتجر' }}</span>
+                            @else
+                                <span class="company-name" style="margin: 0;">{{ getWebConfig('company_name') ?? 'شركة ذهب للألبان' }}</span>
+                            @endif
+                            <span class="hotline" style="margin: 0; font-weight: normal;">الخط الساخن: {{ getWebConfig('company_phone') ?? '01270005957' }}</span>
+                        </div>
                     </div>
-                            </div>
 
-                <div class="invoice-info">
-                    <div class="invoice-title">فاتورة للمبيع</div>
-                            </div>
-                            </div>
+                    <div class="invoice-title" style="margin: 0;">فاتورة للمبيع</div>
+                </div>
+            </div>
 
             <!-- Invoice Details Table -->
             <div class="invoice-details">

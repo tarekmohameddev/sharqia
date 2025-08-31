@@ -11,11 +11,6 @@ trait  PdfGenerator
         $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
-        // Footer disabled for invoices
-        // if ($pdfType = 'invoice') {
-        //     $footerHtml = self::footerHtml($requestFrom);
-        //     $mpdf->SetHTMLFooter($footerHtml);
-        // }
         $mpdf_view = $view;
         $mpdf_view = $mpdf_view->render();
         $mpdf->WriteHTML($mpdf_view);
@@ -27,11 +22,10 @@ trait  PdfGenerator
         $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
-        // Footer disabled for invoices
-        // if ($pdfType = 'invoice') {
-        //     $footerHtml = self::footerHtml($requestFrom);
-        //     $mpdf->SetHTMLFooter($footerHtml);
-        // }
+        if ($pdfType = 'invoice') {
+            $footerHtml = self::footerHtml($requestFrom);
+            $mpdf->SetHTMLFooter($footerHtml);
+        }
         $mpdf_view = $view;
         $mpdf_view = $mpdf_view->render();
         $mpdf->WriteHTML($mpdf_view);
