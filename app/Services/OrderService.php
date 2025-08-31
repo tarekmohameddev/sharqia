@@ -15,7 +15,7 @@ class OrderService
             'customer_id' => $userId,
             'customer_type' => 'customer',
             'payment_status' => 'paid',
-            'order_status' => 'delivered',
+            'order_status' => 'pending',
             'seller_id' => $sellerId ?? ($addedBy == 'seller' ? auth('seller')->id() : auth('admin')->id()),
             'seller_is' => $addedBy,
             'payment_method' => $paymentType,

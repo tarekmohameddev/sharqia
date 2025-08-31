@@ -442,8 +442,8 @@ class OrderController extends BaseController
             compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName')
         );
         $this->generatePdf(view: $mpdfView, filePrefix: 'order_invoice_', filePostfix: $order['id'], pdfType: 'invoice');
-        // mark as printed
-        $this->orderRepo->update(id: $order['id'], data: ['is_printed' => 1]);
+        // mark as printed and move status to out_for_delivery when printing
+        $this->orderRepo->update(id: $order['id'], data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
     }
 
     public function updateStatus(
@@ -914,9 +914,9 @@ class OrderController extends BaseController
 
         $fileName = 'orders_invoices_' . date('Ymd_His') . '.pdf';
         $mpdf->Output($fileName, 'D');
-        // mark printed
+        // mark printed and set status to out_for_delivery for included orders
         foreach ($ids as $oid) {
-            $this->orderRepo->update(id: $oid, data: ['is_printed' => 1]);
+            $this->orderRepo->update(id: $oid, data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
         }
         return null;
     }

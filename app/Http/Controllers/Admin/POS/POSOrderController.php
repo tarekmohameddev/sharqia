@@ -394,7 +394,7 @@ class POSOrderController extends BaseController
             amount: $amount,
             paidAmount: $paidAmount,
             paymentType: $request['type'],
-            addedBy: 'admin',
+            addedBy: 'seller',
             userId: $userId,
             sellerId: $sellerId,
             cityId: $cityId,

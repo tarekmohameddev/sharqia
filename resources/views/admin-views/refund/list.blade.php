@@ -122,6 +122,7 @@
                             </td>
                             <td>
                                 <div class="d-flex justify-content-center gap-2">
+                                @if(\App\Utils\Helpers::module_permission_check('refund_actions'))
                                     @if ($refund->status == 'pending')
                                         <a class="btn btn-outline-success btn-outline-success-dark icon-btn js-approve-refund"
                                            title="{{ translate('approve') }}"
@@ -143,16 +144,17 @@
                                             <i class="fi fi-rr-money-bill-transfer"></i>
                                         </a>
                                     @endif
-                                    
-                                    <!-- Print button for order details -->
-                                    <a class="btn btn-outline-secondary btn-outline-secondary-dark icon-btn"
-                                       title="{{ translate('print_order') }}"
-                                       href="{{ route('admin.orders.generate-invoice', ['id' => $refund->order_id]) }}"
-                                       target="_blank">
-                                        <i class="fi fi-rr-print"></i>
-                                    </a>
-
-                                </div>
+                                @endif
+ 
+ 									<!-- Print button for order details -->
+ 									<a class="btn btn-outline-secondary btn-outline-secondary-dark icon-btn"
+ 									   title="{{ translate('print_order') }}"
+ 									   href="{{ route('admin.orders.generate-invoice', ['id' => $refund->order_id]) }}"
+ 									   target="_blank">
+ 										<i class="fi fi-rr-print"></i>
+ 									</a>
+ 
+ 								</div>
                             </td>
                         </tr>
                     @endforeach

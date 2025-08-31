@@ -73,6 +73,7 @@
 										href="{{ route('admin.orders.generate-invoice', [$late['order_id']]) }}">
 										<i class="fi fi-sr-down-to-line"></i>
 									</a>
+									@if(\App\Utils\Helpers::module_permission_check('late_delivery_actions'))
 									<button type="button" class="btn btn-outline-info btn-outline-info-dark icon-btn js-late-status" data-id="{{ $late['id'] }}" data-status="in_progress" title="{{ translate('in_progress') }}">
 										<i class="fi fi-rr-time-forward"></i>
 									</button>
@@ -82,6 +83,7 @@
 									<button type="button" class="btn btn-outline-danger btn-outline-danger-dark icon-btn js-late-status" data-id="{{ $late['id'] }}" data-status="rejected" title="{{ translate('rejected') }}">
 										<i class="fi fi-sr-cross-small"></i>
 									</button>
+									@endif
 								</div>
 							</td>
 						</tr>
