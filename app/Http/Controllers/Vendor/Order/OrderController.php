@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Vendor\Order;
 
+use App\Models\Governorate;
+use App\Models\ShippingAddress;
 use App\Contracts\Repositories\BusinessSettingRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryCountryCodeRepositoryInterface;
@@ -276,8 +278,22 @@ class OrderController extends BaseController
         $relations = ['details', 'customer', 'shipping', 'seller'];
         $order = $this->orderRepo->getFirstWhere(params: $params, relations: $relations);
         $invoiceSettings = getWebConfig(name: 'invoice_settings');
+        // Resolve latest shipping address by customer_id (fallback to order shipping_address_data)
+        $shippingAddress = null;
+        if (!empty($order['customer_id'])) {
+            $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+
+        // Resolve governorate name by city_id stored on order
+        $governorateName = null;
+        if (!empty($order['city_id'])) {
+            $governorateName = Governorate::find($order['city_id'])?->name_ar;
+        }
         $mpdf_view = PdfView::make('vendor-views.order.invoice',
-            compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings')
+            compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName')
         );
         $this->generatePdf(view: $mpdf_view, filePrefix: 'order_invoice_', filePostfix: $order['id'], pdfType: 'invoice');
         // mark printed
@@ -443,7 +459,7 @@ class OrderController extends BaseController
 
         $isFirst = true;
         foreach ($ids as $oid) {
-            $order = $this->orderRepo->getFirstWhere(params: ['id' => $oid, 'seller_id' => $sellerId, 'seller_is' => 'seller'], relations: ['seller', 'shipping', 'details']);
+            $order = $this->orderRepo->getFirstWhere(params: ['id' => $oid, 'seller_id' => $sellerId, 'seller_is' => 'seller'], relations: ['seller', 'shipping', 'details', 'customer']);
             if (!$order) continue;
             $vendor = $this->vendorRepo->getFirstWhere(params: ['id' => $sellerId])['gst'];
             $companyPhone = getWebConfig(name: 'company_phone');
@@ -452,7 +468,20 @@ class OrderController extends BaseController
             $companyWebLogo = getWebConfig(name: 'company_web_logo');
             $invoiceSettings = getWebConfig(name: 'invoice_settings');
 
-            $view = PdfView::make('vendor-views.order.invoice', compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings'));
+            // Resolve latest shipping address and governorate name per order
+            $shippingAddress = null;
+            if (!empty($order['customer_id'])) {
+                $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            }
+            $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+            $governorateName = null;
+            if (!empty($order['city_id'])) {
+                $governorateName = Governorate::find($order['city_id'])?->name_ar;
+            }
+
+            $view = PdfView::make('vendor-views.order.invoice', compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName'));
             $html = $view->render();
             if (!$isFirst) {
                 $mpdf->AddPage();

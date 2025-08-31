@@ -20,21 +20,23 @@ Complete redesign of the invoice system to match Arabic layout requirements with
 #### Upper Information Table
 - **Date** (التاريخ): Order creation date in Y/m/d format
 - **Order Number** (رقم الطلب): Unique order identifier
-- **Province** (المحافظة): Customer's city from shipping address
-- **Address** (العنوان): Complete shipping address with name, street, and ZIP
-- **Customer Mobile** (موبيل للعميل): Customer phone from shipping address
+- **Province** (المحافظة): Governorate name from `governorates` via `order.city_id`
+- **Customer Name** (اسم العميل): Contact person name
+- **Customer Mobile** (موبيل للعميل): Customer phone
+- **Order Note** (ملاحظة الطلب): Shows if present, otherwise "غير محدد"
+- **Address** (العنوان): Large single cell (spans 3 columns) with street and ZIP only (name removed)
 
 #### Order Details Section
-- **Product Information**: Name, price, quantity, and total for each item
-- **Two-column layout**: Optimized space utilization for multiple products
+- One line per product: `الاسم - الكمية: Q × السعر: ج P = الإجمالي: ج (Q×P)`
+- Empty line between items for readability
+- Larger font for better visibility
 
 #### Totals Summary Row
-Single row with 5 columns showing:
-1. **Shipping Costs** (مصاريف الشحن)
-2. **Extra Discount** (الخصم الإضافي) 
-3. **Additional Total** (إجمالي الإضافي)
-4. **Total Discount** (إجمالي الخصم)
-5. **Net Order Value** (صافي قيمة الأوردر)
+Single row with 4 columns in this order:
+1. **قيمة الاوردر** → `itemPrice`
+2. **مصاريف الشحن** → `shippingTotal`
+3. **الخصم** → `itemDiscount + couponDiscount + extraDiscount`
+4. **اجمالي الاوردر** → `totalAmount`
 
 ### 🔧 **Technical Improvements**
 
@@ -43,9 +45,11 @@ Single row with 5 columns showing:
 - **Solution**: Properly included `extraDiscount` from OrderManager calculation
 - **Formula**: Total Discount = Item Discount + Coupon Discount + Extra Discount
 
-#### Address Display Fix  
-- **Issue**: Address always showed "عنوان غير محدد" (Address not specified)
-- **Solution**: Fixed variable scope and proper access to `$order['shipping_address_data']`
+#### Address & Customer Display Updates
+- Governorate name resolved from `governorates` using `order.city_id`
+- Latest shipping address fetched by `customer_id` from `shipping_addresses` (most recent) with fallback to `order.shipping_address_data`
+- Customer name moved to its own small cell; removed from the address
+- Address shown in a dedicated large cell (spans 3 columns), without name
 
 #### Variable Scope Optimization
 - **Moved critical variables to template top**: Prevents undefined variable errors
@@ -63,12 +67,23 @@ Single row with 5 columns showing:
 
 ### Core Components  
 - `app/Traits/PdfGenerator.php` - Disabled automatic footer generation
+ 
+### Controllers
+- `app/Http/Controllers/Admin/Order/OrderController.php` — Passes `$shippingAddress` (latest by customer) and `$governorateName` to admin invoice
+- `app/Http/Controllers/Vendor/Order/OrderController.php` — Passes `$shippingAddress` and `$governorateName` to vendor invoice
 
 ## Data Sources
 
 ### Shipping Address
 ```php
-$shippingAddress = $order['shipping_address_data'] ?? null;
+// Prefer latest by customer, fallback to embedded order data
+$shippingAddress = null;
+if (!empty($order['customer_id'])) {
+    $shippingAddress = \App\Models\ShippingAddress::where('customer_id', $order['customer_id'])
+        ->orderBy('created_at', 'desc')
+        ->first();
+}
+$shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
 ```
 **Fields Used:**
 - `contact_person_name` - Customer name
@@ -76,6 +91,14 @@ $shippingAddress = $order['shipping_address_data'] ?? null;
 - `city` - City/Province  
 - `phone` - Customer mobile
 - `zip` - Postal code
+ 
+### Governorate Name
+```php
+$governorateName = null;
+if (!empty($order['city_id'])) {
+    $governorateName = \App\Models\Governorate::find($order['city_id'])?->name_ar;
+}
+```
 
 ### Order Totals
 ```php

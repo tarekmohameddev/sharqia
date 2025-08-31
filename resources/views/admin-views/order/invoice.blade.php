@@ -5,7 +5,8 @@
     $lang = getDefaultLanguage();
     
     // Define variables we need throughout the template
-    $shippingAddress = $order['shipping_address_data'] ?? null;
+    // Prefer controller-provided $shippingAddress (latest by customer), fallback to order's embedded data
+    $shippingAddress = $shippingAddress ?? ($order['shipping_address_data'] ?? null);
     $orderTotalPriceSummary = \App\Utils\OrderManager::getOrderTotalPriceSummary(order: $order);
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl"
@@ -231,9 +232,6 @@
                                      alt="شركة ذهب للألبان">
                             @endif
                         @endif
-            @php 
-            echo json_encode($order);
-            @endphp
                         <div class="company-line" style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
                             @if($order['seller_is']!='admin' && isset($order['seller']) && $order['seller']->shop)
                                 <span class="company-name" style="margin: 0;">{{ $order['seller']->shop->name ?? 'اسم المتجر' }}</span>
@@ -259,25 +257,30 @@
                     </tr>
                     <tr>
                         <td class="label">المحافظة</td>
-                        <td>{{ $shippingAddress->city ?? 'غير محدد' }}</td>
+                        <td>{{ $governorateName ?? ($shippingAddress->city ?? 'غير محدد') }}</td>
+                        <td class="label">اسم العميل</td>
+                        <td>{{ $shippingAddress->contact_person_name ?? ($order->customer->name ?? 'غير محدد') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">موبيل للعميل</td>
+                        <td>{{ $shippingAddress->phone ?? ($order->customer->phone ?? 'غير محدد') }}</td>
+                        <td class="label">ملاحظة الطلب</td>
+                        <td>{{ !empty($order->order_note) ? $order->order_note : 'غير محدد' }}</td>
+                    </tr>
+                    <tr>
                         <td class="label">العنوان</td>
-                        <td style="font-size: 10px;">
+                        <td colspan="3">
                             @if($shippingAddress)
-                                {{ $shippingAddress->contact_person_name ?? '' }}
                                 @if($shippingAddress->address)
-                                    - {{ $shippingAddress->address }}
-                            @endif
+                                    {{ $shippingAddress->address }}
+                                @endif
                                 @if($shippingAddress->zip)
                                     - {{ $shippingAddress->zip }}
-                        @endif
+                                @endif
                             @else
                                 عنوان غير محدد
                             @endif
                         </td>
-                    </tr>
-                    <tr>
-                        <td class="label">موبيل للعميل</td>
-                        <td colspan="3">{{ $shippingAddress->phone ?? ($order->customer->phone ?? 'غير محدد') }}</td>
                     </tr>
                 </table>
             </div>
@@ -288,14 +291,16 @@
                     <tr>
                         <td style="width: 100%; padding: 10px; border: 1px solid #000; vertical-align: top;">
                             <div class="section-title">بيانات الأوردر</div>
-                            <div style="font-size: 12px; line-height: 1.6;">
+                            <div style="font-size: 14px; line-height: 1.8;">
                                 @foreach($order->details as $key=>$details)
                                     @php($productDetails = $details?->product ?? json_decode($details->product_details))
-                                    <div style="margin-bottom: 8px; display: inline-block; width: 48%; margin-left: 2%;">
-                                        <strong>{{ $productDetails->name ?? 'منتج' }}</strong><br>
-                                        <span>سعر: {{ $details['price'] }} - الكمية: {{ $details->qty }}</span><br>
-                                        <span>السعر: {{ $details['price'] * $details->qty }} ج</span>
+                                    <div style="margin: 0 0 8px 0;">
+                                        <strong>{{ $productDetails->name ?? 'منتج' }}</strong> - الكمية: {{ $details->qty }} × السعر: ج {{ $details['price'] }} = الإجمالي: ج {{ $details['price'] * $details->qty }}
                                     </div>
+                                    
+                                    @if(!$loop->last)
+                                        <div style="height: 8px;"></div>
+                                    @endif
                                 @endforeach
                             </div>
                         </td>
@@ -305,26 +310,23 @@
 
             <!-- Totals Section - Single Row with Columns -->
             <div style="margin-top: 20px;">
+                @php($totalDiscount = ($orderTotalPriceSummary['itemDiscount'] + $orderTotalPriceSummary['couponDiscount'] + $orderTotalPriceSummary['extraDiscount']) ?? 0)
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="width: 20%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
+                        <td style="width: 25%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
+                            <div style="font-size: 12px; font-weight: bold;">قيمة الاوردر</div>
+                            <div style="font-size: 14px; margin-top: 5px;">ج {{ $orderTotalPriceSummary['itemPrice'] ?? 0 }}</div>
+                        </td>
+                        <td style="width: 25%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
                             <div style="font-size: 12px; font-weight: bold;">مصاريف الشحن</div>
                             <div style="font-size: 14px; margin-top: 5px;">ج {{ $orderTotalPriceSummary['shippingTotal'] ?? 0 }}</div>
-                                            </td>
-                        <td style="width: 20%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
-                            <div style="font-size: 12px; font-weight: bold;">الخصم الإضافي</div>
-                            <div style="font-size: 14px; margin-top: 5px; color: #d63384;">ج {{ $orderTotalPriceSummary['extraDiscount'] ?? 0 }}</div>
-                                            </td>
-                        <td style="width: 20%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
-                            <div style="font-size: 12px; font-weight: bold;">إجمالي الإضافي</div>
-                            <div style="font-size: 14px; margin-top: 5px;">ج {{ ($orderTotalPriceSummary['itemPrice'] + $orderTotalPriceSummary['shippingTotal']) ?? 0 }}</div>
-                                                </td>
-                        <td style="width: 20%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
-                            <div style="font-size: 12px; font-weight: bold;">إجمالي الخصم</div>
-                            <div style="font-size: 14px; margin-top: 5px; color: #d63384;">ج {{ ($orderTotalPriceSummary['itemDiscount'] + $orderTotalPriceSummary['couponDiscount'] + $orderTotalPriceSummary['extraDiscount']) ?? 0 }}</div>
-                                                </td>
-                        <td style="width: 20%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #e6f3ff;">
-                            <div style="font-size: 12px; font-weight: bold;">صافي قيمة الأوردر</div>
+                        </td>
+                        <td style="width: 25%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #f0f0f0;">
+                            <div style="font-size: 12px; font-weight: bold;">الخصم</div>
+                            <div style="font-size: 14px; margin-top: 5px; color: #d63384;">ج {{ $totalDiscount }}</div>
+                        </td>
+                        <td style="width: 25%; padding: 10px; border: 1px solid #000; text-align: center; background-color: #e6f3ff;">
+                            <div style="font-size: 12px; font-weight: bold;">اجمالي الاوردر</div>
                             <div style="font-size: 16px; font-weight: bold; margin-top: 5px; color: #0066cc;">ج {{ $orderTotalPriceSummary['totalAmount'] ?? 0 }}</div>
                         </td>
                     </tr>
