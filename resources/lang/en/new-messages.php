@@ -3384,4 +3384,5 @@ return [
 	"yes_reject_it" => "Yes reject it",
 	"you_want_to_process_this_refund" => "You want to process this refund",
 	"yes_refund_it" => "Yes refund it",
+	"coverage_governorates_updated" => "Coverage governorates updated",
 ];

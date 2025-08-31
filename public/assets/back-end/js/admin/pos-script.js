@@ -584,19 +584,22 @@ function updateCartDisplay() {
                         ${formatCurrency(clientCart.extraDiscount)}
                     </dd>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <dt class="title-color gap-2 text-capitalize font-weight-normal">${$("#translate-coupon-discount").data("text") || "Coupon Discount"} :</dt>
-                    <dd>
-                        ${$("#discount-permission").data("permission") === "true" ? 
-                        `<button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
-                            <i class="fi fi-rr-pencil"></i>
-                        </button>` : ''}
-                        ${formatCurrency(clientCart.couponDiscount)}
-                    </dd>
-                </div>
-                <div class="d-flex gap-2 justify-content-between">
-                    <dt class="title-color text-capitalize font-weight-normal">${$("#translate-tax").data("text") || "Tax"} : </dt>
-                    <dd>${formatCurrency(clientCart.totalTax)}</dd>
+                <!-- Hidden as requested: Coupon Discount and Tax -->
+                <div class="d-none">
+                    <div class="d-flex justify-content-between">
+                        <dt class="title-color gap-2 text-capitalize font-weight-normal">${$("#translate-coupon-discount").data("text") || "Coupon Discount"} :</dt>
+                        <dd>
+                            ${$("#discount-permission").data("permission") === "true" ? 
+                            `<button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
+                                <i class="fi fi-rr-pencil"></i>
+                            </button>` : ''}
+                            ${formatCurrency(clientCart.couponDiscount)}
+                        </dd>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-between">
+                        <dt class="title-color text-capitalize font-weight-normal">${$("#translate-tax").data("text") || "Tax"} : </dt>
+                        <dd>${formatCurrency(clientCart.totalTax)}</dd>
+                    </div>
                 </div>
                 <div class="d-flex gap-2 justify-content-between">
                     <dt class="title-color text-capitalize font-weight-normal">${$("#translate-shipping-cost").data("text") || "Shipping Cost"} : </dt>
@@ -2407,6 +2410,20 @@ $(document).on("change", "#customer_city_id, #address_city_id, #add_customer_cit
             $.each(sellers, function (key, value) {
                 seller.append('<option value="' + value.id + '">' + value.name + '</option>');
             });
+
+            // Auto-select first seller if available
+            if (sellers && sellers.length > 0) {
+                const firstSellerId = sellers[0].id;
+                seller.val(firstSellerId).trigger('change');
+                // If using select2, also update the visible container text
+                try {
+                    if (seller.hasClass('select2-hidden-accessible')) {
+                        seller.trigger('select2:select');
+                    }
+                } catch (e) {
+                    // noop
+                }
+            }
             
             // Only store shipping cost and update cart for the main customer form
             if (elementId === "customer_city_id") {
