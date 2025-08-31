@@ -63,7 +63,7 @@
                         @php($seller = auth('seller')->user())
                         @php($sellerId = $seller['id'])
                         @php($sellerPOS=getWebConfig('seller_pos'))
-                        @if ($sellerPOS == 1 && $seller['pos_status'] == 1)
+                        {{-- @if ($sellerPOS == 1 && $seller['pos_status'] == 1)
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/pos*')?'active' : ''}}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link"
                                    href="{{ route('vendor.pos.index') }}" title="{{ translate('POS') }}">
@@ -72,7 +72,7 @@
                                         class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('POS') }}</span>
                                 </a>
                             </li>
-                        @endif
+                        @endif --}}
 
                         <li class="nav-item">
                             <small class="nav-subtitle">{{ translate('order_management') }}</small>
@@ -201,6 +201,7 @@
                             </ul>
                         </li>
 
+                        
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/refund*')?'active' : ''}}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                href="javascript:" title="{{ translate('refund_Requests') }}">
@@ -270,6 +271,8 @@
                                 </li>
                             </ul>
                         </li>
+                        
+                        
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/late-delivery*')?'active' : ''}}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                href="javascript:" title="{{ translate('late_delivery_requests') }}">
@@ -326,6 +329,9 @@
                                 </li>
                             </ul>
                         </li>
+                        
+                        {{-- Hiding extra vendor sidebar items --}}
+                        {{--
                         <li class="nav-item">
                             <small class="nav-subtitle">{{ translate('product_management') }}</small>
                             <small class="tio-more-horizontal nav-subtitle-replacer"></small>
@@ -568,6 +574,7 @@
                                 </ul>
                             </li>
                         @endif
+                        --}}
                         <li class="pb-5"><div class="py-5"></div></li>
                     </ul>
                 </div>
@@ -576,5 +583,5 @@
     </aside>
 </div>
 
-@include("layouts.vendor.partials._setup-guide")
+{{-- @include("layouts.vendor.partials._setup-guide") --}}
 

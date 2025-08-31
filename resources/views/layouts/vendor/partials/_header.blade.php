@@ -46,7 +46,7 @@
             <div class="navbar-nav-wrap-content-right"
                  style="{{$direction === "rtl" ? 'margin-left:unset; margin-right: auto' : 'margin-right:unset; margin-left: auto'}}">
                 <ul class="navbar-nav align-items-center flex-row gap-2 gap-xl-16px">
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <div class="hs-unfold">
                             <a title="{{translate('website_shop_view')}}"
                                class="js-hs-unfold-invoker btn btn-icon btn-ghost-secondary rounded-circle"
@@ -56,7 +56,7 @@
                                 <i class="fi fi-rr-globe fs-18"></i>
                             </a>
                         </div>
-                    </li>
+                    </li> -->
 
                     <li class="nav-item mt-n2">
                         <div class="hs-unfold">
@@ -135,7 +135,7 @@
                         </div>
                     </li>
 
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <div class="hs-unfold">
                             <a
                                 class="js-hs-unfold-invoker btn btn-icon btn-ghost-secondary rounded-circle media align-items-center gap-3 navbar-dropdown-account-wrapper dropdown-toggle-left-arrow dropdown-toggle-empty"
@@ -178,7 +178,7 @@
                                 </a>
                             </div>
                         </div>
-                    </li>
+                    </li> -->
 
                     <li class="nav-item">
                         <div class="hs-unfold">

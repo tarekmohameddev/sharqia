@@ -256,13 +256,6 @@
                                        href="{{route('vendor.orders.details',$order['id'])}}">{{$order['id']}} {!! $order->order_type == 'POS' ? '<span class="text--primary">(POS)</span>' : '' !!}</a>
                                 </td>
                                 <td>
-                                    @if($order->is_printed)
-                                        <span class="badge badge-success text-bg-success">{{ translate('yes') }}</span>
-                                    @else
-                                        <span class="badge badge-secondary bg-secondary">{{ translate('no') }}</span>
-                                    @endif
-                                </td>
-                                <td>
                                     <div>{{date('d M Y',strtotime($order['created_at']))}}</div>
                                     <div>{{date('H:i A',strtotime($order['created_at']))}}</div>
                                 </td>
@@ -300,6 +293,13 @@
                                         <span class="badge badge-soft-success">{{translate('paid')}}</span>
                                     @else
                                         <span class="badge badge-soft-danger">{{translate('unpaid')}}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($order->is_printed)
+                                        <span class="badge badge-success text-bg-success">{{ translate('yes') }}</span>
+                                    @else
+                                        <span class="badge badge-secondary bg-secondary">{{ translate('no') }}</span>
                                     @endif
                                 </td>
                                 @if($status == 'all')

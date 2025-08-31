@@ -1371,7 +1371,7 @@
     </div>
 </aside>
 
-@include("layouts.admin.partials._setup-guide")
+{{-- @include("layouts.admin.partials._setup-guide") --}}
 
 <div class="offcanvas offcanvas-start bg-panel d-lg-none w-280" tabindex="-1" id="offcanvasAside"
      aria-labelledby="offcanvasAsideLabel">
