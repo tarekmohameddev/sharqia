@@ -114,7 +114,45 @@
                                             href="{{route('admin.vendors.view',$seller->id)}}">
                                             <i class="fi fi-rr-eye"></i>
                                         </a>
+                                        <button type="button" title="{{ translate('reset_password') }}" class="btn btn-outline-warning icon-btn" data-bs-toggle="modal" data-bs-target="#vendor-reset-password-{{ $seller['id'] }}">
+                                            <i class="fi fi-rr-key"></i>
+                                        </button>
+                                        <a title="{{ translate('delete') }}"
+                                           class="btn btn-outline-danger icon-btn delete-data"
+                                           href="javascript:" data-id="vendor-{{ $seller['id'] }}">
+                                            <i class="fi fi-rr-trash"></i>
+                                        </a>
                                     </div>
+                                    <div class="modal fade" id="vendor-reset-password-{{ $seller['id'] }}" tabindex="-1" aria-labelledby="vendorResetPasswordLabel-{{ $seller['id'] }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="vendorResetPasswordLabel-{{ $seller['id'] }}">{{ translate('reset_password') }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <form action="{{ route('admin.vendors.reset-password', [$seller['id']]) }}" method="post">
+                                                    @csrf
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">{{ translate('new_password') }}</label>
+                                                            <input type="password" name="password" class="form-control" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">{{ translate('confirm_password') }}</label>
+                                                            <input type="password" name="confirm_password" class="form-control" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('cancel') }}</button>
+                                                        <button type="submit" class="btn btn-primary">{{ translate('update') }}</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form action="{{ route('admin.vendors.delete', [$seller['id']]) }}" method="post" id="vendor-{{ $seller['id'] }}">
+                                        @csrf @method('delete')
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach

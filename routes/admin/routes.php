@@ -383,6 +383,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('order-list-export/{vendor_id}', 'exportOrderList')->name('order-list-export');
             Route::post('status', 'updateStatus')->name('updateStatus');
             Route::get('export', 'exportList')->name('export');
+            Route::delete('delete/{id}', 'delete')->name('delete');
+            Route::post('reset-password/{id}', 'resetPassword')->name('reset-password');
 
             Route::post('sales-commission-update/{id}', 'updateSalesCommission')->name('sales-commission-update');
             Route::get('order-details/{order_id}/{vendor_id}', 'getOrderDetailsView')->name('order-details');
