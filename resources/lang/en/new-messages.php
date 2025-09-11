@@ -3421,4 +3421,6 @@ return [
 	"If_you_turn_on_this_option_your_store_will_be_available_from_the_customer_app_and_website" => "If you turn on this option your store will be available from the customer app and website",
 	"no_country_found" => "No country found",
 	"make_sure_to_enter_the_name_correctly." => "Make sure to enter the name correctly.",
+	"Store_not_found" => "Store not found",
+	"alternative_phone" => "Alternative phone",
 ];

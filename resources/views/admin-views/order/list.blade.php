@@ -300,6 +300,10 @@
                                                         <a class="d-block text-dark"
                                                             href="mailto:{{ $order->customer['email'] }}">{{ $order->customer['email'] }}</a>
                                                     @endif
+                                                    @php($altPhone = data_get($order, 'shipping_address_data.alternative_phone') ?: ($order->customer->alternative_phone ?? null))
+                                                    @if (!empty($altPhone))
+                                                        <small class="d-block text-muted">Alt: <a class="text-muted" href="tel:{{ $altPhone }}">{{ $altPhone }}</a></small>
+                                                    @endif
                                                 @else
                                                     <label class="badge badge-danger text-bg-danger">
                                                         {{ translate('customer_not_found') }}

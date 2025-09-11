@@ -267,6 +267,13 @@
                         <td class="label">ملاحظة الطلب</td>
                         <td>{{ !empty($order->order_note) ? $order->order_note : 'غير محدد' }}</td>
                     </tr>
+                    @php($orderCustomerAlt = $order->customer->alternative_phone ?? null)
+                    @if(!empty($shippingAddress?->alternative_phone) || !empty($orderCustomerAlt))
+                    <tr>
+                        <td class="label">موبيل بديل</td>
+                        <td colspan="3">{{ $shippingAddress->alternative_phone ?? $orderCustomerAlt }}</td>
+                    </tr>
+                    @endif
                     <tr>
                         <td class="label">العنوان</td>
                         <td colspan="3">

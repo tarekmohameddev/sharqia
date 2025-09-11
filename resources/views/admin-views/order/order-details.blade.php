@@ -635,6 +635,10 @@
                                     <span class="text-dark"> <span class="fw-semibold">{{ $orderCount }}</span> {{translate('orders')}}</span>
                                     <span
                                         class="text-dark break-all"><span class="fw-semibold">{{$order->customer['phone']}}</span></span>
+                                    @php($custAltPhone = $order->customer->alternative_phone ?? ($shippingAddress->alternative_phone ?? null))
+                                    @if(!empty($custAltPhone))
+                                        <span class="text-dark break-all"><span class="fw-semibold">{{$custAltPhone}}</span> <small class="text-muted">({{ translate('alternative_phone') }})</small></span>
+                                    @endif
                                     <span class="text-dark break-all">{{$order->customer['email']}}</span>
                                 </div>
                             </div>
@@ -669,6 +673,13 @@
                                         <span>{{translate('contact')}} :</span>
                                         <span class="fw-semibold">{{$shippingAddress->phone}}</span>
                                     </div>
+                                    @php($customerAlt = $order->customer->alternative_phone ?? null)
+                                    @if(!empty($shippingAddress?->alternative_phone) || !empty($customerAlt))
+                                        <div>
+                                            <span>{{ translate('alternative_phone') }} :</span>
+                                            <span class="fw-semibold">{{$shippingAddress->alternative_phone ?? $customerAlt}}</span>
+                                        </div>
+                                    @endif
                                     @if ($order->is_guest && $shippingAddress->email)
                                         <div>
                                             <span>{{translate('email')}} :</span>

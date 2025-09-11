@@ -498,6 +498,12 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
+                                            <label class="form-label mb-1">{{ translate('alternative_phone') }}</label>
+                                            <input class="form-control" type="tel" name="alternative_phone" id="customer_alt_phone" placeholder="{{ translate('enter_phone_number') }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
                                             <select name="city_id" id="customer_city_id" class="custom-select" required>
                                                 <option value="">{{ translate('select') }}</option>

@@ -162,6 +162,7 @@ class POSOrderController extends BaseController
                 $this->customerRepo->update($customer->id, [
                     'f_name' => $customerData['f_name'],
                     'l_name' => $customerData['l_name'] ?? '',
+                    'alternative_phone' => $customerData['alternative_phone'] ?? null,
                 ]);
                 
                 // Update or create shipping address
@@ -190,6 +191,7 @@ class POSOrderController extends BaseController
                     'l_name' => $customerData['l_name'] ?? '',
                     'email' => null, // No email in POS flow
                     'phone' => $customerData['phone'],
+                    'alternative_phone' => $customerData['alternative_phone'] ?? null,
                     'password' => bcrypt('123456'), // Default password
                     'is_active' => 1,
                 ]);
@@ -402,6 +404,24 @@ class POSOrderController extends BaseController
             orderNote: $orderNote,
         );
         $this->orderRepo->add(data: $order);
+        // Persist minimal shipping address data (with alternative phone) on the order for reference
+        if (isset($customerData) && is_array($customerData)) {
+            try {
+                $addressForOrder = $this->shippingAddressService->getAddAddressData(
+                    array_merge($customerData, ['l_name' => '']),
+                    $userId,
+                    'home'
+                );
+                if (!empty($customerData['alternative_phone'])) {
+                    $addressForOrder['alternative_phone'] = $customerData['alternative_phone'];
+                }
+                $this->orderRepo->update((string)$orderId, [
+                    'shipping_address_data' => json_encode($addressForOrder),
+                ]);
+            } catch (\Throwable $e) {
+                // no-op: do not block order placement if address data fails
+            }
+        }
         if ($checkProductTypeDigital) {
             $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId], relations: ['details.productAllStatus']);
             $data = [

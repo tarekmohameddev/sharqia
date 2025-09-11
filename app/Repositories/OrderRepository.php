@@ -138,7 +138,14 @@ class OrderRepository implements OrderRepositoryInterface
                         })
                         // search by phone inside JSON shipping/billing address data
                         ->orWhere('shipping_address_data->phone', 'like', "%{$searchValue}%")
-                        ->orWhere('billing_address_data->phone', 'like', "%{$searchValue}%");
+                        ->orWhere('billing_address_data->phone', 'like', "%{$searchValue}%")
+                        // also search by alternative phone inside JSON
+                        ->orWhere('shipping_address_data->alternative_phone', 'like', "%{$searchValue}%")
+                        ->orWhere('billing_address_data->alternative_phone', 'like', "%{$searchValue}%")
+                        // search by customer's alternative phone
+                        ->orWhereHas('customer', function($q) use ($searchValue) {
+                            $q->where('alternative_phone', 'like', "%{$searchValue}%");
+                        });
                 });
             })
             ->when(isset($filters['whereHas_deliveryMan']), function ($query) use ($filters) {

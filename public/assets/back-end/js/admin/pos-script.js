@@ -912,6 +912,7 @@ function placeClientOrder() {
     const customerData = {
         f_name: $('#customer_f_name').val().trim(),
         phone: $('#customer_phone').val().trim(),
+        alternative_phone: $('#customer_alt_phone').val().trim(),
         city_id: $('#customer_city_id').val(),
         seller_id: $('#customer_seller_id').val(),
         address: $('#customer_address').val().trim()
@@ -1011,6 +1012,7 @@ function placeClientOrder() {
 function clearCustomerForm() {
     $('#customer_f_name').val('');
     $('#customer_phone').val('');
+    $('#customer_alt_phone').val('');
     $('#customer_city_id').val('').trigger('change');
     $('#customer_seller_id').val('').trigger('change');
     $('#customer_address').val('');
