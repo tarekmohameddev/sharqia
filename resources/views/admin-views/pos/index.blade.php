@@ -493,13 +493,13 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('phone') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <input class="form-control" type="tel" name="phone" id="customer_phone" placeholder="{{ translate('enter_phone_number') }}" required>
+                                            <input class="form-control" type="tel" name="phone" id="customer_phone" placeholder="{{ translate('enter_phone_number') }}" required data-no-intl="true">
                                         </div>
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('alternative_phone') }}</label>
-                                            <input class="form-control" type="tel" name="alternative_phone" id="customer_alt_phone" placeholder="{{ translate('enter_phone_number') }}">
+                                            <input class="form-control" type="tel" name="alternative_phone" id="customer_alt_phone" placeholder="{{ translate('enter_phone_number') }}" data-no-intl="true">
                                         </div>
                                     </div>
                                     <div class="col-12 col-lg-6">

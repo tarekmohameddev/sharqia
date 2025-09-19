@@ -1027,6 +1027,30 @@ $(document).ready(function() {
         initializeClientCart();
         attachClientCartEventHandlers();
     }
+
+    // Ensure POS phone inputs accept raw numbers including leading zeros and allow paste
+    try {
+        ['#customer_phone', '#customer_alt_phone'].forEach(function(sel){
+            const el = document.querySelector(sel);
+            if (!el) return;
+            // Remove any non-digit filtering that strips leading zeros; only block non-digits on keypress
+            el.addEventListener('keypress', function(e){
+                const char = String.fromCharCode(e.which || e.keyCode);
+                if (!/[0-9]/.test(char)) {
+                    e.preventDefault();
+                }
+            });
+            // Allow paste as-is (no formatting), just trim whitespace
+            el.addEventListener('paste', function(e){
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                // Keep all digits including leading zeros; remove non-digits only
+                const cleaned = (text || '').replace(/[^0-9]/g, '');
+                // Preserve leading zeros in cleaned
+                this.value = cleaned;
+            });
+        });
+    } catch (e) {}
 });
 
 // Also initialize when the page loads

@@ -33,6 +33,10 @@ function initializeIntlTelInput() {
     const defaultCountry = defaultCountryCodeElement?.dataset?.value?.toLowerCase() || "bd";
 
     inputs.forEach(input => {
+        // Skip inputs explicitly marked to avoid intl-tel-input (e.g., POS wants raw numbers)
+        if (input.hasAttribute('data-no-intl')) {
+            return;
+        }
         const iti = window.intlTelInput(input, {
             initialCountry: defaultCountry,
             autoInsertDialCode: false,
