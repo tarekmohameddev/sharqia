@@ -384,6 +384,25 @@
                 max-width: 200px;
             }
         }
+
+        /* Hide product images in Product section */
+        .pos-product-item_thumb-horizontal,
+        .pos-product-item_thumb,
+        .pos-product-item_thumb-horizontal img,
+        .pos-product-item_thumb img {
+            display: none !important;
+        }
+
+        /* Adjust layout when images are hidden */
+        .pos-product-item_content-horizontal {
+            padding: 0;
+        }
+        .pos-product-item_content {
+            height: auto;
+        }
+        .pos-product-item {
+            height: auto;
+        }
     </style>
 @endpush
 @section('content')
