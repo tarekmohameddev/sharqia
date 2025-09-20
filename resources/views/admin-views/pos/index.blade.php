@@ -710,6 +710,12 @@
 <span id="route-admin-customer-add" data-url="{{ route('admin.customer.add') }}"></span>
 <span id="route-admin-customer-address-add" data-url="{{ route('admin.customer.address-add') }}"></span>
 
+@if(isset($editOrder) && $editOrder)
+    <span id="edit-order-id" data-id="{{ $editOrder->id }}"></span>
+    <script id="edit-order-payload" type="application/json">{!! json_encode($editPayload, JSON_UNESCAPED_UNICODE) !!}</script>
+    <span id="route-admin-orders-update" data-url="{{ route('admin.orders.update', ['id' => $editOrder->id]) }}"></span>
+@endif
+
 <span id="message-cart-word" data-text="{{ translate('cart') }}"></span>
 <span id="message-stock-out" data-text="{{ translate('stock_out') }}"></span>
 <span id="message-stock-id" data-text="{{ translate('in_stock') }}"></span>
@@ -763,6 +769,8 @@
 <span id="translate-place-order" data-text="{{ translate('place_Order') }}"></span>
 <span id="translate-want-to-place-order" data-text="{{ translate('want_to_place_this_order').'?' }}"></span>
 <span id="route-admin-pos-place-order-direct" data-url="{{ route('admin.pos.place-order') }}"></span>
+<span id="message-order-created" data-text="{{ translate('order_placed_successfully') }}"></span>
+<span id="message-order-updated" data-text="{{ translate('order_updated_successfully') }}"></span>
 
 @endsection
 

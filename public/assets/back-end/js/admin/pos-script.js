@@ -982,7 +982,11 @@ function placeClientOrder() {
     });
     
     $.post({
-        url: $("#route-admin-pos-place-order-direct").data("url") || $("#order-place").attr("action"),
+        url: (function(){
+            const editUrl = $("#route-admin-orders-update").data("url");
+            if (editUrl) return editUrl;
+            return $("#route-admin-pos-place-order-direct").data("url") || $("#order-place").attr("action");
+        })(),
         data: formData,
         contentType: false,
         processData: false,
@@ -997,8 +1001,10 @@ function placeClientOrder() {
                     .empty()
                     .html(response.message);
             } else {
-                // Clear client cart on successful order with success toast
-                clearClientCart({ show: true, type: 'success', message: ($("#message-order-created").data("text") || "Order created!") });
+                // Clear client cart on successful create/update with success toast
+                const isEdit = Boolean($("#route-admin-orders-update").data("url"));
+                const successMsg = isEdit ? ( $("#message-order-updated").data("text") || "Order updated!" ) : ( $("#message-order-created").data("text") || "Order created!" );
+                clearClientCart({ show: true, type: 'success', message: successMsg });
                 // Clear customer form for next order
                 clearCustomerForm();
                 location.reload();
@@ -1032,7 +1038,28 @@ function clearCustomerForm() {
 $(document).ready(function() {
     // Check if we should use client-side cart (when cart is empty or enabled)
     const shouldUseClientCart = true; // You can add conditions here if needed
-    
+
+    // If in edit mode, preload cart and customer from server payload
+    const editPayloadEl = document.getElementById('edit-order-payload');
+    if (editPayloadEl) {
+        try {
+            const payload = JSON.parse(editPayloadEl.textContent || '{}');
+            if (payload && payload.cart && Array.isArray(payload.cart.items)) {
+                window.clientCart = payload.cart;
+                saveClientCart();
+            }
+            const c = payload.customer || {};
+            if (c.f_name) document.getElementById('customer_f_name').value = c.f_name;
+            if (c.phone) document.getElementById('customer_phone').value = c.phone;
+            if (c.alternative_phone) document.getElementById('customer_alt_phone').value = c.alternative_phone;
+            if (c.address) document.getElementById('customer_address').value = c.address;
+            if (c.city_id) $('#customer_city_id').val(c.city_id).trigger('change');
+            if (c.seller_id) $('#customer_seller_id').val(c.seller_id).trigger('change');
+        } catch (e) {
+            console.warn('Failed to parse edit payload', e);
+        }
+    }
+
     if (shouldUseClientCart) {
         initializeClientCart();
         attachClientCartEventHandlers();

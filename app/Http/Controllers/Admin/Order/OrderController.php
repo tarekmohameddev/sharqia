@@ -179,6 +179,29 @@ class OrderController extends BaseController
         ));
     }
 
+    public function edit(int|string $id): RedirectResponse
+    {
+        if (!\App\Utils\Helpers::module_permission_check('order_edit')) {
+            \Devrabiul\ToastMagic\Facades\ToastMagic::error(translate('access_denied'));
+            return back();
+        }
+        $order = $this->orderRepo->getFirstWhere(params: ['id' => $id]);
+        if (!$order) {
+            \Devrabiul\ToastMagic\Facades\ToastMagic::error(translate('order_not_found'));
+            return back();
+        }
+        return redirect()->route('admin.pos.index', ['edit_order_id' => $id]);
+    }
+
+    public function update(Request $request, int|string $id): JsonResponse
+    {
+        if (!\App\Utils\Helpers::module_permission_check('order_edit')) {
+            return response()->json(['error' => translate('access_denied')], 403);
+        }
+        // Delegate to action class for clarity and isolation
+        return app(\App\Http\Controllers\Admin\Order\OrderUpdateAction::class)($request, $id);
+    }
+
     public function createRefundRequest(Request $request, int $orderId): JsonResponse
     {
         $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId], relations: ['details']);

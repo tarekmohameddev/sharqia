@@ -105,6 +105,70 @@ class POSController extends BaseController
             ];
         }
 
+        $editOrder = null;
+        $editPayload = null;
+
+        if ($request->filled('edit_order_id')) {
+            $editOrder = $this->orderRepo->getFirstWhere(
+                params: ['id' => $request->get('edit_order_id')],
+                relations: ['details', 'customer', 'seller.shop']
+            );
+            if ($editOrder) {
+                session(['selected_shipping_cost' => (float)$editOrder->shipping_cost]);
+                $items = [];
+                foreach ($editOrder->details as $d) {
+                    $productDetails = json_decode($d->product_details, true) ?: [];
+                    $items[] = [
+                        'id' => (int)$d->product_id,
+                        'name' => $productDetails['name'] ?? ($productDetails['defaultName'] ?? ''),
+                        'price' => (float)$d->price,
+                        'quantity' => (int)$d->qty,
+                        'image' => getStorageImages(path: $productDetails['thumbnail_full_url'] ?? null, type: 'backend-product'),
+                        'productType' => $productDetails['product_type'] ?? 'physical',
+                        'unit' => $productDetails['unit'] ?? null,
+                        'tax' => (float)($productDetails['tax'] ?? 0),
+                        'taxType' => $productDetails['tax_type'] ?? 'percent',
+                        'taxModel' => $productDetails['tax_model'] ?? 'exclude',
+                        'discount' => (float)$d->discount / max(1, (int)$d->qty),
+                        'discountType' => 'discount_on_product',
+                        'variant' => $d->variant,
+                        'variations' => json_decode($d->variation, true),
+                        'categoryId' => (int)($productDetails['category_id'] ?? 0),
+                        'isGift' => false,
+                    ];
+                }
+                $editPayload = [
+                    'order' => [
+                        'id' => (int)$editOrder->id,
+                        'couponCode' => $editOrder->coupon_code,
+                        'couponDiscount' => (float)$editOrder->discount_amount,
+                        'extraDiscount' => (float)$editOrder->extra_discount,
+                        'shippingCost' => (float)$editOrder->shipping_cost,
+                        'orderNote' => (string)$editOrder->order_note,
+                        'sellerId' => (int)$editOrder->seller_id,
+                        'cityId' => (int)$editOrder->city_id,
+                    ],
+                    'customer' => [
+                        'f_name' => $editOrder->customer?->f_name ?? '',
+                        'l_name' => $editOrder->customer?->l_name ?? '',
+                        'phone' => $editOrder->customer?->phone ?? data_get($editOrder, 'shipping_address_data.phone'),
+                        'alternative_phone' => data_get($editOrder, 'shipping_address_data.alternative_phone'),
+                        'address' => data_get($editOrder, 'shipping_address_data.address'),
+                        'city_id' => (int)$editOrder->city_id,
+                        'seller_id' => (int)$editOrder->seller_id,
+                    ],
+                    'cart' => [
+                        'items' => $items,
+                        'coupon_discount' => (float)$editOrder->discount_amount,
+                        'coupon_code' => $editOrder->coupon_code,
+                        'coupon_bearer' => $editOrder->coupon_discount_bearer ?? 'inhouse',
+                        'ext_discount' => (float)$editOrder->extra_discount,
+                        'ext_discount_type' => $editOrder->extra_discount > 0 ? 'amount' : null,
+                    ],
+                ];
+            }
+        }
+
         return view('admin-views.pos.index', compact(
             'categories',
             'categoryId',
@@ -118,7 +182,7 @@ class POSController extends BaseController
             'totalHoldOrder',
             'governorates',
             'categoryRulesMap'
-        ));
+        ))->with(['editOrder' => $editOrder, 'editPayload' => $editPayload]);
     }
 
     public function getSellers(Request $request): JsonResponse

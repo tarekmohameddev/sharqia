@@ -391,6 +391,13 @@
                                                     href="{{ route('admin.orders.generate-invoice', [$order['id']]) }}">
                                                     <i class="fi fi-sr-down-to-line"></i>
                                                 </a>
+                                                @if(\App\Utils\Helpers::module_permission_check('order_edit'))
+                                                <a class="btn btn-outline-primary btn-outline-primary-dark icon-btn"
+                                                   title="{{ translate('edit') }}"
+                                                   href="{{ route('admin.orders.edit', ['id' => $order['id']]) }}">
+                                                    <i class="fi fi-rr-edit"></i>
+                                                </a>
+                                                @endif
                                                 <button type="button" class="btn btn-outline-danger btn-outline-danger-dark icon-btn js-create-refund"
                                                     data-order-id="{{ $order['id'] }}" title="{{ translate('refund_request') }}">
                                                     <i class="fi fi-rr-undo"></i>
