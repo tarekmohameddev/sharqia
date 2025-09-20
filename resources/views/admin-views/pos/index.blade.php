@@ -512,13 +512,13 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('phone') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <input class="form-control" type="tel" name="phone" id="customer_phone" placeholder="{{ translate('enter_phone_number') }}" required data-no-intl="true">
+                                            <input class="form-control" type="tel" name="phone" id="customer_phone" placeholder="{{ translate('enter_phone_number') }}" required data-no-intl="true" maxlength="11" pattern="0(10|11|12|15)[0-9]{8}" title="{{ translate('egyptian_mobile_input_title') }}">
                                         </div>
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('alternative_phone') }}</label>
-                                            <input class="form-control" type="tel" name="alternative_phone" id="customer_alt_phone" placeholder="{{ translate('enter_phone_number') }}" data-no-intl="true">
+                                            <input class="form-control" type="tel" name="alternative_phone" id="customer_alt_phone" placeholder="{{ translate('enter_phone_number') }}" data-no-intl="true" maxlength="11" pattern="0(10|11|12|15)[0-9]{8}" title="{{ translate('egyptian_mobile_input_title') }}">
                                         </div>
                                     </div>
                                     <div class="col-12 col-lg-6">
@@ -782,6 +782,11 @@
             @endif
         });
     </script>
+
+    <!-- Translations for JS validation -->
+    <span id="message-please-enter-customer-phone" data-text="{{ translate('please_enter_customer_phone_number') }}"></span>
+    <span id="message-valid-egyptian-mobile" data-text="{{ translate('enter_valid_egyptian_mobile_number') }}"></span>
+    <span id="message-valid-egyptian-alt-mobile" data-text="{{ translate('enter_valid_egyptian_alternative_mobile_number') }}"></span>
 
     <script>
         let popupHideTimeout;

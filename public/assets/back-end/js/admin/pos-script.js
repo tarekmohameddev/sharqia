@@ -920,8 +920,24 @@ function placeClientOrder() {
     
     // Validate required fields
     if (!customerData.phone) {
-        toastMagic.error('Please enter customer phone number');
+        toastMagic.error($('#message-please-enter-customer-phone').data('text'));
         $('#customer_phone').focus();
+        return;
+    }
+    // Egyptian mobile validation: 11 digits, starts with 010/011/012/015
+    const EGY_MOBILE_REGEX = /^0(10|11|12|15)[0-9]{8}$/;
+    if (!EGY_MOBILE_REGEX.test(customerData.phone)) {
+        toastMagic.error($('#message-valid-egyptian-mobile').data('text'));
+        $('#customer_phone')[0]?.reportValidity?.();
+        $('#customer_phone').focus();
+        return;
+    }
+    if (customerData.alternative_phone && !EGY_MOBILE_REGEX.test(customerData.alternative_phone)) {
+        const altMsg = document.getElementById('message-valid-egyptian-alt-mobile')?.getAttribute('data-text')
+            || 'Enter valid Egyptian alternative mobile (010/011/012/015 + 8 digits)';
+        toastMagic.error(altMsg);
+        $('#customer_alt_phone')[0]?.reportValidity?.();
+        $('#customer_alt_phone').focus();
         return;
     }
     
@@ -1024,6 +1040,8 @@ $(document).ready(function() {
 
     // Ensure POS phone inputs accept raw numbers including leading zeros and allow paste
     try {
+        const EGY_MOBILE_REGEX = /^0(10|11|12|15)[0-9]{8}$/;
+        const MSG_VALID_EGY_MOBILE = document.getElementById('message-valid-egyptian-mobile')?.getAttribute('data-text') || 'Enter valid Egyptian mobile number (010/011/012/015 + 8 digits)';
         ['#customer_phone', '#customer_alt_phone'].forEach(function(sel){
             const el = document.querySelector(sel);
             if (!el) return;
@@ -1034,6 +1052,12 @@ $(document).ready(function() {
                     e.preventDefault();
                 }
             });
+            // Enforce max length of 11
+            el.addEventListener('input', function(){
+                if (this.value.length > 11) {
+                    this.value = this.value.slice(0, 11);
+                }
+            });
             // Allow paste as-is (no formatting), just trim whitespace
             el.addEventListener('paste', function(e){
                 e.preventDefault();
@@ -1041,7 +1065,16 @@ $(document).ready(function() {
                 // Keep all digits including leading zeros; remove non-digits only
                 const cleaned = (text || '').replace(/[^0-9]/g, '');
                 // Preserve leading zeros in cleaned
-                this.value = cleaned;
+                this.value = cleaned.slice(0, 11);
+            });
+            // Set custom validity message using HTML5 validation API
+            el.addEventListener('blur', function(){
+                if (!this.value) { this.setCustomValidity(''); return; }
+                if (!EGY_MOBILE_REGEX.test(this.value)) {
+                    this.setCustomValidity(MSG_VALID_EGY_MOBILE);
+                } else {
+                    this.setCustomValidity('');
+                }
             });
         });
     } catch (e) {}
