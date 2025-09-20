@@ -505,8 +505,8 @@
                                 <div class="row g-3">
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
-                                            <label class="form-label mb-1">{{ translate('first_name') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <input type="text" name="f_name" id="customer_f_name" class="form-control" placeholder="{{ translate('first_name') }}" required>
+                                            <label class="form-label mb-1">{{ translate('first_name') }}</label>
+                                            <input type="text" name="f_name" id="customer_f_name" class="form-control" placeholder="{{ translate('first_name') }}">
                                         </div>
                                     </div>
                                     <div class="col-12 col-lg-6">

@@ -919,12 +919,6 @@ function placeClientOrder() {
     };
     
     // Validate required fields
-    if (!customerData.f_name) {
-        toastMagic.error('Please enter customer first name');
-        $('#customer_f_name').focus();
-        return;
-    }
-    
     if (!customerData.phone) {
         toastMagic.error('Please enter customer phone number');
         $('#customer_phone').focus();

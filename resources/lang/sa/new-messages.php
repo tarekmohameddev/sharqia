@@ -7,4 +7,5 @@ return [
 	"POS order updated successfully" => "POS order updated successfully",
 	"Failed to update POS order" => "Failed to update POS order",
 	"POS Order" => "POS Order",
+	"Store_not_found" => "Store not found",
 ];
