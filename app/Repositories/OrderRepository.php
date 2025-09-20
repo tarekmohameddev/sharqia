@@ -621,6 +621,12 @@ class OrderRepository implements OrderRepositoryInterface
     public function getCountWhere(array $filters = []): int
     {
         return $this->order
+            ->when(isset($filters['customer_id']) && $filters['customer_id'] !== 'all', function ($query) use ($filters) {
+                return $query->where('customer_id', $filters['customer_id']);
+            })
+            ->when(isset($filters['order_type']) && $filters['order_type'] !== 'all', function ($query) use ($filters) {
+                return $query->where('order_type', $filters['order_type']);
+            })
             ->when(isset($filters['seller_is']) && $filters['seller_is'] != 'all', function ($query) use ($filters) {
                 return $query->where('seller_is', $filters['seller_is']);
             })

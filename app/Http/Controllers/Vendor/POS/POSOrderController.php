@@ -19,6 +19,7 @@ use App\Services\OrderService;
 use App\Services\POSService;
 use App\Traits\CalculatorTrait;
 use App\Traits\CustomerTrait;
+use App\Models\Order;
 use Devrabiul\ToastMagic\Facades\ToastMagic;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -151,6 +152,40 @@ class POSOrderController extends BaseController
             return response()->json();
         }
 
+        // Early duplicate check BEFORE mutating any customer data
+        try {
+            $preUserId = 0;
+            if ($request->has('customer_id')) {
+                $preUserId = (int)$request['customer_id'];
+            } else {
+                $ciTmp = $request->input('customer', []);
+                $preUserId = (int)($ciTmp['id'] ?? 0);
+                if ($preUserId === 0 && !empty($ciTmp['phone'])) {
+                    $existing = $this->customerRepo->getFirstWhere(['phone' => $ciTmp['phone']]);
+                    $preUserId = $existing?->id ?? 0;
+                }
+            }
+
+            if ($preUserId > 0) {
+                $unprintedCountEarly = $this->orderRepo->getCountWhere(filters: [
+                    'customer_id' => $preUserId,
+                    'order_type' => 'POS',
+                    'is_printed' => 0,
+                    'created_at_from' => now()->subDay(),
+                    'created_at_to' => now(),
+                ]);
+                if ($unprintedCountEarly > 0) {
+                    ToastMagic::warning(translate('This_customer_has_an_unprinted_order_within_the_last_24_hours'));
+                    return response()->json([
+                        'duplicate_unprinted' => true,
+                        'message' => translate('This_customer_has_an_unprinted_order_within_the_last_24_hours')
+                    ], 409);
+                }
+            }
+        } catch (\Throwable $e) {
+            // fail-open: if check errors out, we proceed to avoid blocking POS
+        }
+
         $customerInfo = $request->input('customer', []);
         $userId = $customerInfo['id'] ?? 0;
         if ($userId == 0 && isset($customerInfo['phone'])) {
@@ -177,6 +212,24 @@ class POSOrderController extends BaseController
             }
         }
 
+        // Definitive duplicate check AFTER resolving customer id (do not create order)
+        if (!empty($userId)) {
+            $unprintedCount = $this->orderRepo->getCountWhere(filters: [
+                'customer_id' => $userId,
+                'order_type' => 'POS',
+                'is_printed' => 0,
+                'created_at_from' => now()->subDay(),
+                'created_at_to' => now(),
+            ]);
+            if ($unprintedCount > 0) {
+                ToastMagic::warning(translate('This_customer_has_an_unprinted_order_within_the_last_24_hours'));
+                return response()->json([
+                    'duplicate_unprinted' => true,
+                    'message' => translate('This_customer_has_an_unprinted_order_within_the_last_24_hours')
+                ], 409);
+            }
+        }
+
         $checkProductTypeDigital = false;
         foreach ($cartItems as $ci) {
             $productTypeCheck = $this->productRepo->getFirstWhere(params: ['id' => $ci['id']]);
@@ -188,11 +241,7 @@ class POSOrderController extends BaseController
             return response()->json(['checkProductTypeForWalkingCustomer' => true, 'message' => translate('To_order_digital_product') . ',' . translate('_kindly_fill_up_the_“Add_New_Customer”_form') . '.']);
         }
 
-        $orderId = 100000 + $this->orderRepo->getList()->count() + 1;
-        $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId]);
-        if ($order) {
-            $orderId = $this->orderRepo->getList(orderBy: ['id' => 'DESC'])->first()->id + 1;
-        }
+        $orderId = (int)(Order::max('id') ?? 99999) + 1;
         foreach ($cartItems as $item) {
             $product = $this->productRepo->getFirstWhere(params: ['id' => $item['id']], relations: ['clearanceSale' => function ($query) {
                 return $query->active();
