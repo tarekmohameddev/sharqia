@@ -3423,4 +3423,11 @@ return [
 	"make_sure_to_enter_the_name_correctly." => "Make sure to enter the name correctly.",
 	"Store_not_found" => "Store not found",
 	"alternative_phone" => "Alternative phone",
+	"password_updated_successfully" => "Password updated successfully",
+	"vendor_removed_successfully" => "Vendor removed successfully",
+	"The_password_and_confirm_password_must_be_match" => "The password and confirm password must be match",
+	"The_confirm_password_field_is_required" => "The confirm password field is required",
+	"The password must be at least 8 characters" => "The password must be at least 8 characters",
+	"Store_not_found" => "Store not found",
+	"call_us" => "Call us",
 ];
