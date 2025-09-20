@@ -958,7 +958,8 @@ function placeClientOrder() {
     formData.append('customer_id', 0); // Always 0 for new customer flow
     formData.append('cart_data', JSON.stringify(clientCart));
     formData.append('amount', clientCart.total);
-    formData.append('paid_amount', $('.pos-paid-amount-element').val());
+    // Force paid amount to current total to avoid change amount on edit
+    formData.append('paid_amount', clientCart.total);
     formData.append('type', $('input[name="type"]:checked').val());
     
     // Add manual extra discount fields separately (avoid sending category portion)
@@ -1007,6 +1008,11 @@ function placeClientOrder() {
                 clearClientCart({ show: true, type: 'success', message: successMsg });
                 // Clear customer form for next order
                 clearCustomerForm();
+                // Redirect after success: edits go to orders list; creates reload POS
+                if (isEdit) {
+                    const listUrl = $("#route-admin-orders-list").data("url");
+                    if (listUrl) { window.location.href = listUrl; return; }
+                }
                 location.reload();
             }
         },
@@ -1045,7 +1051,43 @@ $(document).ready(function() {
         try {
             const payload = JSON.parse(editPayloadEl.textContent || '{}');
             if (payload && payload.cart && Array.isArray(payload.cart.items)) {
-                window.clientCart = payload.cart;
+                clientCart = payload.cart;
+                // Prevent double-discounting when editing: reset manual and recompute
+                clientCart.extraDiscount = 0;
+                clientCart.extraDiscountValue = 0;
+                clientCart.extraDiscountType = null;
+                // Also clear any previous server-side extra discount snapshot
+                clientCart.ext_discount = 0;
+                clientCart.ext_discount_type = null;
+                // Prefer coupon from payload if present
+                if (typeof payload.cart.coupon_discount !== 'undefined') {
+                    clientCart.couponDiscount = parseFloat(payload.cart.coupon_discount || 0);
+                }
+                // Remove any pre-existing gift lines from payload to avoid duplication
+                try {
+                    const rulesMap = (typeof window !== 'undefined') ? (window.CATEGORY_RULES_MAP || {}) : {};
+                    const giftIds = new Set();
+                    Object.keys(rulesMap).forEach(function(catId){
+                        const rules = rulesMap[catId] || [];
+                        rules.forEach(function(rule){
+                            if (rule && rule.giftProduct && rule.giftProduct.id) {
+                                giftIds.add(parseInt(rule.giftProduct.id));
+                            }
+                        });
+                    });
+                    if (clientCart && Array.isArray(clientCart.items) && giftIds.size > 0) {
+                        clientCart.items = clientCart.items.filter(function(item){
+                            return !(item && giftIds.has(parseInt(item.id)));
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Gift cleanup during edit failed', err);
+                }
+
+                // Ensure shipping cost aligns with session-selected value
+                updateShippingCost();
+                calculateCartTotals();
+                updateCartDisplay();
                 saveClientCart();
             }
             const c = payload.customer || {};
@@ -1061,6 +1103,10 @@ $(document).ready(function() {
     }
 
     if (shouldUseClientCart) {
+        // If not editing, always open POS with empty local cart to avoid showing old content
+        if (!editPayloadEl) {
+            clearClientCart({ show: false });
+        }
         initializeClientCart();
         attachClientCartEventHandlers();
     }

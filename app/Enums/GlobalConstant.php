@@ -1294,6 +1294,7 @@ enum GlobalConstant
         'dashboard' => 'dashboard',
         'pos_management' => 'pos_management',
         'order_management' => 'order_management',
+        'order_edit' => 'order_edit',
         'refund_actions' => 'refund_actions',
         'late_delivery_actions' => 'late_delivery_actions',
         'product_management' => 'product_management',

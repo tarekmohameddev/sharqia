@@ -8,6 +8,7 @@ use App\Services\{OrderDetailsService, OrderService, ShippingAddressService};
 use App\Traits\CalculatorTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\CategoryDiscountRule;
 
 class OrderUpdateAction extends Controller
 {
@@ -49,7 +50,7 @@ class OrderUpdateAction extends Controller
             }
 
             // Remove old details
-            $this->orderDetailRepo->deleteWhere(params: ['order_id' => $order->id]);
+            $this->orderDetailRepo->delete(params: ['order_id' => $order->id]);
 
             // Re-add new details and subtract stock
             $subtotal = 0.0; $productDiscount = 0.0; $totalTax = 0.0;
@@ -76,9 +77,54 @@ class OrderUpdateAction extends Controller
             }
 
             $shippingCost = (float)($request->input('shipping_cost', session('selected_shipping_cost', 0)));
-            $couponDiscount = (float)($clientCart['coupon_discount'] ?? 0);
-            $extraDiscount = (float)($clientCart['ext_discount'] ?? 0);
-            $serverAmount = max(0, $subtotal - $productDiscount + $totalTax + $shippingCost - $couponDiscount - $extraDiscount);
+            $couponDiscount = (float)($clientCart['couponDiscount'] ?? 0);
+
+            // Recompute extra discount server-side: category rules + manual extra (from request)
+            // Category rules discount (exclude gifts)
+            $categoryCounts = [];
+            foreach ($cartItems as $ci) {
+                if (!empty($ci['isGift']) || !empty($ci['is_gift'])) { continue; }
+                $catId = (int)($ci['categoryId'] ?? ($ci['category_id'] ?? 0));
+                if ($catId <= 0) { continue; }
+                $categoryCounts[$catId] = ($categoryCounts[$catId] ?? 0) + (int)$ci['quantity'];
+            }
+            $categoryDiscount = 0.0;
+            if (!empty($categoryCounts)) {
+                $rules = CategoryDiscountRule::whereIn('category_id', array_keys($categoryCounts))
+                    ->where('is_active', true)
+                    ->orderBy('quantity', 'desc')
+                    ->get()
+                    ->groupBy('category_id');
+                foreach ($categoryCounts as $catId => $count) {
+                    $remaining = $count;
+                    $catRules = ($rules[$catId] ?? collect())->sortByDesc('quantity');
+                    foreach ($catRules as $rule) {
+                        if ($remaining < (int)$rule->quantity) { continue; }
+                        $times = intdiv($remaining, (int)$rule->quantity);
+                        if ($times <= 0) { continue; }
+                        $categoryDiscount += ((float)$rule->discount_amount) * $times;
+                        $remaining = $remaining % (int)$rule->quantity;
+                    }
+                }
+            }
+
+            // Manual extra from request (only if explicitly set)
+            $manualExtra = 0.0;
+            $manualExtraSet = (int)$request->get('manual_extra_set', 0) === 1;
+            $extType = $manualExtraSet ? $request->get('ext_discount_type') : null;
+            $extVal = $manualExtraSet ? (float)$request->get('ext_discount', 0) : 0.0;
+            if ($manualExtraSet) {
+                if ($extType === 'percent') {
+                    $base = max(0.0, $subtotal - $productDiscount);
+                    $manualExtra = ($base * $extVal) / 100.0;
+                } elseif ($extVal > 0) {
+                    $manualExtra = $extVal;
+                }
+            }
+
+            $totalExtraDiscount = (float)$categoryDiscount + (float)$manualExtra;
+            $serverAmount = max(0, $subtotal - $productDiscount + $totalTax + $shippingCost - $couponDiscount - $totalExtraDiscount);
+            $paidAmount = $serverAmount; // Avoid change amount in POS edit flow
 
             $this->orderRepo->update(id: $order->id, data: [
                 'order_amount' => currencyConverter(amount: $serverAmount),
@@ -86,10 +132,11 @@ class OrderUpdateAction extends Controller
                 'coupon_code' => $clientCart['coupon_code'] ?? null,
                 'discount_type' => (!empty($clientCart['coupon_code']) ? 'coupon_discount' : null),
                 'coupon_discount_bearer' => $clientCart['coupon_bearer'] ?? 'inhouse',
-                'extra_discount' => $extraDiscount,
-                'extra_discount_type' => $extraDiscount > 0 ? 'amount' : null,
+                'extra_discount' => $totalExtraDiscount,
+                'extra_discount_type' => $totalExtraDiscount > 0 ? 'amount' : null,
                 'shipping_cost' => currencyConverter(amount: $shippingCost),
                 'order_note' => $request->input('order_note'),
+                'paid_amount' => currencyConverter(amount: $paidAmount),
                 'is_printed' => 0,
             ]);
 

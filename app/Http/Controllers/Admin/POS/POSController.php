@@ -111,12 +111,16 @@ class POSController extends BaseController
         if ($request->filled('edit_order_id')) {
             $editOrder = $this->orderRepo->getFirstWhere(
                 params: ['id' => $request->get('edit_order_id')],
-                relations: ['details', 'customer', 'seller.shop']
+                relations: ['details.product', 'customer', 'seller.shop']
             );
             if ($editOrder) {
                 session(['selected_shipping_cost' => (float)$editOrder->shipping_cost]);
                 $items = [];
                 foreach ($editOrder->details as $d) {
+                    // Skip previously granted gift items when loading into edit POS
+                    if ($d->product && (bool)$d->product->is_gift) {
+                        continue;
+                    }
                     $productDetails = json_decode($d->product_details, true) ?: [];
                     $items[] = [
                         'id' => (int)$d->product_id,

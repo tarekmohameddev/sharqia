@@ -707,6 +707,7 @@
 <span id="route-admin-pos-get-sellers" data-url="{{ route('admin.pos.get-sellers') }}"></span>
 <span id="discount-permission" data-permission="{{ \App\Utils\Helpers::module_permission_check('discount') ? 'true' : 'false' }}"></span>
 <span id="route-admin-pos-set-shipping" data-url="{{ route('admin.pos.set-shipping') }}"></span>
+<span id="route-admin-orders-list" data-url="{{ route('admin.orders.list', ['all']) }}"></span>
 <span id="route-admin-customer-add" data-url="{{ route('admin.customer.add') }}"></span>
 <span id="route-admin-customer-address-add" data-url="{{ route('admin.customer.address-add') }}"></span>
 
