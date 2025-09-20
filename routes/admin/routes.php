@@ -222,6 +222,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('export-restock', 'exportRestockList')->name('restock-export');
             Route::delete('restock-delete/{id}', 'deleteRestock')->name('restock-delete');
             Route::get('gift-products', 'getGiftProducts')->name('gift-products');
+            Route::post('update-pos-order', 'updatePosOrder')->name('update-pos-order');
         });
     });
 

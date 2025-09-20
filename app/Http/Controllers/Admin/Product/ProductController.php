@@ -997,6 +997,26 @@ class ProductController extends BaseController
         }));
     }
 
+    /**
+     * Update product POS order
+     */
+    public function updatePosOrder(Request $request): JsonResponse
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'pos_order' => 'required|integer|min:0'
+        ]);
+
+        $this->productRepo->update(
+            id: $request->product_id,
+            data: ['pos_order' => $request->pos_order]
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => translate('POS order updated successfully')
+        ]);
+    }
 
 
 }

@@ -2,6 +2,37 @@
 
 @section('title', translate('product_List'))
 
+@push('script')
+<script>
+$(document).ready(function() {
+    $('.pos-order-select').on('change', function() {
+        let productId = $(this).data('product-id');
+        let posOrder = $(this).val();
+        
+        $.ajax({
+            url: '{{ route('admin.products.update-pos-order') }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                product_id: productId,
+                pos_order: posOrder
+            },
+            success: function(response) {
+                if (response.status) {
+                    toastMagic.success('{{ translate('POS order updated successfully') }}');
+                } else {
+                    toastMagic.error('{{ translate('Failed to update POS order') }}');
+                }
+            },
+            error: function() {
+                toastMagic.error('{{ translate('Failed to update POS order') }}');
+            }
+        });
+    });
+});
+</script>
+@endpush
+
 @section('content')
     <div class="content container-fluid">
 
@@ -188,6 +219,7 @@
                                     <th>{{ translate('product Name') }}</th>
                                     <th class="text-center">{{ translate('product Type') }}</th>
                                     <th class="text-center">{{ translate('unit_price') }}</th>
+                                    <th class="text-center">{{ translate('POS Order') }}</th>
                                     <th class="text-center">{{ translate('show_as_featured') }}</th>
                                     <th class="text-center">{{ translate('active_status') }}</th>
                                     <th class="text-center">{{ translate('action') }}</th>
@@ -219,6 +251,13 @@
                                         </td>
                                         <td class="text-center">
                                             {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $product['unit_price']), currencyCode: getCurrencyCode()) }}
+                                        </td>
+                                        <td class="text-center">
+                                            <select class="form-control pos-order-select" data-product-id="{{ $product['id'] }}">
+                                                @for ($i = 0; $i <= 100; $i++)
+                                                    <option value="{{ $i }}" {{ $product['pos_order'] == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                                @endfor
+                                            </select>
                                         </td>
                                         <td class="text-center">
 

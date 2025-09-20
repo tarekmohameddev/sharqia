@@ -59,7 +59,7 @@ class POSController extends BaseController
         $categories = $this->categoryRepo->getListWhere(orderBy: ['id' => 'desc'], filters: ['position' => 0], dataLimit: 'all');
         $searchValue = $request['searchValue'] ?? null;
         $products = $this->productRepo->getListWhere(
-            orderBy: ['id' => 'desc'],
+            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
             searchValue: $searchValue,
             filters: [
                 'added_by' => 'in_house',
@@ -513,6 +513,7 @@ class POSController extends BaseController
     {
         $products = $this->productRepo->getListWithScope(
             scope: 'active',
+            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
             filters: [
                 'added_by' => 'in_house',
                 'keywords' => $request['name'],
