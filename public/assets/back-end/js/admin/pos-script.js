@@ -772,19 +772,29 @@ function attachClientCartEventHandlers() {
             variations: []
         };
 
-        // Stock check for physical products
-        if (productData.productType === 'physical') {
-            if (productData.stock <= 0 || quantity > productData.stock) {
-                toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text"));
-                return;
-            }
-        }
-
-        // If item exists, set its quantity to the selected amount; else add new with that quantity
+        // Defer stock validation until we determine the target quantity (accumulated or new)
+        // If item exists, accumulate its quantity by the selected amount; else add new with that quantity
         const existingItem = clientCart.items.find(item => item.id === productData.id && item.variant === '');
         if (existingItem) {
-            updateClientCartQuantity(productData.id, '', quantity);
+            const desiredQuantity = (parseInt(existingItem.quantity) || 0) + quantity;
+
+            // Stock check for physical products when accumulating
+            if (productData.productType === 'physical') {
+                if (productData.stock <= 0 || desiredQuantity > productData.stock) {
+                    toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text"));
+                    return;
+                }
+            }
+
+            updateClientCartQuantity(productData.id, '', desiredQuantity);
         } else {
+            // Stock check for physical products for first-time add
+            if (productData.productType === 'physical') {
+                if (productData.stock <= 0 || quantity > productData.stock) {
+                    toastMagic.warning($("#message-sorry-stock-limit-exceeded").data("text"));
+                    return;
+                }
+            }
             const newItem = {
                 id: productData.id,
                 name: productData.name,
