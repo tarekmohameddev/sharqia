@@ -943,4 +943,89 @@ class OrderController extends BaseController
         }
         return null;
     }
+
+    public function bulkChangeSeller(Request $request): JsonResponse
+    {
+        if (!\App\Utils\Helpers::module_permission_check('order_edit')) {
+            return response()->json(['error' => translate('access_denied')], 403);
+        }
+
+        $targetSellerId = $request->integer('seller_id');
+        $applyTo = $request->get('apply_to'); // 'selected' or 'all'
+        $ids = (array)$request->get('ids', []);
+
+        if (is_null($targetSellerId)) {
+            return response()->json(['error' => translate('invalid_request')], 422);
+        }
+
+        // Build ids from filtered results when apply_to=all
+        if ($applyTo === 'all') {
+            $status = $request->get('status', 'all');
+            $vendorId = $request['seller_id'] == '0' ? 1 : $request['seller_id'];
+            if ($request['seller_id'] == null) {
+                $vendorIs = 'all';
+            } elseif ($request['seller_id'] == 'all') {
+                $vendorIs = $request['seller_id'];
+            } elseif ($request['seller_id'] == '0') {
+                $vendorIs = 'admin';
+            } else {
+                $vendorIs = 'seller';
+            }
+            $filters = [
+                'order_status' => $status,
+                'filter' => $request['filter'] ?? 'all',
+                'date_type' => $request['date_type'],
+                'from' => $request['from'],
+                'to' => $request['to'],
+                'delivery_man_id' => $request['delivery_man_id'],
+                'customer_id' => $request['customer_id'],
+                'seller_id' => $vendorId,
+                'seller_is' => 'seller',
+                'is_printed' => $request['is_printed'] ?? 'all',
+            ];
+            $ordersAll = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: [], dataLimit: 'all');
+            $ids = $ordersAll->pluck('id')->toArray();
+        }
+
+        if (empty($ids)) {
+            return response()->json(['error' => translate('no_order_found')], 422);
+        }
+
+        $updated = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $order = $this->orderRepo->getFirstWhere(params: ['id' => $id], relations: ['details']);
+            if (!$order) {
+                $skipped[] = ['id' => $id, 'reason' => 'not_found'];
+                continue;
+            }
+
+            // Determine seller_is for the target: 0 or 1 maps to admin/seller semantics in this system where 0 is inhouse
+            $newSellerIs = $targetSellerId == 0 ? 'admin' : 'seller';
+
+            // If order already has same seller, skip
+            if ((int)$order['seller_id'] === (int)$targetSellerId && (string)$order['seller_is'] === (string)$newSellerIs) {
+                $skipped[] = ['id' => $id, 'reason' => 'no_change'];
+                continue;
+            }
+
+            // Constraints: if delivered or returned/failed/canceled, skip changing seller
+            if (in_array($order['order_status'], ['delivered', 'returned', 'failed', 'canceled'])) {
+                $skipped[] = ['id' => $id, 'reason' => 'immutable_status'];
+                continue;
+            }
+
+            // Update order and its details seller_id
+            $this->orderRepo->update(id: $id, data: ['seller_id' => $targetSellerId, 'seller_is' => $newSellerIs]);
+            // Update all order details rows to new seller to keep consistency
+            foreach ($order->details as $detail) {
+                $this->orderDetailRepo->update(id: $detail['id'], data: ['seller_id' => $targetSellerId]);
+            }
+
+            $updated++;
+        }
+
+        return response()->json(['updated' => $updated, 'skipped' => $skipped]);
+    }
 }

@@ -225,6 +225,25 @@
                                 <button id="print-unprinted" type="button" class="btn btn-outline-secondary text-nowrap">
                                     {{ translate('print_unprinted') }}
                                 </button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="select-wrapper">
+                                        <select id="bulk-seller-select" class="form-select">
+                                            <option value="">{{ translate('select_store') }}</option>
+                                            <option value="0">{{ translate('inhouse') }}</option>
+                                            @foreach ($sellers as $seller)
+                                                @isset($seller->shop)
+                                                    <option value="{{ $seller->id }}">{{ $seller->shop->name }}</option>
+                                                @endisset
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <button id="apply-bulk-seller" type="button" class="btn btn-outline-primary">
+                                        {{ translate('change_store_for_selected') }}
+                                    </button>
+                                    <button id="apply-bulk-seller-filtered" type="button" class="btn btn-outline-primary">
+                                        {{ translate('change_store_for_filtered') }}
+                                    </button>
+                                </div>
                             </div>
 
                             <a type="button" class="btn btn-outline-primary text-nowrap"
@@ -452,6 +471,7 @@
     <span id="js-data-example-ajax-url" data-url="{{ route('admin.orders.customers') }}"></span>
     <span id="bulk-status-url" data-url="{{ route('admin.orders.bulk-status') }}"></span>
     <span id="bulk-invoices-url" data-url="{{ route('admin.orders.bulk-invoices') }}"></span>
+    <span id="bulk-change-seller-url" data-url="{{ route('admin.orders.bulk-change-seller') }}"></span>
     <span id="current-order-status" data-status="{{ $status }}"></span>
 @endsection
 
@@ -476,6 +496,9 @@
 
             const applyBtn = document.getElementById('apply-bulk-action');
             const selectEl = document.getElementById('bulk-action-select');
+            const bulkSellerSelect = document.getElementById('bulk-seller-select');
+            const bulkSellerSelectedBtn = document.getElementById('apply-bulk-seller');
+            const bulkSellerFilteredBtn = document.getElementById('apply-bulk-seller-filtered');
             if (applyBtn && selectEl) {
                 applyBtn.addEventListener('click', function () {
                     const action = selectEl.value;
@@ -548,6 +571,52 @@
                         form.submit();
                     }
                 });
+            }
+
+            function postBulkChangeSeller(applyTo) {
+                const targetSellerId = bulkSellerSelect?.value;
+                if (!targetSellerId) {
+                    toastMagic.warning('{{ translate('please_select_a_store') }}');
+                    return;
+                }
+                const payload = { seller_id: targetSellerId, apply_to: applyTo };
+                if (applyTo === 'selected') {
+                    const ids = getSelectedIds();
+                    if (ids.length === 0) {
+                        toastMagic.warning('{{ translate('please_select_at_least_one_order') }}');
+                        return;
+                    }
+                    payload.ids = ids;
+                } else if (applyTo === 'all') {
+                    payload.status = document.getElementById('current-order-status').dataset.status || 'all';
+                }
+
+                Swal.fire({
+                    title: '{{ translate('are_you_sure') }}',
+                    text: '{{ translate('this_will_change_the_store_for_the_selected_orders') }}',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#377dff',
+                    cancelButtonColor: '#dd3333',
+                    confirmButtonText: '{{ translate('yes_change') }}'
+                }).then((result) => {
+                    if (!result.value) return;
+                    $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content') } });
+                    $.post($('#bulk-change-seller-url').data('url') + (applyTo === 'all' ? window.location.search : ''), payload, function (res) {
+                        toastMagic.success('{{ translate('updated_successfully') }}');
+                        location.reload();
+                    }).fail(function (xhr) {
+                        const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                        toastMagic.error(msg);
+                    });
+                });
+            }
+
+            if (bulkSellerSelectedBtn) {
+                bulkSellerSelectedBtn.addEventListener('click', function () { postBulkChangeSeller('selected'); });
+            }
+            if (bulkSellerFilteredBtn) {
+                bulkSellerFilteredBtn.addEventListener('click', function () { postBulkChangeSeller('all'); });
             }
 
             const unprintedBtn = document.getElementById('print-unprinted');

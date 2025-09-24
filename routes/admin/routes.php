@@ -253,6 +253,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
             Route::get('list-ids', 'listIds')->name('list-ids');
             Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
+            Route::post('bulk-change-seller', 'bulkChangeSeller')->name('bulk-change-seller')->middleware('module:order_edit');
             Route::post('create-refund/{orderId}', 'createRefundRequest')->name('create-refund')->middleware('module:refund_actions');
             Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund')->middleware('module:refund_actions');
             Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund')->middleware('module:refund_actions');
