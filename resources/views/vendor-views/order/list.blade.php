@@ -249,6 +249,7 @@
                             <th class="text-capitalize">{{translate('order_ID')}}</th>
                             <th class="text-capitalize">{{translate('order_Date')}}</th>
                             <th class="text-capitalize">{{translate('customer_info')}}</th>
+                            <th class="text-capitalize">{{ translate('city') }}</th>
                             <th class="text-capitalize">{{translate('total_amount')}}</th>
                             <th class="text-capitalize">{{ translate('printed') }}</th>
                             @if($status == 'all')
@@ -299,6 +300,10 @@
                                             <label class="badge badge-danger fs-12">{{translate('invalid_customer_data')}}</label>
                                         @endif
                                     @endif
+                                </td>
+                                <td>
+                                    @php($__city = $order['city_id'] ? $governorates->firstWhere('id', $order['city_id']) : null)
+                                    {{ $__city->name_ar ?? '-' }}
                                 </td>
                                 <td>
                                     <div>

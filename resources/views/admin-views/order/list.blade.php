@@ -286,6 +286,7 @@
                                     <th class="text-capitalize">{{ translate('order_date') }}</th>
                                     <th class="text-capitalize">{{ translate('customer_info') }}</th>
                                     <th>{{ translate('store') }}</th>
+                                    <th class="text-capitalize">{{ translate('city') }}</th>
                                     <th class="text-capitalize">{{ translate('total_amount') }}</th>
                                     <th class="text-capitalize">{{ translate('printed') }}</th>
                                     @if ($status == 'all')
@@ -359,6 +360,10 @@
                                             @else
                                                 {{ translate('Store_not_found') }}
                                             @endif
+                                        </td>
+                                        <td>
+                                            @php($__city = $order['city_id'] ? $governorates->firstWhere('id', $order['city_id']) : null)
+                                            {{ $__city->name_ar ?? '-' }}
                                         </td>
                                         <td>
                                             <div>
