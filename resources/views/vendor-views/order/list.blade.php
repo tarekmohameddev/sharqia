@@ -85,6 +85,20 @@
                             </div>
                         </div>
 
+                        <div class="col-sm-6 col-lg-4 col-xl-3">
+                            <div class="form-group">
+                                <label class="title-color" for="city_id">{{ translate('city') }}</label>
+                                <div class="select-wrapper">
+                                    <select class="form-select" name="city_id" id="city_id">
+                                        <option value="all">{{ translate('all') }}</option>
+                                        @foreach($governorates as $gov)
+                                            <option value="{{ $gov->id }}" {{ request('city_id') == $gov->id ? 'selected' : '' }}>{{ $gov->name_ar }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         @if (request('status')=='all' || request('status')=='delivered')
                             <div class="col-sm-6 col-lg-4 col-xl-3">
                                 <div class="form-group">
@@ -209,7 +223,7 @@
                                 <button id="print-unprinted" type="button" class="btn btn-outline--primary">
                                     {{ translate('print_unprinted') }}
                                 </button>
-                                <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType]) }}">
+                                <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType, 'city_id' => request('city_id')]) }}">
                                     <img width="14" src="{{dynamicAsset(path: 'public/assets/back-end/img/excel.png')}}" class="excel" alt="">
                                     <span class="ps-2">{{ translate('export') }}</span>
                                 </a>

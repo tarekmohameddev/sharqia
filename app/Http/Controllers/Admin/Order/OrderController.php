@@ -118,6 +118,7 @@ class OrderController extends BaseController
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
             'customer_id' => $request['customer_id'],
+            'city_id' => $request['city_id'],
             'seller_id' => $vendorId,
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',
@@ -163,6 +164,8 @@ class OrderController extends BaseController
             'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
         ];
 
+        $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);
+
         return view('admin-views.order.list', compact(
             'orders',
             'searchValue',
@@ -176,6 +179,7 @@ class OrderController extends BaseController
             'customerId',
             'dateType',
             'stats',
+            'governorates',
         ));
     }
 
@@ -307,6 +311,7 @@ class OrderController extends BaseController
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
             'customer_id' => $request['customer_id'],
+            'city_id' => $request['city_id'],
             'seller_id' => $vendorId,
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',
@@ -850,6 +855,7 @@ class OrderController extends BaseController
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
             'customer_id' => $request['customer_id'],
+            'city_id' => $request['city_id'],
             'seller_id' => $vendorId,
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',

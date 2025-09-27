@@ -151,6 +151,19 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3">
+                                <div class="form-group">
+                                    <label class="form-label" for="city_id">{{ translate('city') }}</label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" name="city_id" id="city_id">
+                                            <option value="all">{{ translate('all') }}</option>
+                                            @foreach($governorates as $gov)
+                                                <option value="{{ $gov->id }}" {{ request('city_id') == $gov->id ? 'selected' : '' }}>{{ $gov->name_ar }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-sm-6 col-lg-4 col-xl-3" id="from_div">
                                 <div class="form-group">
                                     <label class="form-label" for="customer">{{ translate('start_date') }}</label>
@@ -247,7 +260,7 @@
                             </div>
 
                             <a type="button" class="btn btn-outline-primary text-nowrap"
-                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType]) }}">
+                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType, 'city_id' => request('city_id')]) }}">
                                 <img width="14"
                                     src="{{ dynamicAsset(path: 'public/assets/back-end/img/excel.png') }}" alt=""
                                     class="excel">
