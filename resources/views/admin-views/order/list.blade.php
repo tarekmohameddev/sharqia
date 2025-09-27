@@ -238,6 +238,9 @@
                                 <button id="print-unprinted" type="button" class="btn btn-outline-secondary text-nowrap">
                                     {{ translate('print_unprinted') }}
                                 </button>
+                                <button id="print-unprinted-by-city" type="button" class="btn btn-outline-secondary text-nowrap">
+                                    {{ translate('print_unprinted_by_city_distribution') }}
+                                </button>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="select-wrapper">
                                         <select id="bulk-seller-select" class="form-select">
@@ -486,6 +489,34 @@
     <span id="bulk-invoices-url" data-url="{{ route('admin.orders.bulk-invoices') }}"></span>
     <span id="bulk-change-seller-url" data-url="{{ route('admin.orders.bulk-change-seller') }}"></span>
     <span id="current-order-status" data-status="{{ $status }}"></span>
+    
+    <!-- Print By City Modal -->
+    <div class="modal fade" id="print-by-city-modal" tabindex="-1" aria-labelledby="printByCityLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="printByCityLabel">{{ translate('select_city_to_print_unprinted') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="print-city-select">{{ translate('city') }}</label>
+                        <div class="select-wrapper">
+                            <select id="print-city-select" class="form-select">
+                                @foreach($governorates as $gov)
+                                    <option value="{{ $gov->id }}">{{ $gov->name_ar }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
+                    <button type="button" id="confirm-print-by-city" class="btn btn-primary">{{ translate('print_unprinted') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script')
@@ -662,6 +693,61 @@
                     isPrinted.name = 'is_printed';
                     isPrinted.value = '0';
                     form.appendChild(isPrinted);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            }
+
+            const unprintedByCityBtn = document.getElementById('print-unprinted-by-city');
+            if (unprintedByCityBtn) {
+                unprintedByCityBtn.addEventListener('click', function () {
+                    const modalEl = document.getElementById('print-by-city-modal');
+                    if (modalEl) {
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                });
+            }
+
+            const confirmPrintByCityBtn = document.getElementById('confirm-print-by-city');
+            if (confirmPrintByCityBtn) {
+                confirmPrintByCityBtn.addEventListener('click', function () {
+                    const selectedCityId = (document.getElementById('print-city-select') || {}).value;
+                    if (!selectedCityId) { return; }
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                    const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrf;
+                    form.appendChild(csrfInput);
+
+                    const statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'status';
+                    statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                    form.appendChild(statusInput);
+
+                    const applyTo = document.createElement('input');
+                    applyTo.type = 'hidden';
+                    applyTo.name = 'apply_to';
+                    applyTo.value = 'all';
+                    form.appendChild(applyTo);
+
+                    const isPrinted = document.createElement('input');
+                    isPrinted.type = 'hidden';
+                    isPrinted.name = 'is_printed';
+                    isPrinted.value = '0';
+                    form.appendChild(isPrinted);
+
+                    const cityId = document.createElement('input');
+                    cityId.type = 'hidden';
+                    cityId.name = 'city_id';
+                    cityId.value = selectedCityId;
+                    form.appendChild(cityId);
 
                     document.body.appendChild(form);
                     form.submit();

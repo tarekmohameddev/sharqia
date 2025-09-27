@@ -223,6 +223,9 @@
                                 <button id="print-unprinted" type="button" class="btn btn-outline--primary">
                                     {{ translate('print_unprinted') }}
                                 </button>
+                                <button id="print-unprinted-by-city" type="button" class="btn btn-outline--primary">
+                                    {{ translate('print_unprinted_by_city_distribution') }}
+                                </button>
                                 <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType, 'city_id' => request('city_id')]) }}">
                                     <img width="14" src="{{dynamicAsset(path: 'public/assets/back-end/img/excel.png')}}" class="excel" alt="">
                                     <span class="ps-2">{{ translate('export') }}</span>
@@ -383,6 +386,35 @@
     <span id="bulk-status-url" data-url="{{ route('vendor.orders.bulk-status') }}"></span>
     <span id="bulk-invoices-url" data-url="{{ route('vendor.orders.bulk-invoices') }}"></span>
     <span id="current-order-status" data-status="{{ $status }}"></span>
+    
+    <!-- Print By City Modal (Vendor) -->
+    <div class="modal fade" id="print-by-city-modal" tabindex="-1" aria-labelledby="printByCityLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="printByCityLabel">{{ translate('select_city_to_print_unprinted') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="print-city-select">{{ translate('city') }}</label>
+                        <div class="select-wrapper">
+                            <select id="print-city-select" class="form-select">
+                                @foreach(($coverageGovernorates->count() ? $coverageGovernorates : $governorates) as $gov)
+                                    <option value="{{ $gov->id }}">{{ $gov->name_ar }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <small class="text-muted d-block mt-2">{{ translate('only_cities_you_cover_are_listed') }}</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
+                    <button type="button" id="confirm-print-by-city" class="btn btn--primary">{{ translate('print_unprinted') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script')
@@ -470,6 +502,35 @@
                     form.appendChild(statusInput);
                     const applyTo = document.createElement('input'); applyTo.type = 'hidden'; applyTo.name = 'apply_to'; applyTo.value = 'all'; form.appendChild(applyTo);
                     const isPrinted = document.createElement('input'); isPrinted.type = 'hidden'; isPrinted.name = 'is_printed'; isPrinted.value = '0'; form.appendChild(isPrinted);
+                    document.body.appendChild(form); form.submit();
+                });
+            }
+
+            const unprintedByCityBtn = document.getElementById('print-unprinted-by-city');
+            if (unprintedByCityBtn) {
+                unprintedByCityBtn.addEventListener('click', function () {
+                    const modalEl = document.getElementById('print-by-city-modal');
+                    if (modalEl) {
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                });
+            }
+
+            const confirmPrintByCityBtn = document.getElementById('confirm-print-by-city');
+            if (confirmPrintByCityBtn) {
+                confirmPrintByCityBtn.addEventListener('click', function () {
+                    const selectedCityId = (document.getElementById('print-city-select') || {}).value;
+                    if (!selectedCityId) { return; }
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                    const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input'); csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = csrf; form.appendChild(csrfInput);
+                    const statusInput = document.createElement('input'); statusInput.type = 'hidden'; statusInput.name = 'status'; statusInput.value = document.getElementById('current-order-status').dataset.status || 'all'; form.appendChild(statusInput);
+                    const applyTo = document.createElement('input'); applyTo.type = 'hidden'; applyTo.name = 'apply_to'; applyTo.value = 'all'; form.appendChild(applyTo);
+                    const isPrinted = document.createElement('input'); isPrinted.type = 'hidden'; isPrinted.name = 'is_printed'; isPrinted.value = '0'; form.appendChild(isPrinted);
+                    const cityId = document.createElement('input'); cityId.type = 'hidden'; cityId.name = 'city_id'; cityId.value = selectedCityId; form.appendChild(cityId);
                     document.body.appendChild(form); form.submit();
                 });
             }

@@ -890,6 +890,7 @@ class OrderController extends BaseController
                 'to' => $request['to'],
                 'delivery_man_id' => $request['delivery_man_id'],
                 'customer_id' => $request['customer_id'],
+                'city_id' => $request['city_id'],
                 'seller_id' => $vendorId,
                 'seller_is' => $vendorIs,
                 'is_printed' => $request['is_printed'] ?? 'all',

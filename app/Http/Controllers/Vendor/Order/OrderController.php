@@ -157,7 +157,12 @@ class OrderController extends BaseController
             'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
         ];
 
+        // All governorates for filters; coverage-only list for modal
         $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);
+        $coverageIds = $seller->governorate_coverages()->pluck('governorates.id')->toArray();
+        $coverageGovernorates = empty($coverageIds)
+            ? collect([])
+            : Governorate::whereIn('id', $coverageIds)->orderBy('name_ar')->get(['id','name_ar']);
 
         return view(Order::LIST[VIEW], compact(
             'orders',
@@ -176,7 +181,8 @@ class OrderController extends BaseController
             'sellerPos',
             'deliveryManId',
             'stats',
-            'governorates'
+            'governorates',
+            'coverageGovernorates'
         ));
     }
 
@@ -445,6 +451,7 @@ class OrderController extends BaseController
                 'customer_id' => $request['customer_id'],
                 'seller_id' => $sellerId,
                 'seller_is' => 'seller',
+                'city_id' => $request['city_id'],
                 'is_printed' => $request['is_printed'] ?? 'all',
             ];
             $ordersAll = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: [], dataLimit: 'all');
