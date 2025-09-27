@@ -76,7 +76,7 @@
                             <div class="form-group">
                                 <label class="form-label" for="is_printed">{{ translate('printed_status') }}</label>
                                 <div class="select-wrapper">
-                                    <select class="form-select" name="is_printed" id="is_printed">
+                                    <select class="form-control __form-control" name="is_printed" id="is_printed">
                                         <option value="all" {{ request('is_printed','all') == 'all' ? 'selected' : '' }}>{{ translate('all') }}</option>
                                         <option value="1" {{ request('is_printed') === '1' ? 'selected' : '' }}>{{ translate('printed_only') }}</option>
                                         <option value="0" {{ request('is_printed') === '0' ? 'selected' : '' }}>{{ translate('unprinted_only') }}</option>
@@ -89,7 +89,7 @@
                             <div class="form-group">
                                 <label class="title-color" for="city_id">{{ translate('city') }}</label>
                                 <div class="select-wrapper">
-                                    <select class="form-select" name="city_id" id="city_id">
+                                    <select class="form-control __form-control" name="city_id" id="city_id">
                                         <option value="all">{{ translate('all') }}</option>
                                         @foreach($governorates as $gov)
                                             <option value="{{ $gov->id }}" {{ request('city_id') == $gov->id ? 'selected' : '' }}>{{ $gov->name_ar }}</option>
@@ -183,55 +183,53 @@
         <div class="card">
             <div class="card-body">
                 <div class="px-3 py-4 light-bg">
-                    <div class="row g-2 align-items-center flex-grow-1">
-                        <div class="col-md-4">
-                            <h5 class="text-capitalize d-flex gap-1">
-                                {{translate('order_list')}}
-                                <span class="badge badge-soft-dark radius-50 fs-12">{{$orders->total()}}</span>
-                            </h5>
-                        </div>
-                        <div class="col-md-8 d-flex gap-3 flex-wrap flex-sm-nowrap justify-content-md-end">
-                            <form action="{{ url()->current() }}" method="GET">
-                                <div class="input-group input-group-merge input-group-custom">
-                                    <div class="input-group-prepend">
-                                        <div class="input-group-text">
-                                            <i class="tio-search"></i>
-                                        </div>
-                                    </div>
-                                    <input id="datatableSearch_" type="search" name="searchValue" class="form-control"
-                                           placeholder="{{translate('search_orders')}}" aria-label="Search orders"
-                                           value="{{ $searchValue }}" required>
-                                    <button type="submit" class="btn btn--primary">{{translate('search')}}</button>
-                                </div>
-                            </form>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="select-wrapper">
-                                    <select id="bulk-action-select" class="form-select">
-                                        <option value="">{{ translate('bulk_actions') }}</option>
-                                        <optgroup label="{{ translate('change_status') }}">
-                                            @foreach(\App\Enums\OrderStatus::LIST as $st)
-                                                <option value="status:{{ $st }}">{{ translate(str_replace('_',' ',$st)) }}</option>
-                                            @endforeach
-                                        </optgroup>
-                                        <option value="print:selected">{{ translate('print_selected_invoices') }}</option>
-                                        <option value="print:all">{{ translate('print_all_in_filtered_results') }}</option>
-                                    </select>
-                                </div>
-                                <button id="apply-bulk-action" type="button" class="btn btn--primary">
-                                    {{ translate('apply') }}
-                                </button>
-                                <button id="print-unprinted" type="button" class="btn btn-outline--primary">
-                                    {{ translate('print_unprinted') }}
-                                </button>
-                                <button id="print-unprinted-by-city" type="button" class="btn btn-outline--primary">
-                                    {{ translate('print_unprinted_by_city_distribution') }}
-                                </button>
-                                <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType, 'city_id' => request('city_id')]) }}">
-                                    <img width="14" src="{{dynamicAsset(path: 'public/assets/back-end/img/excel.png')}}" class="excel" alt="">
-                                    <span class="ps-2">{{ translate('export') }}</span>
-                                </a>
+                    <div class="d-flex align-items-center gap-1 mb-3">
+                        <h5 class="text-capitalize mb-0 d-flex align-items-center gap-1">
+                            {{translate('order_list')}}
+                            <span class="badge badge-soft-dark radius-50 fs-12">{{$orders->total()}}</span>
+                        </h5>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center flex-wrap gap-2">
+                            <div class="select-wrapper">
+                                <select id="bulk-action-select" class="form-control __form-control">
+                                            <option value="">{{ translate('bulk_actions') }}</option>
+                                            <optgroup label="{{ translate('change_status') }}">
+                                                @foreach(\App\Enums\OrderStatus::LIST as $st)
+                                                    <option value="status:{{ $st }}">{{ translate(str_replace('_',' ',$st)) }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                            <option value="print:selected">{{ translate('print_selected_invoices') }}</option>
+                                            <option value="print:all">{{ translate('print_all_in_filtered_results') }}</option>
+                                </select>
                             </div>
+                            <button id="apply-bulk-action" type="button" class="btn btn--primary">
+                                {{ translate('apply') }}
+                            </button>
+                            <button id="print-unprinted" type="button" class="btn btn-outline--primary">
+                                {{ translate('print_unprinted') }}
+                            </button>
+                            <button id="print-unprinted-by-city" type="button" class="btn btn-outline--primary">
+                                {{ translate('print_unprinted_by_city_distribution') }}
+                            </button>
+                            <a type="button" class="btn btn-outline--primary text-nowrap" href="{{ route('vendor.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue,'seller_id'=>$vendorId,'customer_id'=>$customerId, 'date_type'=>$dateType, 'city_id' => request('city_id')]) }}">
+                                <img width="14" src="{{dynamicAsset(path: 'public/assets/back-end/img/excel.png')}}" class="excel" alt="">
+                                <span class="ps-2">{{ translate('export') }}</span>
+                            </a>
                         </div>
+                        <form action="{{ url()->current() }}" method="GET" class="flex-grow-1 flex-md-grow-0" style="min-width: 260px;">
+                            <div class="input-group input-group-merge input-group-custom">
+                                <div class="input-group-prepend">
+                                    <div class="input-group-text">
+                                        <i class="tio-search"></i>
+                                    </div>
+                                </div>
+                                <input id="datatableSearch_" type="search" name="searchValue" class="form-control"
+                                       placeholder="{{translate('search_orders')}}" aria-label="Search orders"
+                                       value="{{ $searchValue }}" required>
+                                <button type="submit" class="btn btn--primary">{{translate('search')}}</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -404,7 +402,7 @@
                     <div class="form-group">
                         <label class="form-label" for="print-city-select">{{ translate('city') }}</label>
                         <div class="select-wrapper">
-                            <select id="print-city-select" class="form-select">
+                            <select id="print-city-select" class="form-control __form-control">
                                 @foreach(($coverageGovernorates->count() ? $coverageGovernorates : $governorates) as $gov)
                                     <option value="{{ $gov->id }}">{{ $gov->name_ar }}</option>
                                 @endforeach
