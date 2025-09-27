@@ -41,7 +41,7 @@ class ProductReportController extends Controller
                 $query->when($seller_id == 'inhouse', function ($q) {
                     $q->where(['user_id' => 1, 'added_by' => 'admin']);
                 })->when($seller_id != 'inhouse', function ($q) use ($seller_id) {
-                    $q->where(['user_id' => $seller_id, 'added_by' => 'seller']);
+                    $q->where('user_id', $seller_id);
                 });
             })
             ->when($search, function ($query) use ($search) {
@@ -72,7 +72,7 @@ class ProductReportController extends Controller
                 $query->when($seller_id == 'inhouse', function ($q) {
                     $q->where(['user_id' => 1, 'added_by' => 'admin']);
                 })->when($seller_id != 'inhouse', function ($q) use ($seller_id) {
-                    $q->where(['user_id' => $seller_id, 'added_by' => 'seller']);
+                    $q->where('user_id', $seller_id);
                 });
             });
         $total_product_sales = self::create_date_wise_common_filter($total_product_sale_query, $date_type, $from, $to)
@@ -116,7 +116,7 @@ class ProductReportController extends Controller
             $query->when($seller_id == 'inhouse', function ($q) {
                 $q->where(['user_id' => 1, 'added_by' => 'admin']);
             })->when($seller_id != 'inhouse', function ($q) use ($seller_id) {
-                $q->where(['user_id' => $seller_id, 'added_by' => 'seller']);
+                $q->where('user_id', $seller_id);
             });
         });
 
@@ -313,7 +313,7 @@ class ProductReportController extends Controller
                 $query->when($seller_id == 'inhouse', function ($query) {
                     $query->where(['user_id' => 1, 'added_by' => 'admin']);
                 })->when($seller_id != 'inhouse', function ($query) use ($seller_id) {
-                    $query->where(['user_id' => $seller_id, 'added_by' => 'seller']);
+                    $query->where('user_id', $seller_id);
                 });
             })
             ->whereBetween('created_at', [$start_date, $end_date]);
@@ -341,7 +341,7 @@ class ProductReportController extends Controller
                 $query->when($seller_id == 'inhouse', function ($q) {
                     $q->where(['user_id' => 1, 'added_by' => 'admin']);
                 })->when($seller_id != 'inhouse', function ($q) use ($seller_id) {
-                    $q->where(['user_id' => $seller_id, 'added_by' => 'seller']);
+                    $q->where('user_id', $seller_id);
                 });
             })
             ->when($search, function ($query) use ($search) {
