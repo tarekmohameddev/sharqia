@@ -182,13 +182,13 @@ function addToClientCart(productData) {
     saveClientCart();
     
     // Show success message
-    toastMagic.success(
-        $("#message-item-has-been-added-in-your-cart").data("text"), '',
-        {
-            CloseButton: true,
-            ProgressBar: true,
-        }
-    );
+    // toastMagic.success(
+    //     $("#message-item-has-been-added-in-your-cart").data("text"), '',
+    //     {
+    //         CloseButton: true,
+    //         ProgressBar: true,
+    //     }
+    // );
 }
 
 // Add offer to client cart
@@ -817,10 +817,10 @@ function attachClientCartEventHandlers() {
             calculateCartTotals();
             updateCartDisplay();
             saveClientCart();
-            toastMagic.success(
-                $("#message-item-has-been-added-in-your-cart").data("text"), '',
-                { CloseButton: true, ProgressBar: true }
-            );
+            // toastMagic.success(
+            //     $("#message-item-has-been-added-in-your-cart").data("text"), '',
+            //     { CloseButton: true, ProgressBar: true }
+            // );
         }
     });
 
@@ -2382,13 +2382,13 @@ function addToCart(form_id = "add-to-cart-form") {
             updateCartDisplay();
             saveClientCart();
             
-            toastMagic.success(
-                $("#message-item-has-been-added-in-your-cart").data("text"), '',
-                {
-                    CloseButton: true,
-                    ProgressBar: true,
-                }
-            );
+            // toastMagic.success(
+            //     $("#message-item-has-been-added-in-your-cart").data("text"), '',
+            //     {
+            //         CloseButton: true,
+            //         ProgressBar: true,
+            //     }
+            // );
         }
         
         // Close modal and clear search
