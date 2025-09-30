@@ -13,11 +13,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Illuminate\Support\Facades\Log;
 
 class ProductReportController extends Controller
 {
     public function all_product(Request $request)
     {
+        
         $search = $request['search'];
         $from = $request['from'];
         $to = $request['to'];
@@ -41,12 +43,14 @@ class ProductReportController extends Controller
                 $query->when($seller_id == 'inhouse', function ($q) {
                     $q->where(['user_id' => 1, 'added_by' => 'admin']);
                 })->when($seller_id != 'inhouse', function ($q) use ($seller_id) {
-                    $q->where('user_id', $seller_id);
+                    $q->where(['user_id' => $seller_id, 'added_by' => 'admin']);
                 });
             })
             ->when($search, function ($query) use ($search) {
                 $query->orWhere('name', 'like', "%{$search}%");
             });
+          
+
         $products = self::create_date_wise_common_filter($product_query, $date_type, $from, $to)
             ->latest('created_at')
             ->paginate(Helpers::pagination_limit())
