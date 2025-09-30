@@ -772,6 +772,18 @@
                 </li>
 
                 <li>
+                    <a class="nav-link {{ Request::is('admin/report/vendor-product-sales') ? 'active' : '' }}"
+                       href="{{ route('admin.report.vendor-product-sales') }}" title="{{ translate('vendor_products_sales') }}">
+                        <i class="fi fi-sr-stats"></i>
+                        <span class="aside-mini-hidden-element text-truncate">
+                            <span class="position-relative">
+                                {{ translate('vendor_products_sales') }}
+                            </span>
+                        </span>
+                    </a>
+                </li>
+
+                <li>
                     <a class="nav-link {{ Request::is('admin/report/order') ? 'active' : '' }}"
                        href="{{ route('admin.report.order') }}" title="{{ translate('order_Report') }}">
                         <i class="fi fi-sr-rectangle-list"></i>

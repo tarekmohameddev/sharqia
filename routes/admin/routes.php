@@ -71,6 +71,7 @@ use App\Http\Controllers\Admin\Shipping\ShippingMethodController;
 use App\Http\Controllers\Admin\ThirdParty\GoogleMapAPIController;
 use App\Http\Controllers\Admin\Vendor\WithdrawalMethodController;
 use App\Http\Controllers\Admin\VendorProductSaleReportController;
+use App\Http\Controllers\Admin\VendorProductSalesReportController;
 use App\Http\Controllers\Admin\Customer\CustomerLoyaltyController;
 use App\Http\Controllers\Admin\HelpAndSupport\HelpTopicController;
 use App\Http\Controllers\Admin\Report\RefundTransactionController;
@@ -478,6 +479,11 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
         Route::controller(VendorProductSaleReportController::class)->group(function () {
             Route::get('vendor-report', 'vendorReport')->name('vendor-report');
             Route::get('vendor-report-export', 'exportVendorReport')->name('vendor-report-export');
+        });
+
+        Route::controller(VendorProductSalesReportController::class)->group(function () {
+            Route::get('vendor-product-sales', 'index')->name('vendor-product-sales');
+            Route::get('vendor-product-sales-export', 'exportExcel')->name('vendor-product-sales-export');
         });
     });
 
