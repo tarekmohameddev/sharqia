@@ -541,7 +541,7 @@
                                     <div class="col-12">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('address') }}</label>
-                                            <textarea type="text" name="address" id="customer_address" rows="3" class="form-control" placeholder="{{ translate('address') }}"></textarea>
+                                            <textarea type="text" name="address" id="customer_address" rows="8" class="form-control" placeholder="{{ translate('address') }}"></textarea>
                                         </div>
                                     </div>
                                     <div class="col-12">
