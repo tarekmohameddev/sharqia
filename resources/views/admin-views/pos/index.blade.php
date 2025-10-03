@@ -524,7 +524,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="city_id" id="customer_city_id" class="custom-select" required>
+                                            <select name="city_id" id="customer_city_id" class="custom-select" required data-minimum-results-for-search="Infinity">
                                                 <option value="">{{ translate('select') }}</option>
                                                 @foreach($governorates as $governorate)
                                                     <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
@@ -535,7 +535,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="seller_id" id="customer_seller_id" class="custom-select" required></select>
+                                            <select name="seller_id" id="customer_seller_id" class="custom-select" required data-minimum-results-for-search="Infinity"></select>
                                         </div>
                                     </div>
                                     <div class="col-12">
@@ -597,7 +597,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('city') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="city_id" id="add_customer_city_id" class="custom-select" required>
+                                            <select name="city_id" id="add_customer_city_id" class="custom-select" required data-minimum-results-for-search="Infinity">
                                                 <option value="">{{ translate('select') }}</option>
                                                 @foreach($governorates as $governorate)
                                                     <option value="{{ $governorate->id }}">{{ $governorate->name_ar }}</option>
@@ -608,7 +608,7 @@
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
                                             <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
-                                            <select name="seller_id" id="add_customer_seller_id" class="custom-select" required></select>
+                                            <select name="seller_id" id="add_customer_seller_id" class="custom-select" required data-minimum-results-for-search="Infinity"></select>
                                         </div>
                                     </div>
                                     <div class="col-12">
