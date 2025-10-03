@@ -1107,6 +1107,14 @@ $(document).ready(function() {
             if (c.address) document.getElementById('customer_address').value = c.address;
             if (c.city_id) $('#customer_city_id').val(c.city_id).trigger('change');
             if (c.seller_id) $('#customer_seller_id').val(c.seller_id).trigger('change');
+            // Prefill order note from payload if present
+            try {
+                const note = payload && payload.order ? payload.order.orderNote : null;
+                if (typeof note === 'string') {
+                    const noteEl = document.getElementById('order_note');
+                    if (noteEl) noteEl.value = note;
+                }
+            } catch (e) { /* noop */ }
         } catch (e) {
             console.warn('Failed to parse edit payload', e);
         }
@@ -2547,18 +2555,31 @@ $(document).on("change", "#customer_city_id, #address_city_id, #add_customer_cit
                 seller.append('<option value="' + value.id + '">' + value.name + '</option>');
             });
 
-            // Auto-select first seller if available
-            if (sellers && sellers.length > 0) {
+            // Preserve preselected seller if editing an order and it exists in the list
+            let desiredSellerId = null;
+            try {
+                const payloadEl = document.getElementById('edit-order-payload');
+                if (payloadEl) {
+                    const payload = JSON.parse(payloadEl.textContent || '{}');
+                    desiredSellerId = payload?.order?.sellerId || payload?.customer?.seller_id || null;
+                }
+            } catch (e) { /* noop */ }
+
+            const hasDesired = desiredSellerId && Array.isArray(sellers) && sellers.some(function(s){ return String(s.id) === String(desiredSellerId); });
+            if (hasDesired) {
+                seller.val(String(desiredSellerId)).trigger('change');
+            } else if (sellers && sellers.length > 0) {
+                // Fallback: only auto-select first when no desired seller is known
                 const firstSellerId = sellers[0].id;
                 seller.val(firstSellerId).trigger('change');
-                // If using select2, also update the visible container text
-                try {
-                    if (seller.hasClass('select2-hidden-accessible')) {
-                        seller.trigger('select2:select');
-                    }
-                } catch (e) {
-                    // noop
+            }
+            // If using select2, also update the visible container text
+            try {
+                if (seller.hasClass('select2-hidden-accessible')) {
+                    seller.trigger('select2:select');
                 }
+            } catch (e) {
+                // noop
             }
             
             // Only store shipping cost and update cart for the main customer form

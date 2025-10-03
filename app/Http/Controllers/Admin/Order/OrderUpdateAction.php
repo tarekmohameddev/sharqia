@@ -41,6 +41,71 @@ class OrderUpdateAction extends Controller
         }
 
         return DB::transaction(function () use ($request, $order, $clientCart, $cartItems) {
+            // Resolve customer and order meta (city, seller) from request/client cart
+            $userId = (int)($order->customer_id ?? 0);
+            $cityId = (int)($request->get('city_id', data_get($clientCart, 'customer.city_id', $order->city_id)));
+            $sellerId = (int)($request->get('seller_id', data_get($clientCart, 'customer.seller_id', $order->seller_id)));
+            $shippingAddressForOrder = null;
+
+            if ($request->has('customer_data')) {
+                $cd = json_decode($request->input('customer_data', '{}'), true) ?: [];
+                if (!empty($cd)) {
+                    // Find current customer or resolve by phone
+                    $customer = null;
+                    if ($userId > 0) {
+                        $customer = $this->customerRepo->getFirstWhere(['id' => $userId]);
+                    }
+                    if (!$customer && !empty($cd['phone'])) {
+                        $customer = $this->customerRepo->getFirstWhere(['phone' => $cd['phone']]);
+                    }
+
+                    if ($customer) {
+                        // Update existing customer data
+                        $this->customerRepo->update($customer->id, [
+                            'f_name' => $cd['f_name'] ?? ($customer->f_name ?? ''),
+                            'l_name' => $cd['l_name'] ?? ($customer->l_name ?? ''),
+                            'phone' => $cd['phone'] ?? ($customer->phone ?? null),
+                            'alternative_phone' => $cd['alternative_phone'] ?? ($customer->alternative_phone ?? null),
+                        ]);
+                        $userId = (int)$customer->id;
+                    } else {
+                        // Create new customer if none found
+                        $customer = $this->customerRepo->add([
+                            'f_name' => $cd['f_name'] ?? '',
+                            'l_name' => $cd['l_name'] ?? '',
+                            'email' => null,
+                            'phone' => $cd['phone'] ?? null,
+                            'alternative_phone' => $cd['alternative_phone'] ?? null,
+                            'password' => bcrypt('123456'),
+                            'is_active' => 1,
+                        ]);
+                        $userId = (int)$customer->id;
+                    }
+
+                    // Update/create a simple HOME shipping address for the customer and embed snapshot on order
+                    $existingAddress = $this->shippingAddressRepo->getFirstWhere([
+                        'customer_id' => $userId,
+                        'address_type' => 'home',
+                    ]);
+                    $addressData = $this->shippingAddressService->getAddAddressData(
+                        array_merge($cd, ['l_name' => $cd['l_name'] ?? '']),
+                        $userId,
+                        'home'
+                    );
+                    // Persist address to shipping_addresses table (no alternative_phone column there)
+                    if ($existingAddress) {
+                        $this->shippingAddressRepo->update($existingAddress->id, $addressData);
+                    } else {
+                        $this->shippingAddressRepo->add($addressData);
+                    }
+                    // Prepare snapshot for order with alternative_phone included
+                    $shippingAddressForOrder = $addressData;
+                    if (!empty($cd['alternative_phone'])) {
+                        $shippingAddressForOrder['alternative_phone'] = $cd['alternative_phone'];
+                    }
+                }
+            }
+
             // Revert stock for old items
             foreach ($order->details as $od) {
                 $product = $this->productRepo->getFirstWhere(params: ['id' => $od->product_id]);
@@ -126,7 +191,7 @@ class OrderUpdateAction extends Controller
             $serverAmount = max(0, $subtotal - $productDiscount + $totalTax + $shippingCost - $couponDiscount - $totalExtraDiscount);
             $paidAmount = $serverAmount; // Avoid change amount in POS edit flow
 
-            $this->orderRepo->update(id: $order->id, data: [
+            $updateData = [
                 'order_amount' => currencyConverter(amount: $serverAmount),
                 'discount_amount' => $couponDiscount,
                 'coupon_code' => $clientCart['coupon_code'] ?? null,
@@ -138,7 +203,14 @@ class OrderUpdateAction extends Controller
                 'order_note' => $request->input('order_note'),
                 'paid_amount' => currencyConverter(amount: $paidAmount),
                 'is_printed' => 0,
-            ]);
+                'city_id' => $cityId,
+                'seller_id' => $sellerId,
+                'customer_id' => $userId,
+            ];
+            if (!empty($shippingAddressForOrder)) {
+                $updateData['shipping_address_data'] = json_encode($shippingAddressForOrder);
+            }
+            $this->orderRepo->update(id: $order->id, data: $updateData);
 
             \Devrabiul\ToastMagic\Facades\ToastMagic::success(translate('order_updated_successfully'));
             return response()->json(['order_id' => $order->id]);
