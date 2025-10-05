@@ -64,6 +64,12 @@
         @if($data['order_status'] == 'all')
             <th> {{ translate('Order_Status') }}</th>
         @endif
+        <th> {{ translate('customer_city') }} </th>
+        <th> {{ translate('customer_address') }} </th>
+        <th> {{ translate('customer_phone') }} </th>
+        <th> {{ translate('alternative_phone') }} </th>
+        <th> {{ translate('order_note') }} </th>
+        <th> {{ translate('order_content') }} </th>
     </tr>
     </thead>
 
@@ -108,6 +114,28 @@
             @if($data['order_status'] == 'all')
                 <td> {{ translate($order->order_status) }}</td>
             @endif
+            @php
+                $cityName = data_get($order, 'shipping_address_data.city');
+                if (!$cityName && !empty($order->city_id)) {
+                    $cityName = \App\Models\Governorate::find($order->city_id)?->name_ar;
+                }
+                $addressLine = data_get($order, 'shipping_address_data.address');
+                $phone = data_get($order, 'shipping_address_data.phone') ?? ($order->customer->phone ?? null);
+                $altPhone = data_get($order, 'shipping_address_data.alternative_phone') ?? ($order->customer->alternative_phone ?? null);
+                $items = [];
+                foreach ($order->orderDetails as $details) {
+                    $productDetails = $details?->product ?? json_decode($details->product_details);
+                    $productName = is_object($productDetails) ? ($productDetails->name ?? null) : (is_array($productDetails) ? ($productDetails['name'] ?? null) : null);
+                    $items[] = trim(($productName ?? translate('N/A')) . ' x ' . (int)$details->qty);
+                }
+                $orderItemsSummary = implode(' | ', $items);
+            @endphp
+            <td> {{ $cityName ?? translate('N/A') }} </td>
+            <td> {{ $addressLine ?? translate('N/A') }} </td>
+            <td> {{ $phone ?? translate('N/A') }} </td>
+            <td> {{ $altPhone ?? translate('N/A') }} </td>
+            <td> {{ $order->order_note ?? '' }} </td>
+            <td> {{ $orderItemsSummary }} </td>
         </tr>
     @endforeach
     </tbody>
