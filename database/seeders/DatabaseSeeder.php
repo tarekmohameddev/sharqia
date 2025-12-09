@@ -17,7 +17,8 @@ class DatabaseSeeder extends Seeder
             AdminRoleTable::class,
             AdminTable::class,
             SellerTableSeeder::class,
-            GovernoratesTableSeeder::class
+            GovernoratesTableSeeder::class,
+            EasyOrdersGovernorateMappingsSeeder::class,
         ]);
     }
 }
