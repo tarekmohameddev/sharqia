@@ -36,9 +36,10 @@ This feature integrates EasyOrders (external e‑commerce builder) with our syst
 - `easyorders_auto_import` (0/1)
   - If `1`, webhook handler tries to import immediately after staging.
   - If `0`, orders remain `pending` until imported from admin.
+  - The webhook handler uses `getWebConfig()` to retrieve this setting, with a database fallback if the cache returns `null`.
 
 - `easyorders_webhook_secret`
-  - Optional static secret. If set, webhook must send matching `X-EasyOrders-Signature` header.
+  - Currently unused. Webhook signature validation has been removed for easier integration.
 
 ## Webhook Endpoint
 
@@ -46,14 +47,22 @@ This feature integrates EasyOrders (external e‑commerce builder) with our syst
   - Controller: `App\Http\Controllers\RestAPI\v1\EasyOrdersWebhookController@handle`
   - Behavior:
     1. Validate presence of `id`.
-    2. If `easyorders_webhook_secret` is non‑empty, compare with `X-EasyOrders-Signature`, return `401` on mismatch.
-    3. Extract:
+    2. Extract:
        - Basic customer fields (`full_name`, `phone`, `government`, `address`)
        - Money fields (`cost`, `shipping_cost`, `total_cost`)
        - `sku_string` from `cart_items[0].product.sku`
-    4. `EasyOrder::updateOrCreate` by `easyorders_id`.
-    5. If `easyorders_auto_import` is `true`, call `EasyOrdersService::importOrder($easyOrder)` inside `try/catch`:
-       - On failure: set `status = failed`, store `import_error`.
+    3. `EasyOrder::updateOrCreate` by `easyorders_id`.
+    4. Check `easyorders_auto_import` setting:
+       - Uses `getWebConfig('easyorders_auto_import')` to retrieve the setting.
+       - If `getWebConfig()` returns `null`, falls back to direct database query.
+       - Accepts string `"1"`, integer `1`, or boolean `true` as enabled values.
+    5. If `easyorders_auto_import` is enabled, call `EasyOrdersService::importOrder($easyOrder)` inside `try/catch`:
+       - On success: logs success with `imported_order_id`.
+       - On failure: set `status = failed`, store `import_error`, logs error with full trace.
+    6. Comprehensive logging:
+       - Logs auto-import check with value and type for debugging.
+       - Logs when auto-import is skipped (disabled).
+       - Logs warnings when database fallback is used or setting is not found.
 
 ## Import Logic (EasyOrders → Orders)
 
@@ -168,6 +177,11 @@ Service: `App\Services\EasyOrdersService`
 
 - We currently only use `cart_items[0].product.sku` as SKU source; if EasyOrders starts sending multiple products per order, consider concatenating all product SKUs into `sku_string` or parsing from all `cart_items`.
 - Category discount logic on EasyOrders orders mirrors POS; if POS rules change, keep this service aligned with POS controllers.
-- For more robust webhook security, we could switch from a simple static secret to an HMAC‑based signature using the request body.  
+- **Webhook Security**: Signature validation has been removed for easier integration. If security is needed in the future, consider implementing:
+  - HMAC-based signature using the request body
+  - API key authentication via header or request body
+  - IP whitelisting at the web server level
+- **Caching**: The auto-import setting uses `getWebConfig()` which may cache values. If the setting is updated but not reflected, clear the cache with `php artisan cache:clear` or clear business settings cache specifically.
+- **Logging**: All webhook operations are logged to `storage/logs/laravel.log` for debugging. Check logs if auto-import is not working as expected.  
 
 
