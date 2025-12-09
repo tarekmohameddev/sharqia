@@ -534,7 +534,7 @@
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <div class="form-group">
-                                            <label class="form-label mb-1">{{ translate('seller') }} <span class="input-label-secondary text-danger">*</span></label>
+                                            <label class="form-label mb-1">{{ translate('selleer') }} <span class="input-label-secondary text-danger">*</span></label>
                                             <select name="seller_id" id="customer_seller_id" class="custom-select" required data-minimum-results-for-search="Infinity"></select>
                                         </div>
                                     </div>
