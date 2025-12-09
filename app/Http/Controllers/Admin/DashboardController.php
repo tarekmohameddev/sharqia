@@ -44,7 +44,7 @@ class DashboardController extends BaseController
      * @param Request|null $request
      * @param string|null $type
      * @return View|Collection|LengthAwarePaginator|callable|RedirectResponse|null
-     * Index function is the starting point of a controller
+     * Index function is the starting point of a controller 
      */
     public function index(Request|null $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
