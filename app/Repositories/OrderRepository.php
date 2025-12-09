@@ -105,27 +105,31 @@ class OrderRepository implements OrderRepositoryInterface
                         });
                     });
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_year", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_year", function ($query) use ($filters) {
                 $current_start_year = date('Y-01-01');
                 $current_end_year = date('Y-12-31');
-                return $query->whereDate('created_at', '>=', $current_start_year)
-                    ->whereDate('created_at', '<=', $current_end_year);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $current_start_year)
+                    ->whereDate($dateField, '<=', $current_end_year);
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_month", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_month", function ($query) use ($filters) {
                 $current_month_start = date('Y-m-01');
                 $current_month_end = date('Y-m-t');
-                return $query->whereDate('created_at', '>=', $current_month_start)
-                    ->whereDate('created_at', '<=', $current_month_end);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $current_month_start)
+                    ->whereDate($dateField, '<=', $current_month_end);
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_week", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_week", function ($query) use ($filters) {
                 $start_week = Carbon::now()->subDays(7)->startOfWeek()->format('Y-m-d');
                 $end_week = Carbon::now()->startOfWeek()->format('Y-m-d');
-                return $query->whereDate('created_at', '>=', $start_week)
-                    ->whereDate('created_at', '<=', $end_week);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $start_week)
+                    ->whereDate($dateField, '<=', $end_week);
             })
             ->when(isset($filters['date_type']) && $filters['date_type'] == "custom_date" && isset($filters['from']) && isset($filters['to']), function ($query) use ($filters) {
-                return $query->whereDate('created_at', '>=', $filters['from'])
-                    ->whereDate('created_at', '<=', $filters['to']);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $filters['from'])
+                    ->whereDate($dateField, '<=', $filters['to']);
             })
             ->when(isset($filters['delivery_man_id']), function ($query) use ($filters) {
                 return $query->where(['delivery_man_id' => $filters['delivery_man_id']]);

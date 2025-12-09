@@ -114,6 +114,7 @@ class OrderController extends BaseController
             'order_status' => $status,
             'filter' => $request['filter'] ?? 'all',
             'date_type' => $dateType,
+            'date_field' => $request['date_field'] ?? 'created_at',
             'from' => $request['from'],
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
@@ -134,6 +135,12 @@ class OrderController extends BaseController
         $vendorId = $request['seller_id'];
         $customerId = $request['customer_id'];
 
+        // Get selected seller for display
+        $selectedSeller = null;
+        if ($vendorId && $vendorId != 'all' && $vendorId != '0') {
+            $selectedSeller = $this->vendorRepo->getFirstWhere(params: ['id' => $vendorId], relations: ['shop']);
+        }
+
         if (request()->ajax()) {
             return response()->json([
                 'orders' => $orders
@@ -150,6 +157,26 @@ class OrderController extends BaseController
         $startOfDay = Carbon::now()->startOfDay();
         $endOfDay = Carbon::now()->endOfDay();
 
+        // Get checkbox selections for custom total calculation (default: all selected)
+        $includeProducts = $request->get('include_products', '1') === '1';
+        $includeShipping = $request->get('include_shipping', '1') === '1';
+        $includeDiscounts = $request->get('include_discounts', '1') === '1';
+        $includeDelivery = $request->get('include_delivery', '1') === '1';
+
+        // Calculate order components
+        $orderComponents = $this->calculateOrderComponents($filters, $includeProducts, $includeShipping, $includeDiscounts, $includeDelivery);
+        
+        // Calculate fixed product sales total (always shows full products, not affected by checkboxes)
+        $productSalesTotal = $this->orderRepo->getListWhere(
+            filters: $filters,
+            relations: ['orderDetails'],
+            dataLimit: 'all'
+        )->sum(function($order) {
+            return $order->orderDetails->sum(function($detail) {
+                return $detail->qty * $detail->price;
+            });
+        });
+
         $stats = [
             'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
             'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
@@ -162,6 +189,9 @@ class OrderController extends BaseController
             ]),
             'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
             'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
+            'custom_total' => $orderComponents['custom_total'],
+            'product_sales_total' => $productSalesTotal, // Fixed value, not affected by checkboxes
+            'components' => $orderComponents, // Pass all components for display
         ];
 
         $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);
@@ -180,7 +210,14 @@ class OrderController extends BaseController
             'dateType',
             'stats',
             'governorates',
-        ));
+            'selectedSeller',
+        ))->with([
+            'dateField' => $request['date_field'] ?? 'created_at',
+            'includeProducts' => $includeProducts,
+            'includeShipping' => $includeShipping,
+            'includeDiscounts' => $includeDiscounts,
+            'includeDelivery' => $includeDelivery,
+        ]);
     }
 
     public function edit(int|string $id): RedirectResponse
@@ -307,6 +344,7 @@ class OrderController extends BaseController
             'order_status' => $status,
             'filter' => $request['filter'] ?? 'all',
             'date_type' => $request['date_type'],
+            'date_field' => $request['date_field'] ?? 'created_at',
             'from' => $request['from'],
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
@@ -1034,5 +1072,71 @@ class OrderController extends BaseController
         }
 
         return response()->json(['updated' => $updated, 'skipped' => $skipped]);
+    }
+
+    /**
+     * Calculate order components broken down by type
+     * Senior Dev Pattern: Separate calculation logic for maintainability
+     *
+     * @param array $filters Order filters
+     * @param bool $includeProducts Include products in total
+     * @param bool $includeShipping Include shipping costs
+     * @param bool $includeDiscounts Subtract discounts from total  
+     * @param bool $includeDelivery Include delivery fees
+     * @return array Components breakdown and custom total
+     */
+    private function calculateOrderComponents(array $filters, bool $includeProducts, bool $includeShipping, bool $includeDiscounts, bool $includeDelivery): array
+    {
+        $orders = $this->orderRepo->getListWhere(
+            filters: $filters,
+            relations: ['orderDetails'],
+            dataLimit: 'all'
+        );
+
+        $products = 0;
+        $shipping = 0;
+        $discounts = 0;
+        $delivery = 0;
+
+        foreach ($orders as $order) {
+            // Products: sum of (qty × price) from order details
+            if ($includeProducts) {
+                $products += $order->orderDetails->sum(function($detail) {
+                    return $detail->qty * $detail->price;
+                });
+            }
+
+            // Shipping cost
+            if ($includeShipping) {
+                $shipping += $order->shipping_cost ?? 0;
+            }
+
+            // Discounts (these reduce the total)
+            if ($includeDiscounts) {
+                $discounts += ($order->discount_amount ?? 0) + ($order->extra_discount ?? 0);
+            }
+
+            // Delivery fees
+            if ($includeDelivery) {
+                $delivery += $order->deliveryman_charge ?? 0;
+            }
+        }
+
+        // Calculate custom total: Products + Shipping - Discounts + Delivery
+        $customTotal = $products + $shipping - $discounts + $delivery;
+
+        return [
+            'products' => $products,
+            'shipping' => $shipping,
+            'discounts' => $discounts,
+            'delivery' => $delivery,
+            'custom_total' => $customTotal,
+            'breakdown' => [
+                'include_products' => $includeProducts,
+                'include_shipping' => $includeShipping,
+                'include_discounts' => $includeDiscounts,
+                'include_delivery' => $includeDelivery,
+            ],
+        ];
     }
 }

@@ -22,6 +22,7 @@ class VendorProductSalesReportController extends Controller
         $to = $request['to'];
         $sellerId = $request['seller_id'] ?? 'all';
         $dateType = $request['date_type'] ?? 'this_year';
+        $dateField = $request['date_field'] ?? 'updated_at';
 
         $queryParam = [
             'search' => $search,
@@ -29,6 +30,7 @@ class VendorProductSalesReportController extends Controller
             'date_type' => $dateType,
             'from' => $from,
             'to' => $to,
+            'date_field' => $dateField,
         ];
 
         $sellers = Seller::where(['status' => 'approved'])->get();
@@ -54,8 +56,8 @@ class VendorProductSalesReportController extends Controller
 
             
 
-        // Apply date filter on orders updated_at (delivered timeline)
-        $productQuery = $this->date_wise_common_filter_for_orders($productQuery, $dateType, $from, $to);
+        // Apply date filter on orders (using selected date_field)
+        $productQuery = $this->date_wise_common_filter_for_orders($productQuery, $dateType, $from, $to, $dateField);
 
         $products = $productQuery
             ->latest('products.created_at')
@@ -72,38 +74,94 @@ class VendorProductSalesReportController extends Controller
             $totalDiscountGiven += (float) ($product->total_discount ?? 0);
         }
 
+        // Component-based custom total - same pattern as Orders List
+        $includeProducts = $request->get('include_products', '1') === '1';
+        $includeShipping = $request->get('include_shipping', '1') === '1';
+        $includeDiscounts = $request->get('include_discounts', '1') === '1';
+        $includeDelivery = $request->get('include_delivery', '1') === '1';
+        
+        $orderQuery = \App\Models\Order::query()
+            ->when($sellerId && $sellerId != 'all', function ($query) use ($sellerId) {
+                $query->where('seller_id', $sellerId);
+            })
+            ->when(($dateType == 'this_year'), function ($query) use ($dateField) {
+                return $query->whereYear($dateField, date('Y'));
+            })
+            ->when(($dateType == 'this_month'), function ($query) use ($dateField) {
+                return $query->whereMonth($dateField, date('m'))
+                    ->whereYear($dateField, date('Y'));
+            })
+            ->when(($dateType == 'this_week'), function ($query) use ($dateField) {
+                return $query->whereBetween($dateField, [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+            })
+            ->when(($dateType == 'today'), function ($query) use ($dateField) {
+                return $query->whereBetween($dateField, [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()]);
+            })
+            ->when(($dateType == 'custom_date' && !is_null($from) && !is_null($to)), function ($query) use ($dateField, $from, $to) {
+                return $query->whereDate($dateField, '>=', $from)
+                    ->whereDate($dateField, '<=', $to);
+            });
+
+        // Calculate components
+        $orders = $orderQuery->with('orderDetails')->get();
+        $componentsProducts = 0;
+        $componentsShipping = 0;
+        $componentsDiscounts = 0;
+        $componentsDelivery = 0;
+
+        foreach ($orders as $order) {
+            if ($includeProducts) {
+                $componentsProducts += $order->orderDetails->sum(function($detail) {
+                    return $detail->qty * $detail->price;
+                });
+            }
+            if ($includeShipping) $componentsShipping += $order->shipping_cost ?? 0;
+            if ($includeDiscounts) $componentsDiscounts += ($order->discount_amount ?? 0) + ($order->extra_discount ?? 0);
+            if ($includeDelivery) $componentsDelivery += $order->deliveryman_charge ?? 0;
+        }
+        
+        $customTotal = $componentsProducts + $componentsShipping - $componentsDiscounts + $componentsDelivery;
+
         return view('admin-views.report.vendor-product-sales', compact(
             'sellers',
             'products',
             'totalProductSale',
             'totalProductSaleAmount',
             'totalDiscountGiven',
+            'customTotal',
             'search',
             'dateType',
             'from',
             'to',
-            'sellerId'
+            'sellerId',
+            'includeProducts',
+            'includeShipping',
+            'includeDiscounts',
+            'includeDelivery',
+            'dateField',
         ));
     }
 
-    public function date_wise_common_filter_for_orders($query, $dateType, $from, $to)
+    public function date_wise_common_filter_for_orders($query, $dateType, $from, $to, $dateField = 'updated_at')
     {
-        return $query->when(($dateType == 'this_year'), function ($query) {
-                return $query->whereYear('o.updated_at', date('Y'));
+        $column = 'o.' . $dateField;
+        
+        return $query->when(($dateType == 'this_year'), function ($query) use ($column) {
+                return $query->whereYear($column, date('Y'));
             })
-            ->when(($dateType == 'this_month'), function ($query) {
-                return $query->whereMonth('o.updated_at', date('m'))
-                    ->whereYear('o.updated_at', date('Y'));
+            ->when(($dateType == 'this_month'), function ($query) use ($column) {
+                return $query->whereMonth($column, date('m'))
+                    ->whereYear($column, date('Y'));
             })
-            ->when(($dateType == 'this_week'), function ($query) {
-                return $query->whereBetween('o.updated_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+            ->when(($dateType == 'this_week'), function ($query) use ($column) {
+                return $query->whereBetween($column, [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
             })
-            ->when(($dateType == 'today'), function ($query) {
-                return $query->whereBetween('o.updated_at', [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()]);
+            ->when(($dateType == 'today'), function ($query) use ($column) {
+                return $query->whereBetween($column, [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()]);
             })
-            ->when(($dateType == 'custom_date' && !is_null($from) && !is_null($to)), function ($query) use ($from, $to) {
-                return $query->whereDate('o.updated_at', '>=', $from)
-                    ->whereDate('o.updated_at', '<=', $to);
+            ->when(($dateType == 'custom_date' && !is_null($from) && !is_null($to)), function ($query) use ($column, $from, $to) {
+                return $query->whereDate($column, '>=', $from)
+                    ->whereDate($column, '<=', $to);
             });
     }
 
@@ -114,6 +172,7 @@ class VendorProductSalesReportController extends Controller
         $to = $request['to'];
         $sellerId = $request['seller_id'] ?? 'all';
         $dateType = $request['date_type'] ?? 'this_year';
+        $dateField = $request['date_field'] ?? 'updated_at';
 
         $productQuery = Product::with(['reviews'])
             ->leftJoin('order_details as od', 'od.product_id', '=', 'products.id')
@@ -135,7 +194,7 @@ class VendorProductSalesReportController extends Controller
             )
             ->groupBy('products.id');
 
-        $products = $this->date_wise_common_filter_for_orders($productQuery, $dateType, $from, $to)
+        $products = $this->date_wise_common_filter_for_orders($productQuery, $dateType, $from, $to, $dateField)
             ->latest('products.created_at')
             ->get();
 
