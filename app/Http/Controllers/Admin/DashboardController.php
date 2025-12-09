@@ -57,7 +57,7 @@ class DashboardController extends BaseController
         $data = self::getOrderStatusData();
         $admin_wallet = $this->adminWalletRepo->getFirstWhere(params: ['admin_id' => 1]);
 
-        $from = now()->startOfYear()->format('Y-m-d');
+        $from = now()->startOfYear()->format('Y-m-d'); 
         $to = now()->endOfYear()->format('Y-m-d');
         $range = range(1, 12);
         $label = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
