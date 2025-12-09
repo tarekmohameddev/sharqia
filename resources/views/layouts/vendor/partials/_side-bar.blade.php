@@ -4,10 +4,11 @@
     use App\Enums\ViewPaths\Vendor\Profile;
     use App\Enums\ViewPaths\Vendor\Refund;
     use App\Enums\ViewPaths\Vendor\Review;
+    use App\Models\LateDeliveryRequest;
     use App\Enums\ViewPaths\Vendor\DeliveryMan;
     use App\Enums\ViewPaths\Vendor\EmergencyContact;
     use App\Models\Order;
-    use App\Models\RefundRequest;
+    use App\Models\OrderRefund;
     use App\Models\Shop;
     use App\Enums\ViewPaths\Vendor\Order as OrderEnum;
     $shop=Shop::where(['seller_id'=>auth('seller')->id()])->first();
@@ -62,7 +63,7 @@
                         @php($seller = auth('seller')->user())
                         @php($sellerId = $seller['id'])
                         @php($sellerPOS=getWebConfig('seller_pos'))
-                        @if ($sellerPOS == 1 && $seller['pos_status'] == 1)
+                        {{-- @if ($sellerPOS == 1 && $seller['pos_status'] == 1)
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/pos*')?'active' : ''}}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link"
                                    href="{{ route('vendor.pos.index') }}" title="{{ translate('POS') }}">
@@ -71,7 +72,7 @@
                                         class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('POS') }}</span>
                                 </a>
                             </li>
-                        @endif
+                        @endif --}}
 
                         <li class="nav-item">
                             <small class="nav-subtitle">{{ translate('order_management') }}</small>
@@ -200,6 +201,7 @@
                             </ul>
                         </li>
 
+                        
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/refund*')?'active' : ''}}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
                                href="javascript:" title="{{ translate('refund_Requests') }}">
@@ -217,7 +219,7 @@
                                         <span class="text-truncate">
                                           {{ translate('pending') }}
                                             <span class="badge badge-soft-danger badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','pending')->count() }}
                                             </span>
@@ -232,7 +234,7 @@
                                         <span class="text-truncate">
                                            {{ translate('approved') }}
                                             <span class="badge badge-soft-info badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','approved')->count() }}
                                             </span>
@@ -246,7 +248,7 @@
                                         <span class="text-truncate">
                                            {{ translate('refunded') }}
                                             <span class="badge badge-soft-success badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','refunded')->count() }}
                                             </span>
@@ -260,7 +262,7 @@
                                         <span class="text-truncate">
                                            {{ translate('rejected') }}
                                             <span class="badge badge-danger badge-pill ml-1">
-                                                {{RefundRequest::whereHas('order', function ($query) {
+                                                {{OrderRefund::whereHas('order', function ($query) {
                                                     $query->where('seller_is', 'seller')->where('seller_id',auth('seller')->id());
                                                         })->where('status','rejected')->count() }}
                                             </span>
@@ -269,6 +271,67 @@
                                 </li>
                             </ul>
                         </li>
+                        
+                        
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('vendor/late-delivery*')?'active' : ''}}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle"
+                               href="javascript:" title="{{ translate('late_delivery_requests') }}">
+                                <i class="fi fi-rr-time-forward nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    {{ translate('late_delivery_requests') }}
+                                </span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('vendor/late-delivery*')?'block' : 'none'}}">
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/pending')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['pending']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('pending') }}
+                                            <span class="badge badge-soft-danger badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','pending')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/in_progress')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['in_progress']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('in_progress') }}
+                                            <span class="badge badge-soft-info badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','in_progress')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/resolved')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['resolved']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('resolved') }}
+                                            <span class="badge badge-soft-success badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','resolved')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item {{ Request::is('vendor/late-delivery/index/rejected')?'active' : ''}}">
+                                    <a class="nav-link" href="{{ route('vendor.late-delivery.index',['rejected']) }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">
+                                            {{ translate('rejected') }}
+                                            <span class="badge badge-danger badge-pill ml-1">
+                                                {{ LateDeliveryRequest::whereHas('order', function ($query) { $query->where('seller_is','seller')->where('seller_id',auth('seller')->id()); })->where('status','rejected')->count() }}
+                                            </span>
+                                        </span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        
+                        {{-- Hiding extra vendor sidebar items --}}
+                        {{--
                         <li class="nav-item">
                             <small class="nav-subtitle">{{ translate('product_management') }}</small>
                             <small class="tio-more-horizontal nav-subtitle-replacer"></small>
@@ -511,6 +574,7 @@
                                 </ul>
                             </li>
                         @endif
+                        --}}
                         <li class="pb-5"><div class="py-5"></div></li>
                     </ul>
                 </div>
@@ -519,5 +583,5 @@
     </aside>
 </div>
 
-@include("layouts.vendor.partials._setup-guide")
+{{-- @include("layouts.vendor.partials._setup-guide") --}}
 

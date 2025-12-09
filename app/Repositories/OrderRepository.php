@@ -69,8 +69,14 @@ class OrderRepository implements OrderRepositoryInterface
             ->when(isset($filters['customer_id']) && $filters['customer_id'] != 'all', function ($query) use ($filters) {
                 return $query->where('customer_id', $filters['customer_id']);
             })
+            ->when(isset($filters['city_id']) && $filters['city_id'] != 'all', function ($query) use ($filters) {
+                return $query->where('city_id', $filters['city_id']);
+            })
             ->when(isset($filters['is_guest']), function ($query) use ($filters) {
                 return $query->where('is_guest', $filters['is_guest']);
+            })
+            ->when(isset($filters['is_printed']) && $filters['is_printed'] !== 'all', function ($query) use ($filters) {
+                return $query->where('is_printed', (bool)$filters['is_printed']);
             })
             ->when(isset($filters['customer_type']), function ($query) use ($filters) {
                 return $query->where('is_guest', $filters['customer_type']);
@@ -99,27 +105,31 @@ class OrderRepository implements OrderRepositoryInterface
                         });
                     });
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_year", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_year", function ($query) use ($filters) {
                 $current_start_year = date('Y-01-01');
                 $current_end_year = date('Y-12-31');
-                return $query->whereDate('created_at', '>=', $current_start_year)
-                    ->whereDate('created_at', '<=', $current_end_year);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $current_start_year)
+                    ->whereDate($dateField, '<=', $current_end_year);
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_month", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_month", function ($query) use ($filters) {
                 $current_month_start = date('Y-m-01');
                 $current_month_end = date('Y-m-t');
-                return $query->whereDate('created_at', '>=', $current_month_start)
-                    ->whereDate('created_at', '<=', $current_month_end);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $current_month_start)
+                    ->whereDate($dateField, '<=', $current_month_end);
             })
-            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_week", function ($query) {
+            ->when(isset($filters['date_type']) && $filters['date_type'] == "this_week", function ($query) use ($filters) {
                 $start_week = Carbon::now()->subDays(7)->startOfWeek()->format('Y-m-d');
                 $end_week = Carbon::now()->startOfWeek()->format('Y-m-d');
-                return $query->whereDate('created_at', '>=', $start_week)
-                    ->whereDate('created_at', '<=', $end_week);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $start_week)
+                    ->whereDate($dateField, '<=', $end_week);
             })
             ->when(isset($filters['date_type']) && $filters['date_type'] == "custom_date" && isset($filters['from']) && isset($filters['to']), function ($query) use ($filters) {
-                return $query->whereDate('created_at', '>=', $filters['from'])
-                    ->whereDate('created_at', '<=', $filters['to']);
+                $dateField = $filters['date_field'] ?? 'created_at';
+                return $query->whereDate($dateField, '>=', $filters['from'])
+                    ->whereDate($dateField, '<=', $filters['to']);
             })
             ->when(isset($filters['delivery_man_id']), function ($query) use ($filters) {
                 return $query->where(['delivery_man_id' => $filters['delivery_man_id']]);
@@ -128,7 +138,21 @@ class OrderRepository implements OrderRepositoryInterface
                 return $query->where(function ($query) use ($searchValue) {
                     return $query->where('id', 'like', "%{$searchValue}%")
                         ->orWhere('order_status', 'like', "%{$searchValue}%")
-                        ->orWhere('transaction_ref', 'like', "%{$searchValue}%");
+                        ->orWhere('transaction_ref', 'like', "%{$searchValue}%")
+                        // search by related customer phone
+                        ->orWhereHas('customer', function ($q) use ($searchValue) {
+                            $q->where('phone', 'like', "%{$searchValue}%");
+                        })
+                        // search by phone inside JSON shipping/billing address data
+                        ->orWhere('shipping_address_data->phone', 'like', "%{$searchValue}%")
+                        ->orWhere('billing_address_data->phone', 'like', "%{$searchValue}%")
+                        // also search by alternative phone inside JSON
+                        ->orWhere('shipping_address_data->alternative_phone', 'like', "%{$searchValue}%")
+                        ->orWhere('billing_address_data->alternative_phone', 'like', "%{$searchValue}%")
+                        // search by customer's alternative phone
+                        ->orWhereHas('customer', function($q) use ($searchValue) {
+                            $q->where('alternative_phone', 'like', "%{$searchValue}%");
+                        });
                 });
             })
             ->when(isset($filters['whereHas_deliveryMan']), function ($query) use ($filters) {
@@ -599,5 +623,32 @@ class OrderRepository implements OrderRepositoryInterface
             ->orderBy("count", 'desc');
 
         return $dataLimit == 'all' ? $query->get() : $query->paginate($dataLimit)->appends($filters);
+    }
+
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->order
+            ->when(isset($filters['customer_id']) && $filters['customer_id'] !== 'all', function ($query) use ($filters) {
+                return $query->where('customer_id', $filters['customer_id']);
+            })
+            ->when(isset($filters['order_type']) && $filters['order_type'] !== 'all', function ($query) use ($filters) {
+                return $query->where('order_type', $filters['order_type']);
+            })
+            ->when(isset($filters['seller_is']) && $filters['seller_is'] != 'all', function ($query) use ($filters) {
+                return $query->where('seller_is', $filters['seller_is']);
+            })
+            ->when(isset($filters['seller_id']) && $filters['seller_id'] != 'all', function ($query) use ($filters) {
+                return $query->where('seller_id', $filters['seller_id']);
+            })
+            ->when(isset($filters['order_status']) && $filters['order_status'] != 'all', function ($query) use ($filters) {
+                return $query->where('order_status', $filters['order_status']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->when(isset($filters['is_printed']) && $filters['is_printed'] !== 'all', function ($query) use ($filters) {
+                return $query->where('is_printed', (bool)$filters['is_printed']);
+            })
+            ->count();
     }
 }

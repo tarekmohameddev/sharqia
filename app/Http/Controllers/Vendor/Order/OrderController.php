@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Vendor\Order;
 
+use App\Models\Governorate;
+use App\Models\ShippingAddress;
 use App\Contracts\Repositories\BusinessSettingRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryCountryCodeRepositoryInterface;
@@ -24,6 +26,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UploadDigitalFileAfterSellRequest;
 use App\Models\ReferralCustomer;
+use App\Models\OrderRefund;
 use App\Repositories\WalletTransactionRepository;
 use App\Services\DeliveryCountryCodeService;
 use App\Services\DeliveryManTransactionService;
@@ -114,8 +117,10 @@ class OrderController extends BaseController
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
             'customer_id' => $request['customer_id'],
+            'city_id' => $request['city_id'],
             'seller_id' => $vendorId,
             'seller_is' => 'seller',
+            'is_printed' => $request['is_printed'] ?? 'all',
         ];
         $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $searchValue, filters: $filters, relations: $relation, dataLimit: getWebConfig(name: WebConfigKey::PAGINATION_LIMIT));
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
@@ -127,6 +132,37 @@ class OrderController extends BaseController
 
         $vendorId = $request['seller_id'];
         $customerId = $request['customer_id'];
+
+        // Stats section for vendor
+        $countBaseFilters = [
+            'seller_is' => 'seller',
+            'seller_id' => $seller['id'],
+        ];
+        $startOfMonth = Carbon::now()->startOfMonth()->startOfDay();
+        $endOfMonth = Carbon::now()->endOfMonth()->endOfDay();
+        $startOfDay = Carbon::now()->startOfDay();
+        $endOfDay = Carbon::now()->endOfDay();
+
+        $stats = [
+            'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
+            'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfMonth,
+                'created_at_to' => $endOfMonth,
+            ]),
+            'today' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
+                'created_at_from' => $startOfDay,
+                'created_at_to' => $endOfDay,
+            ]),
+            'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
+            'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
+        ];
+
+        // All governorates for filters; coverage-only list for modal
+        $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);
+        $coverageIds = $seller->governorate_coverages()->pluck('governorates.id')->toArray();
+        $coverageGovernorates = empty($coverageIds)
+            ? collect([])
+            : Governorate::whereIn('id', $coverageIds)->orderBy('name_ar')->get(['id','name_ar']);
 
         return view(Order::LIST[VIEW], compact(
             'orders',
@@ -143,7 +179,10 @@ class OrderController extends BaseController
             'seller',
             'customer',
             'sellerPos',
-            'deliveryManId'
+            'deliveryManId',
+            'stats',
+            'governorates',
+            'coverageGovernorates'
         ));
     }
 
@@ -158,6 +197,7 @@ class OrderController extends BaseController
             'to' => $request['to'],
             'delivery_man_id' => $request['delivery_man_id'],
             'customer_id' => $request['customer_id'],
+            'city_id' => $request['city_id'],
             'seller_id' => $vendorId,
             'seller_is' => 'seller',
         ];
@@ -249,10 +289,225 @@ class OrderController extends BaseController
         $relations = ['details', 'customer', 'shipping', 'seller'];
         $order = $this->orderRepo->getFirstWhere(params: $params, relations: $relations);
         $invoiceSettings = getWebConfig(name: 'invoice_settings');
+        // Resolve latest shipping address by customer_id (fallback to order shipping_address_data)
+        $shippingAddress = null;
+        if (!empty($order['customer_id'])) {
+            $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+
+        // Resolve governorate name by city_id stored on order
+        $governorateName = null;
+        if (!empty($order['city_id'])) {
+            $governorateName = Governorate::find($order['city_id'])?->name_ar;
+        }
         $mpdf_view = PdfView::make('vendor-views.order.invoice',
-            compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings')
+            compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName')
         );
         $this->generatePdf(view: $mpdf_view, filePrefix: 'order_invoice_', filePostfix: $order['id'], pdfType: 'invoice');
+        // mark printed and move status to out_for_delivery when printing
+        $this->orderRepo->update(id: $order['id'], data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
+    }
+
+    public function bulkUpdateStatus(
+        Request                       $request,
+        DeliveryManTransactionService $deliveryManTransactionService,
+        DeliveryManWalletService      $deliveryManWalletService,
+        OrderStatusHistoryService     $orderStatusHistoryService,
+    ): JsonResponse {
+        $targetStatus = $request->get('status');
+        $ids = (array)$request->get('ids', []);
+
+        if (!$targetStatus || empty($ids)) {
+            return response()->json(['error' => translate('invalid_request')], 422);
+        }
+
+        $allowedTransitions = [
+            'pending' => ['confirmed', 'canceled'],
+            'confirmed' => ['processing', 'canceled'],
+            'processing' => ['out_for_delivery', 'failed', 'returned', 'canceled'],
+            'out_for_delivery' => ['delivered', 'failed', 'returned'],
+            'delivered' => [],
+            'returned' => [],
+            'failed' => [],
+            'canceled' => [],
+        ];
+
+        $updated = 0;
+        $skipped = [];
+        $sellerId = auth('seller')->id();
+
+        foreach ($ids as $id) {
+            $order = $this->orderRepo->getFirstWhere(params: ['id' => $id, 'seller_id' => $sellerId, 'seller_is' => 'seller'], relations: ['customer', 'seller.shop', 'deliveryMan']);
+            if (!$order) {
+                $skipped[] = ['id' => $id, 'reason' => 'not_found'];
+                continue;
+            }
+
+            $current = (string)$order['order_status'];
+            if ($current === $targetStatus) {
+                $skipped[] = ['id' => $id, 'reason' => 'no_change'];
+                continue;
+            }
+
+            $allowed = $allowedTransitions[$current] ?? [];
+            if (!in_array($targetStatus, $allowed)) {
+                $skipped[] = ['id' => $id, 'reason' => 'transition_not_allowed'];
+                continue;
+            }
+
+            if (!$order['is_guest'] && !isset($order['customer'])) {
+                $skipped[] = ['id' => $id, 'reason' => 'customer_deleted'];
+                continue;
+            }
+
+            if ($order['payment_method'] != 'cash_on_delivery' && $targetStatus == 'delivered' && $order['payment_status'] != 'paid') {
+                $skipped[] = ['id' => $id, 'reason' => 'payment_unpaid'];
+                continue;
+            }
+
+            $this->orderRepo->updateStockOnOrderStatusChange($id, $targetStatus);
+            $this->orderRepo->update(id: $id, data: ['order_status' => $targetStatus]);
+
+            if ($targetStatus == 'delivered') {
+                $this->orderRepo->update(id: $id, data: ['payment_status' => 'paid', 'is_pause' => 0]);
+                $this->orderDetailRepo->updateWhere(params: ['order_id' => $order['id']], data: ['delivery_status' => $targetStatus, 'payment_status' => 'paid']);
+            }
+
+            event(new OrderStatusEvent(key: $targetStatus, type: 'customer', order: $order));
+            if ($targetStatus == 'canceled') {
+                event(new OrderStatusEvent(key: 'canceled', type: 'delivery_man', order: $order));
+            }
+
+            $walletStatus = getWebConfig(name: 'wallet_status');
+            $loyaltyPointStatus = getWebConfig(name: 'loyalty_point_status');
+            $loyaltyPointEachOrder = getWebConfig(name: 'loyalty_point_for_each_order');
+            $loyaltyPointEachOrder = !is_null($loyaltyPointEachOrder) ? $loyaltyPointEachOrder : $loyaltyPointStatus;
+            if ($walletStatus == 1 && $loyaltyPointStatus == 1 && $loyaltyPointEachOrder == 1 && !$order['is_guest'] && $targetStatus == 'delivered' && $order['seller_id'] != null) {
+                $this->loyaltyPointTransactionRepo->addLoyaltyPointTransaction(userId: $order['customer_id'], reference: $order['id'], amount: usdToDefaultCurrency(amount: $order['order_amount'] - $order['shipping_cost']), transactionType: 'order_place');
+            }
+
+            if ($order['delivery_man_id'] && $targetStatus == 'delivered') {
+                $deliverymanWallet = $this->deliveryManWalletRepo->getFirstWhere(params: ['delivery_man_id' => $order['delivery_man_id']]);
+                $cashInHand = $order['payment_method'] == 'cash_on_delivery' ? $order['order_amount'] : 0;
+
+                if (empty($deliverymanWallet)) {
+                    $deliverymanWalletData = $deliveryManWalletService->getDeliveryManData(id: $order['delivery_man_id'], deliverymanCharge: $order['deliveryman_charge'], cashInHand: $cashInHand);
+                    $this->deliveryManWalletRepo->add(data: $deliverymanWalletData);
+                } else {
+                    $deliverymanWalletData = [
+                        'current_balance' => $deliverymanWallet['current_balance'] + $order['deliveryman_charge'] ?? 0,
+                        'cash_in_hand' => $deliverymanWallet['cash_in_hand'] + $cashInHand ?? 0,
+                    ];
+                    $this->deliveryManWalletRepo->updateWhere(params: ['delivery_man_id' => $order['delivery_man_id']], data: $deliverymanWalletData);
+                }
+                if ($order['deliveryman_charge'] && $targetStatus == 'delivered') {
+                    $deliveryManTransactionData = $deliveryManTransactionService->getDeliveryManTransactionData(amount: $order['deliveryman_charge'], addedBy: 'seller', id: $order['delivery_man_id'], transactionType: 'deliveryman_charge');
+                    $this->deliveryManTransactionRepo->add($deliveryManTransactionData);
+                }
+            }
+
+            $orderStatusHistoryData = $orderStatusHistoryService->getOrderHistoryData(orderId: $id, userId: auth('seller')->id(), userType: 'seller', status: $targetStatus);
+            $this->orderStatusHistoryRepo->add($orderStatusHistoryData);
+
+            $transaction = $this->orderTransactionRepo->getFirstWhere(params: ['order_id' => $order['id']]);
+            if (!(isset($transaction) && $transaction['status'] == 'disburse')) {
+                if ($targetStatus == 'delivered' && $order['seller_id'] != null) {
+                    $this->orderRepo->manageWalletOnOrderStatusChange(order: $order, receivedBy: 'seller');
+                }
+            }
+
+            if ($targetStatus == 'delivered') {
+                $referredUser = ReferralCustomer::where('user_id', $order?->customer?->id)->first();
+                if ($referredUser?->delivered_notify != 1) {
+                    event(new OrderStatusEvent(key: 'your_referred_customer_order_has_been_delivered', type: 'promoter', order: $order));
+                    ReferralCustomer::where('user_id', $order?->customer?->id)->update(['delivered_notify' => 1]);
+                }
+            }
+
+            $updated++;
+        }
+
+        return response()->json(['updated' => $updated, 'skipped' => $skipped]);
+    }
+
+    public function bulkInvoices(Request $request)
+    {
+        $ids = (array)$request->get('ids', []);
+        $applyTo = $request->get('apply_to');
+        $status = $request->get('status', 'all');
+        $sellerId = auth('seller')->id();
+
+        if ($applyTo === 'all') {
+            $filters = [
+                'order_status' => $status,
+                'filter' => $request['filter'] ?? 'all',
+                'date_type' => $request['date_type'],
+                'from' => $request['from'],
+                'to' => $request['to'],
+                'delivery_man_id' => $request['delivery_man_id'],
+                'customer_id' => $request['customer_id'],
+                'seller_id' => $sellerId,
+                'seller_is' => 'seller',
+                'city_id' => $request['city_id'],
+                'is_printed' => $request['is_printed'] ?? 'all',
+            ];
+            $ordersAll = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: [], dataLimit: 'all');
+            $ids = $ordersAll->pluck('id')->toArray();
+        }
+
+        if (empty($ids)) {
+            ToastMagic::warning(translate('no_order_found'));
+            return back();
+        }
+
+        $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
+        $mpdf->autoScriptToLang = true;
+        $mpdf->autoLangToFont = true;
+        $footerHtml = self::footerHtml('admin');
+        $mpdf->SetHTMLFooter($footerHtml);
+
+        $isFirst = true;
+        foreach ($ids as $oid) {
+            $order = $this->orderRepo->getFirstWhere(params: ['id' => $oid, 'seller_id' => $sellerId, 'seller_is' => 'seller'], relations: ['seller', 'shipping', 'details', 'customer']);
+            if (!$order) continue;
+            $vendor = $this->vendorRepo->getFirstWhere(params: ['id' => $sellerId])['gst'];
+            $companyPhone = getWebConfig(name: 'company_phone');
+            $companyEmail = getWebConfig(name: 'company_email');
+            $companyName = getWebConfig(name: 'company_name');
+            $companyWebLogo = getWebConfig(name: 'company_web_logo');
+            $invoiceSettings = getWebConfig(name: 'invoice_settings');
+
+            // Resolve latest shipping address and governorate name per order
+            $shippingAddress = null;
+            if (!empty($order['customer_id'])) {
+                $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            }
+            $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+            $governorateName = null;
+            if (!empty($order['city_id'])) {
+                $governorateName = Governorate::find($order['city_id'])?->name_ar;
+            }
+
+            $view = PdfView::make('vendor-views.order.invoice', compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName'));
+            $html = $view->render();
+            if (!$isFirst) {
+                $mpdf->AddPage();
+            }
+            $mpdf->WriteHTML($html);
+            $isFirst = false;
+        }
+
+        $fileName = 'orders_invoices_' . date('Ymd_His') . '.pdf';
+        $mpdf->Output($fileName, 'D');
+        foreach ($ids as $oid) {
+            $this->orderRepo->update(id: $oid, data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
+        }
+        return null;
     }
 
     public function getView(string|int $id, DeliveryCountryCodeService $service, OrderService $orderService): View|RedirectResponse
@@ -540,6 +795,62 @@ class OrderController extends BaseController
             ToastMagic::error(translate('digital_file_upload_failed'));
         }
         return back();
+    }
+
+    public function approveRefund(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'approved';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_approved_successfully')]);
+    }
+
+    public function rejectRefund(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        $orderRefund->status = 'rejected';
+        $orderRefund->admin_note = $request->input('reason', $orderRefund->admin_note);
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Refund_request_rejected_successfully')]);
+    }
+
+    public function refundOrder(Request $request, int $refundId): JsonResponse
+    {
+        $vendorId = auth('seller')->id();
+        $orderRefund = OrderRefund::whereHas('order', function($query) use ($vendorId) {
+            $query->where('seller_is', 'seller')->where('seller_id', $vendorId);
+        })->find($refundId);
+        
+        if (!$orderRefund) {
+            return response()->json(['error' => translate('Refund_request_not_found')], 404);
+        }
+
+        if ($orderRefund->status != 'approved') {
+            return response()->json(['error' => translate('Refund_request_must_be_approved_first')], 422);
+        }
+
+        $orderRefund->status = 'refunded';
+        $orderRefund->save();
+
+        return response()->json(['message' => translate('Order_refunded_successfully')]);
     }
 
 

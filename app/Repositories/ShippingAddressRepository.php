@@ -41,7 +41,7 @@ class ShippingAddressRepository implements ShippingAddressRepositoryInterface
 
     public function update(string $id, array $data): bool
     {
-        // TODO: Implement update() method.
+        return $this->shippingAddress->where('id', $id)->update($data);
     }
 
     public function delete(array $params): bool

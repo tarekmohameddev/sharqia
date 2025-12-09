@@ -23,6 +23,113 @@
             </div>
             <div class="card">
                 <div class="card-body">
+                    @isset($stats)
+                        @if(isset($vendorId) && $vendorId != null)
+                            <div class="mb-3 d-flex align-items-center gap-2">
+                                <span class="text-muted">{{ translate('showing_data_for') }}:</span>
+                                <span class="badge badge-soft-warning text-warning px-3 py-2" style="font-size: 14px; font-weight: 500; background-color: #fff3cd;">
+                                    @if($vendorId == 'all')
+                                        <i class="fi fi-rr-shop"></i> {{ translate('all_stores') }}
+                                    @elseif($vendorId == '0')
+                                        <i class="fi fi-rr-home"></i> {{ translate('in_house') }}
+                                    @elseif(isset($selectedSeller) && $selectedSeller)
+                                        <i class="fi fi-rr-shop"></i> {{ $selectedSeller->shop->name ?? translate('store') }}
+                                    @endif
+                                </span>
+                            </div>
+                        @endif
+                        
+                        {{-- Component Selection Checkboxes --}}
+                        <div class="mb-3 p-3 rounded" style="background-color: #fff3cd;">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <strong class="d-flex align-items-center gap-2">
+                                        {{ translate('customize_total') }}:
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           data-bs-title="{{ translate('Select which components to include in Custom Total calculation') }}" 
+                                           style="font-size: 12px; cursor: help; color: #6c757d;"></i>
+                                    </strong>
+                                </div>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                                        <input type="checkbox" name="include_products" value="1" class="component-checkbox" 
+                                               {{ $includeProducts ? 'checked' : '' }}>
+                                        <span>{{ translate('products') }}</span>
+                                    </label>
+                                    <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                                        <input type="checkbox" name="include_shipping" value="1" class="component-checkbox" 
+                                               {{ $includeShipping ? 'checked' : '' }}>
+                                        <span>{{ translate('shipping') }}</span>
+                                    </label>
+                                    <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                                        <input type="checkbox" name="include_discounts" value="1" class="component-checkbox" 
+                                               {{ $includeDiscounts ? 'checked' : '' }}>
+                                        <span>{{ translate('discounts') }} (-)</span>
+                                    </label>
+                                    <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                                        <input type="checkbox" name="include_delivery" value="1" class="component-checkbox" 
+                                               {{ $includeDelivery ? 'checked' : '' }}>
+                                        <span>{{ translate('delivery_fees') }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['total'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders_this_month') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['this_month'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('total_orders_today') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['today'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('printed_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['printed'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted">{{ translate('unprinted_orders') }}</span>
+                                    <strong class="h4 mb-0">{{ $stats['unprinted'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-6 col-lg-6">
+                                <div class="d-flex flex-column p-3 rounded h-100" style="background-color: #fff3cd;">
+                                    <span class="text-muted d-flex align-items-center gap-2">
+                                        {{ translate('custom_total') }}
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           data-bs-title="{{ translate('Customizable total based on selected components') }}" 
+                                           style="font-size: 12px; cursor: help; color: #6c757d;"></i>
+                                    </span>
+                                    <strong class="h4 mb-0">{{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $stats['custom_total'] ?? 0), currencyCode: getCurrencyCode()) }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-6 col-lg-6">
+                                <div class="d-flex flex-column p-3 rounded bg-light h-100">
+                                    <span class="text-muted d-flex align-items-center gap-2">
+                                        {{ translate('product_sales_total') }}
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           data-bs-title="{{ translate('Fixed product sales (Quantity × Price). Not affected by checkboxes above.') }}" 
+                                           style="font-size: 12px; cursor: help; color: #6c757d;"></i>
+                                    </span>
+                                    <strong class="h4 mb-0">{{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $stats['product_sales_total'] ?? 0), currencyCode: getCurrencyCode()) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    @endisset
                     <form action="{{ route('admin.orders.list', ['status' => request('status')]) }}" id="form-data"
                         method="GET">
                         <div class="row g-3">
@@ -105,6 +212,51 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3" style="background-color: #fff3cd; padding: 10px; border-radius: 5px;">
+                                <div class="form-group">
+                                    <label class="form-label" for="date_field">
+                                        {{ translate('date_field_type') }}
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           data-bs-title="{{ translate('Choose which date to filter by: Order Date (created_at - original/default method) or Last Update Date (updated_at - new option)') }}" 
+                                           style="font-size: 11px; cursor: help; color: #6c757d;"></i>
+                                    </label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" name="date_field" id="date_field">
+                                            <option value="created_at" {{ ($dateField ?? 'created_at') == 'created_at' ? 'selected' : '' }}>
+                                                {{ translate('order_date') }} (created_at - {{ translate('original') }}/{{ translate('default') }})
+                                            </option>
+                                            <option value="updated_at" {{ ($dateField ?? 'created_at') == 'updated_at' ? 'selected' : '' }}>
+                                                {{ translate('last_update_date') }} (updated_at - {{ translate('new') }})
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3">
+                                <div class="form-group">
+                                    <label class="form-label" for="is_printed">{{ translate('printed_status') }}</label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" name="is_printed" id="is_printed">
+                                            <option value="all" {{ request('is_printed','all') == 'all' ? 'selected' : '' }}>{{ translate('all') }}</option>
+                                            <option value="1" {{ request('is_printed') === '1' ? 'selected' : '' }}>{{ translate('printed_only') }}</option>
+                                            <option value="0" {{ request('is_printed') === '0' ? 'selected' : '' }}>{{ translate('unprinted_only') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3">
+                                <div class="form-group">
+                                    <label class="form-label" for="city_id">{{ translate('city') }}</label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" name="city_id" id="city_id">
+                                            <option value="all">{{ translate('all') }}</option>
+                                            @foreach($governorates as $gov)
+                                                <option value="{{ $gov->id }}" {{ request('city_id') == $gov->id ? 'selected' : '' }}>{{ $gov->name_ar }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-sm-6 col-lg-4 col-xl-3" id="from_div">
                                 <div class="form-group">
                                     <label class="form-label" for="customer">{{ translate('start_date') }}</label>
@@ -150,7 +302,7 @@
                                     <div class="input-group">
                                         <input id="datatableSearch_" type="search" name="searchValue"
                                             class="form-control" placeholder="{{ translate('search_by_Order_ID') }}"
-                                            aria-label="Search by Order ID" value="{{ $searchValue }}">
+                                            aria-label="Search by customer phone or order id" value="{{ $searchValue }}">
                                         <div class="input-group-append search-submit">
                                             <button type="submit">
                                                 <i class="fi fi-rr-search"></i>
@@ -160,8 +312,51 @@
                                 </div>
                             </form>
 
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="select-wrapper">
+                                    <select id="bulk-action-select" class="form-select">
+                                        <option value="">{{ translate('bulk_actions') }}</option>
+                                        <optgroup label="{{ translate('change_status') }}">
+                                            @foreach(\App\Enums\OrderStatus::LIST as $st)
+                                                <option value="status:{{ $st }}">{{ translate(str_replace('_',' ',$st)) }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                        <option value="print:selected">{{ translate('print_selected_invoices') }}</option>
+                                        <option value="print:all">{{ translate('print_all_in_filtered_results') }}</option>
+                                    </select>
+                                </div>
+                                <button id="apply-bulk-action" type="button" class="btn btn-primary">
+                                    {{ translate('apply') }}
+                                </button>
+                                <button id="print-unprinted" type="button" class="btn btn-outline-secondary text-nowrap">
+                                    {{ translate('print_unprinted') }}
+                                </button>
+                                <button id="print-unprinted-by-city" type="button" class="btn btn-outline-secondary text-nowrap">
+                                    {{ translate('print_unprinted_by_city_distribution') }}
+                                </button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="select-wrapper">
+                                        <select id="bulk-seller-select" class="form-select">
+                                            <option value="">{{ translate('select_store') }}</option>
+                                            <option value="0">{{ translate('inhouse') }}</option>
+                                            @foreach ($sellers as $seller)
+                                                @isset($seller->shop)
+                                                    <option value="{{ $seller->id }}">{{ $seller->shop->name }}</option>
+                                                @endisset
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <button id="apply-bulk-seller" type="button" class="btn btn-outline-primary">
+                                        {{ translate('change_store_for_selected') }}
+                                    </button>
+                                    <button id="apply-bulk-seller-filtered" type="button" class="btn btn-outline-primary">
+                                        {{ translate('change_store_for_filtered') }}
+                                    </button>
+                                </div>
+                            </div>
+
                             <a type="button" class="btn btn-outline-primary text-nowrap"
-                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType]) }}">
+                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType, 'date_field' => request('date_field', 'created_at'), 'city_id' => request('city_id')]) }}">
                                 <img width="14"
                                     src="{{ dynamicAsset(path: 'public/assets/back-end/img/excel.png') }}" alt=""
                                     class="excel">
@@ -173,12 +368,25 @@
                         <table class="table table-hover table-borderless">
                             <thead class="text-capitalize">
                                 <tr>
+                                    <th>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="checkbox" id="select-all-orders">
+                                            <label class="mb-0" for="select-all-orders">{{ translate('all') }}</label>
+                                        </div>
+                                    </th>
                                     <th>{{ translate('SL') }}</th>
                                     <th>{{ translate('order_ID') }}</th>
                                     <th class="text-capitalize">{{ translate('order_date') }}</th>
                                     <th class="text-capitalize">{{ translate('customer_info') }}</th>
                                     <th>{{ translate('store') }}</th>
-                                    <th class="text-capitalize">{{ translate('total_amount') }}</th>
+                                    <th class="text-capitalize">{{ translate('city') }}</th>
+                                    <th class="text-capitalize">
+                                        {{ translate('total_amount') }}
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           data-bs-title="{{ translate('Complete order total including product prices, shipping, taxes, and all fees. Filtered by order creation date.') }}" 
+                                           style="font-size: 12px; cursor: help; color: #6c757d; margin-left: 4px;"></i>
+                                    </th>
+                                    <th class="text-capitalize">{{ translate('printed') }}</th>
                                     @if ($status == 'all')
                                         <th class="text-center">{{ translate('order_status') }} </th>
                                     @else
@@ -192,6 +400,9 @@
                                 @foreach ($orders as $key => $order)
 
                                     <tr class="status-{{ $order['order_status'] }} class-all">
+                                        <td class="">
+                                            <input type="checkbox" class="order-select" value="{{ $order['id'] }}">
+                                        </td>
                                         <td class="">
                                             {{ $orders->firstItem() + $key }}
                                         </td>
@@ -223,6 +434,10 @@
                                                         <a class="d-block text-dark"
                                                             href="mailto:{{ $order->customer['email'] }}">{{ $order->customer['email'] }}</a>
                                                     @endif
+                                                    @php($altPhone = data_get($order, 'shipping_address_data.alternative_phone') ?: ($order->customer->alternative_phone ?? null))
+                                                    @if (!empty($altPhone))
+                                                        <small class="d-block text-muted">Alt: <a class="text-muted" href="tel:{{ $altPhone }}">{{ $altPhone }}</a></small>
+                                                    @endif
                                                 @else
                                                     <label class="badge badge-danger text-bg-danger">
                                                         {{ translate('customer_not_found') }}
@@ -245,6 +460,10 @@
                                             @endif
                                         </td>
                                         <td>
+                                            @php($__city = $order['city_id'] ? $governorates->firstWhere('id', $order['city_id']) : null)
+                                            {{ $__city->name_ar ?? '-' }}
+                                        </td>
+                                        <td>
                                             <div>
                                                 @php($orderTotalPriceSummary = \App\Utils\OrderManager::getOrderTotalPriceSummary(order: $order))
                                                 {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['totalAmount']), currencyCode: getCurrencyCode()) }}
@@ -256,6 +475,13 @@
                                             @else
                                                 <span
                                                     class="badge badge-danger text-bg-danger">{{ translate('unpaid') }}</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($order->is_printed)
+                                                <span class="badge badge-success text-bg-success">{{ translate('yes') }}</span>
+                                            @else
+                                                <span class="badge badge-secondary bg-secondary">{{ translate('no') }}</span>
                                             @endif
                                         </td>
                                         @if ($status == 'all')
@@ -303,6 +529,21 @@
                                                     href="{{ route('admin.orders.generate-invoice', [$order['id']]) }}">
                                                     <i class="fi fi-sr-down-to-line"></i>
                                                 </a>
+                                                @if(\App\Utils\Helpers::module_permission_check('order_edit'))
+                                                <a class="btn btn-outline-primary btn-outline-primary-dark icon-btn"
+                                                   title="{{ translate('edit') }}"
+                                                   href="{{ route('admin.orders.edit', ['id' => $order['id']]) }}">
+                                                    <i class="fi fi-rr-edit"></i>
+                                                </a>
+                                                @endif
+                                                <button type="button" class="btn btn-outline-danger btn-outline-danger-dark icon-btn js-create-refund"
+                                                    data-order-id="{{ $order['id'] }}" title="{{ translate('refund_request') }}">
+                                                    <i class="fi fi-rr-undo"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-warning btn-outline-warning-dark icon-btn js-flag-late"
+                                                    data-order-id="{{ $order['id'] }}" title="{{ translate('flag_as_late') }}">
+                                                    <i class="fi fi-rr-time-forward"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -347,8 +588,342 @@
 
     <span id="message-date-range-text" data-text="{{ translate('invalid_date_range') }}"></span>
     <span id="js-data-example-ajax-url" data-url="{{ route('admin.orders.customers') }}"></span>
+    <span id="bulk-status-url" data-url="{{ route('admin.orders.bulk-status') }}"></span>
+    <span id="bulk-invoices-url" data-url="{{ route('admin.orders.bulk-invoices') }}"></span>
+    <span id="bulk-change-seller-url" data-url="{{ route('admin.orders.bulk-change-seller') }}"></span>
+    <span id="current-order-status" data-status="{{ $status }}"></span>
+    
+    <!-- Print By City Modal -->
+    <div class="modal fade" id="print-by-city-modal" tabindex="-1" aria-labelledby="printByCityLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="printByCityLabel">{{ translate('select_city_to_print_unprinted') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="print-city-select">{{ translate('city') }}</label>
+                        <div class="select-wrapper">
+                            <select id="print-city-select" class="form-select">
+                                @foreach($governorates as $gov)
+                                    <option value="{{ $gov->id }}">{{ $gov->name_ar }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
+                    <button type="button" id="confirm-print-by-city" class="btn btn-primary">{{ translate('print_unprinted') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script')
     <script src="{{ dynamicAsset(path: 'public/assets/back-end/js/admin/order.js') }}"></script>
+    <script>
+        (function () {
+            const selectAll = document.getElementById('select-all-orders');
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    document.querySelectorAll('.order-select').forEach(cb => {
+                        cb.checked = selectAll.checked;
+                    });
+                });
+            }
+
+            function getSelectedIds() {
+                const ids = [];
+                document.querySelectorAll('.order-select:checked').forEach(cb => ids.push(cb.value));
+                return ids;
+            }
+
+            const applyBtn = document.getElementById('apply-bulk-action');
+            const selectEl = document.getElementById('bulk-action-select');
+            const bulkSellerSelect = document.getElementById('bulk-seller-select');
+            const bulkSellerSelectedBtn = document.getElementById('apply-bulk-seller');
+            const bulkSellerFilteredBtn = document.getElementById('apply-bulk-seller-filtered');
+            if (applyBtn && selectEl) {
+                applyBtn.addEventListener('click', function () {
+                    const action = selectEl.value;
+                    if (!action) return;
+                    const [type, param] = action.split(':');
+                    if (type === 'status') {
+                        const ids = getSelectedIds();
+                        if (ids.length === 0) {
+                            toastMagic.warning('{{ translate('please_select_at_least_one_order') }}');
+                            return;
+                        }
+                        Swal.fire({
+                            title: '{{ translate('are_you_sure') }}',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#377dff',
+                            cancelButtonColor: '#dd3333',
+                            confirmButtonText: '{{ translate('yes_change') }}'
+                        }).then((result) => {
+                            if (!result.value) return;
+                            $.ajaxSetup({
+                                headers: { 'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content') }
+                            });
+                            $.post($('#bulk-status-url').data('url'), { ids: ids, status: param }, function (res) {
+                                toastMagic.success('{{ translate('status_updated_successfully') }}');
+                                location.reload();
+                            }).fail(function () {
+                                toastMagic.error('{{ translate('something_went_wrong') }}');
+                            });
+                        });
+                    } else if (type === 'print') {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                        const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = '_token';
+                        csrfInput.value = csrf;
+                        form.appendChild(csrfInput);
+
+                        const statusInput = document.createElement('input');
+                        statusInput.type = 'hidden';
+                        statusInput.name = 'status';
+                        statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                        form.appendChild(statusInput);
+
+                        if (param === 'selected') {
+                            const ids = getSelectedIds();
+                            if (ids.length === 0) {
+                                toastMagic.warning('{{ translate('please_select_at_least_one_order') }}');
+                                return;
+                            }
+                            ids.forEach(function (id) {
+                                const i = document.createElement('input');
+                                i.type = 'hidden';
+                                i.name = 'ids[]';
+                                i.value = id;
+                                form.appendChild(i);
+                            });
+                        } else if (param === 'all') {
+                            const applyTo = document.createElement('input');
+                            applyTo.type = 'hidden';
+                            applyTo.name = 'apply_to';
+                            applyTo.value = 'all';
+                            form.appendChild(applyTo);
+                        }
+
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            }
+
+            function postBulkChangeSeller(applyTo) {
+                const targetSellerId = bulkSellerSelect?.value;
+                if (!targetSellerId) {
+                    toastMagic.warning('{{ translate('please_select_a_store') }}');
+                    return;
+                }
+                const payload = { seller_id: targetSellerId, apply_to: applyTo };
+                if (applyTo === 'selected') {
+                    const ids = getSelectedIds();
+                    if (ids.length === 0) {
+                        toastMagic.warning('{{ translate('please_select_at_least_one_order') }}');
+                        return;
+                    }
+                    payload.ids = ids;
+                } else if (applyTo === 'all') {
+                    payload.status = document.getElementById('current-order-status').dataset.status || 'all';
+                }
+
+                Swal.fire({
+                    title: '{{ translate('are_you_sure') }}',
+                    text: '{{ translate('this_will_change_the_store_for_the_selected_orders') }}',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#377dff',
+                    cancelButtonColor: '#dd3333',
+                    confirmButtonText: '{{ translate('yes_change') }}'
+                }).then((result) => {
+                    if (!result.value) return;
+                    $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content') } });
+                    $.post($('#bulk-change-seller-url').data('url') + (applyTo === 'all' ? window.location.search : ''), payload, function (res) {
+                        toastMagic.success('{{ translate('updated_successfully') }}');
+                        location.reload();
+                    }).fail(function (xhr) {
+                        const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                        toastMagic.error(msg);
+                    });
+                });
+            }
+
+            if (bulkSellerSelectedBtn) {
+                bulkSellerSelectedBtn.addEventListener('click', function () { postBulkChangeSeller('selected'); });
+            }
+            if (bulkSellerFilteredBtn) {
+                bulkSellerFilteredBtn.addEventListener('click', function () { postBulkChangeSeller('all'); });
+            }
+
+            const unprintedBtn = document.getElementById('print-unprinted');
+            if (unprintedBtn) {
+                unprintedBtn.addEventListener('click', function () {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                    const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrf;
+                    form.appendChild(csrfInput);
+
+                    const statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'status';
+                    statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                    form.appendChild(statusInput);
+
+                    const applyTo = document.createElement('input');
+                    applyTo.type = 'hidden';
+                    applyTo.name = 'apply_to';
+                    applyTo.value = 'all';
+                    form.appendChild(applyTo);
+
+                    const isPrinted = document.createElement('input');
+                    isPrinted.type = 'hidden';
+                    isPrinted.name = 'is_printed';
+                    isPrinted.value = '0';
+                    form.appendChild(isPrinted);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            }
+
+            const unprintedByCityBtn = document.getElementById('print-unprinted-by-city');
+            if (unprintedByCityBtn) {
+                unprintedByCityBtn.addEventListener('click', function () {
+                    const modalEl = document.getElementById('print-by-city-modal');
+                    if (modalEl) {
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                });
+            }
+
+            const confirmPrintByCityBtn = document.getElementById('confirm-print-by-city');
+            if (confirmPrintByCityBtn) {
+                confirmPrintByCityBtn.addEventListener('click', function () {
+                    const selectedCityId = (document.getElementById('print-city-select') || {}).value;
+                    if (!selectedCityId) { return; }
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = $('#bulk-invoices-url').data('url') + window.location.search;
+                    const csrf = document.querySelector('meta[name="_token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrf;
+                    form.appendChild(csrfInput);
+
+                    const statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'status';
+                    statusInput.value = document.getElementById('current-order-status').dataset.status || 'all';
+                    form.appendChild(statusInput);
+
+                    const applyTo = document.createElement('input');
+                    applyTo.type = 'hidden';
+                    applyTo.name = 'apply_to';
+                    applyTo.value = 'all';
+                    form.appendChild(applyTo);
+
+                    const isPrinted = document.createElement('input');
+                    isPrinted.type = 'hidden';
+                    isPrinted.name = 'is_printed';
+                    isPrinted.value = '0';
+                    form.appendChild(isPrinted);
+
+                    const cityId = document.createElement('input');
+                    cityId.type = 'hidden';
+                    cityId.name = 'city_id';
+                    cityId.value = selectedCityId;
+                    form.appendChild(cityId);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            }
+        })();
+    </script>
+    <script>
+        $(document).on('click', '.js-flag-late', function () {
+            const orderId = $(this).data('order-id');
+            $.post({
+                url: '{{ url('admin/late-delivery/flag') }}/' + orderId,
+                data: {
+                    _token: '{{ csrf_token() }}'
+                }
+            }).done(function (res) {
+                toastMagic.success(res.message ?? '{{ translate('late_delivery_request_created') }}');
+            }).fail(function (xhr) {
+                const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                toastMagic.error(msg);
+            });
+        });
+        $(document).on('click', '.js-create-refund', function () {
+            const orderId = $(this).data('order-id');
+            Swal.fire({
+                title: '{{ translate('are_you_sure') }}',
+                text: '{{ translate('refund_request') }}',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#377dff',
+                cancelButtonColor: '#dd3333',
+                confirmButtonText: '{{ translate('yes') }}'
+            }).then((result) => {
+                if (!result.value) return;
+                $.post({
+                    url: '{{ url('admin/orders/create-refund') }}/' + orderId,
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    }
+                }).done(function (res) {
+                    toastMagic.success(res.message ?? '{{ translate('refund_requested_successful!!') }}');
+                }).fail(function (xhr) {
+                    const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                    toastMagic.error(msg);
+                });
+            });
+        });
+
+        // Component Checkbox Auto-Submit - Senior Dev Pattern: Debounced refresh
+        (function() {
+            const checkboxes = document.querySelectorAll('.component-checkbox');
+            const filterForm = document.getElementById('form-data');
+            
+            if (checkboxes.length && filterForm) {
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        // Update form with current checkbox states
+                        const url = new URL(window.location.href);
+                        
+                        // Update all checkbox parameters
+                        checkboxes.forEach(cb => {
+                            if (cb.checked) {
+                                url.searchParams.set(cb.name, '1');
+                            } else {
+                                url.searchParams.set(cb.name, '0');
+                            }
+                        });
+                        
+                        // Navigate to updated URL
+                        window.location.href = url.toString();
+                    });
+                });
+            }
+        })();
+    </script>
 @endpush

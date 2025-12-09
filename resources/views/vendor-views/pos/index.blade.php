@@ -163,6 +163,7 @@
     <span id="route-vendor-pos-update-quantity" data-url="{{ route('vendor.pos.quantity-update') }}"></span>
     <span id="route-vendor-pos-get-variant-price" data-url="{{ route('vendor.pos.get-variant-price') }}"></span>
     <span id="route-vendor-pos-change-cart-editable" data-url="{{ route('vendor.pos.change-cart').'/?cart_id=:value' }}"></span>
+    <span id="discount-permission" data-permission="{{ \App\Utils\Helpers::module_permission_check('discount') ? 'true' : 'false' }}"></span>
 
     <span id="message-cart-word" data-text="{{ translate('cart') }}"></span>
     <span id="message-stock-out" data-text="{{ translate('stock_out') }}"></span>

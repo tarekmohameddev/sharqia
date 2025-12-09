@@ -115,6 +115,8 @@ class Product extends Model
         'digital_file_ready_storage_type',
         'is_shipping_cost_updated',
         'temp_shipping_cost',
+        'is_gift',
+        'pos_order',
     ];
 
     /**
@@ -168,6 +170,7 @@ class Product extends Model
         'digital_product_extensions' => 'array',
         'thumbnail_storage_type' => 'string',
         'digital_file_ready_storage_type' => 'string',
+        'pos_order' => 'integer',
     ];
 
     protected $appends = ['is_shop_temporary_close', 'thumbnail_full_url', 'preview_file_full_url', 'color_images_full_url', 'meta_image_full_url', 'images_full_url', 'digital_file_ready_full_url'];
@@ -356,6 +359,16 @@ class Product extends Model
     public function compareList(): HasMany
     {
         return $this->hasMany(ProductCompare::class);
+    }
+
+    public function discountRules(): HasMany
+    {
+        return $this->hasMany(ProductDiscountRule::class, 'product_id');
+    }
+
+    public function activeDiscountRules(): HasMany
+    {
+        return $this->hasMany(ProductDiscountRule::class, 'product_id')->where('is_active', true)->orderBy('quantity');
     }
 
     public function getNameAttribute($name): string|null

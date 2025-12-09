@@ -102,6 +102,15 @@
                             </div>
                         </div>
 
+                        @if ($order->order_note !=null)
+                            <div class="mt-2 mb-4 w-100 d-block">
+                                <div class="gap-10">
+                                    <h5>{{ translate('order_Note') }}:</h5>
+                                    <div class="text-justify">{{ $order->order_note }}</div>
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="table-responsive datatable-custom">
                             <table
                                 class="table fs-12 table-hover table-borderless align-middle">
@@ -350,6 +359,20 @@
                                         <td class="text-end text-body text-uppercase"><strong>{{ translate('vat') }}/{{ translate('tax') }}</strong></td>
                                         <td class="text-end text-dark">
                                             <strong>{{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['taxTotal']), currencyCode: getCurrencyCode()) }}</strong>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-end text-body text-capitalize">
+                                            <strong>{{ translate('shipping_fee') }}</strong>
+                                            @if($order['is_shipping_free'])
+                                                <br>
+                                                ({{ translate('expense_bearer_').($order['free_delivery_bearer'] == 'seller' ? 'vendor' : $order['free_delivery_bearer']) }})
+                                            @endif
+                                        </td>
+                                        <td class="text-end text-dark">
+                                            <strong>
+                                                {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $orderTotalPriceSummary['shippingTotal'])) }}
+                                            </strong>
                                         </td>
                                     </tr>
                                     <tr>

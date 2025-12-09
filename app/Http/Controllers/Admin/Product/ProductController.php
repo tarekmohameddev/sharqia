@@ -34,6 +34,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Requests\Admin\ProductDenyRequest;
 use App\Http\Requests\ProductAddRequest;
 use App\Http\Requests\ProductUpdateRequest;
+use App\Models\ProductDiscountRule;
 use App\Repositories\DigitalProductPublishingHouseRepository;
 use App\Services\ProductService;
 use App\Traits\FileManagerTrait;
@@ -165,6 +166,9 @@ class ProductController extends BaseController
         $this->productRepo->addRelatedTags(request: $request, product: $savedProduct);
         $this->translationRepo->add(request: $request, model: 'App\Models\Product', id: $savedProduct->id);
         $this->updateProductAuthorAndPublishingHouse(request: $request, product: $savedProduct);
+        
+        // Handle discount rules
+        $this->handleDiscountRules($request, $savedProduct);
 
         $digitalFileArray = $service->getAddProductDigitalVariationData(request: $request, product: $savedProduct);
         foreach ($digitalFileArray as $digitalFile) {
@@ -222,7 +226,7 @@ class ProductController extends BaseController
     public function getUpdateView(string|int $id): View|RedirectResponse
     {
 
-        $product = $this->productRepo->getFirstWhereWithoutGlobalScope(params: ['id' => $id], relations: ['digitalVariation', 'translations', 'seoInfo', 'digitalProductAuthors.author', 'digitalProductPublishingHouse.publishingHouse']);
+        $product = $this->productRepo->getFirstWhereWithoutGlobalScope(params: ['id' => $id], relations: ['digitalVariation', 'translations', 'seoInfo', 'digitalProductAuthors.author', 'digitalProductPublishingHouse.publishingHouse', 'discountRules']);
 
         if (!$product) {
             ToastMagic::error(translate('product_not_found') . '!');
@@ -243,8 +247,9 @@ class ProductController extends BaseController
         $digitalProductFileTypes = ['audio', 'video', 'document', 'software'];
         $digitalProductAuthors = $this->authorRepo->getListWhere(dataLimit: 'all');
         $publishingHouseList = $this->publishingHouseRepo->getListWhere(dataLimit: 'all');
+        $giftProducts = $this->productRepo->getListWhere(filters: ['is_gift' => 1, 'status' => 1], dataLimit: 'all');
 
-        return view('admin-views.product.update.index', compact('product', 'categories', 'brands', 'brandSetting', 'digitalProductSetting', 'colors', 'attributes', 'languages', 'defaultLanguage', 'digitalProductFileTypes', 'digitalProductAuthors', 'publishingHouseList', 'productAuthorIds', 'productPublishingHouseIds'));
+        return view('admin-views.product.update.index', compact('product', 'categories', 'brands', 'brandSetting', 'digitalProductSetting', 'colors', 'attributes', 'languages', 'defaultLanguage', 'digitalProductFileTypes', 'digitalProductAuthors', 'publishingHouseList', 'productAuthorIds', 'productPublishingHouseIds', 'giftProducts'));
     }
 
     public function update(ProductUpdateRequest $request, ProductService $service, string|int $id): JsonResponse|RedirectResponse
@@ -260,6 +265,9 @@ class ProductController extends BaseController
         $this->productRepo->update(id: $id, data: $dataArray);
         $this->productRepo->addRelatedTags(request: $request, product: $product);
         $this->translationRepo->update(request: $request, model: 'App\Models\Product', id: $id);
+
+        // Handle discount rules
+        $this->handleDiscountRules($request, $product);
 
         self::getDigitalProductUpdateProcess($request, $product);
 
@@ -943,5 +951,72 @@ class ProductController extends BaseController
         ];
         return Excel::download(new RestockProductListExport($data), 'restock-product-list.xlsx');
     }
+
+    /**
+     * Handle discount rules for product
+     */
+    private function handleDiscountRules($request, $product): void
+    {
+        if ($request->has('enable_discount_rules') && $request->has('discount_rules')) {
+            // Delete existing rules if updating
+            if ($product->discountRules) {
+                $product->discountRules()->delete();
+            }
+
+            foreach ($request['discount_rules'] as $ruleData) {
+                if (!empty($ruleData['quantity']) && !empty($ruleData['discount_amount'])) {
+                    ProductDiscountRule::create([
+                        'product_id' => $product->id,
+                        'quantity' => $ruleData['quantity'],
+                        'discount_amount' => $ruleData['discount_amount'],
+                        'discount_type' => $ruleData['discount_type'] ?? 'flat',
+                        'gift_product_id' => !empty($ruleData['gift_product_id']) ? $ruleData['gift_product_id'] : null,
+                        'is_active' => true
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get gift products for select dropdown
+     */
+    public function getGiftProducts(): JsonResponse
+    {
+        $giftProducts = $this->productRepo->getListWhere(
+            filters: ['is_gift' => 1, 'status' => 1],
+            dataLimit: 'all'
+        );
+
+        return response()->json($giftProducts->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'unit_price' => $product->unit_price
+            ];
+        }));
+    }
+
+    /**
+     * Update product POS order
+     */
+    public function updatePosOrder(Request $request): JsonResponse
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'pos_order' => 'required|integer|min:0'
+        ]);
+
+        $this->productRepo->update(
+            id: $request->product_id,
+            data: ['pos_order' => $request->pos_order]
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => translate('POS order updated successfully')
+        ]);
+    }
+
 
 }

@@ -65,7 +65,8 @@ class OrderDetailRepository implements OrderDetailRepositoryInterface
 
     public function delete(array $params): bool
     {
-        // TODO: Implement delete() method.
+        cacheRemoveByType(type: 'order_details');
+        return (bool) $this->orderDetail->where($params)->delete();
     }
 
     public function updateWhere(array $params, array $data): bool

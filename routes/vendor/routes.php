@@ -122,9 +122,14 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
             Route::group(['prefix' => 'refund', 'as' => 'refund.'], function () {
                 Route::controller(RefundController::class)->group(function () {
                     Route::get(Refund::INDEX[URI] . '/{status}', 'index')->name('index');
-                    Route::get(Refund::DETAILS[URI] . '/{id}', 'getDetailsView')->name('details');
-                    Route::post(Refund::UPDATE_STATUS[URI], 'updateStatus')->name('update-status');
                     Route::get(Refund::EXPORT[URI] . '/{status}', 'exportList')->name('export');
+                });
+            });
+
+            Route::group(['prefix' => 'late-delivery', 'as' => 'late-delivery.'], function () {
+                Route::controller(\App\Http\Controllers\Vendor\LateDeliveryController::class)->group(function () {
+                    Route::get(\App\Enums\ViewPaths\Vendor\LateDelivery::INDEX[URI] . '/{status}', 'index')->name('index');
+                    Route::post(\App\Enums\ViewPaths\Vendor\LateDelivery::UPDATE_STATUS[URI], 'updateStatus')->name('update-status');
                 });
             });
             /* product */
@@ -174,6 +179,11 @@ Route::group(['middleware' => ['maintenance_mode', 'actch:admin_panel']], functi
                     Route::post(Order::UPDATE_AMOUNT_DATE[URI], 'updateAmountDate')->name('amount-date-update');
                     Route::post(Order::DIGITAL_FILE_UPLOAD_AFTER_SELL[URI], 'uploadDigitalFileAfterSell')->name('digital-file-upload-after-sell');
                     Route::post(Order::UPDATE_STATUS[URI], 'updateStatus')->name('status');
+                    Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
+                    Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
+                    Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund');
+                    Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund');
+                    Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order');
                 });
             });
 

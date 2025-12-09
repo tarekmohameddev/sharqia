@@ -6,6 +6,8 @@ use App\Contracts\Repositories\CategoryRepositoryInterface;
 use App\Contracts\Repositories\CouponRepositoryInterface;
 use App\Contracts\Repositories\CustomerRepositoryInterface;
 use App\Contracts\Repositories\DeliveryZipCodeRepositoryInterface;
+use App\Models\Governorate;
+use App\Models\CityShippingCost;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Enums\SessionKey;
@@ -23,6 +25,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use App\Models\CategoryDiscountRule;
+use App\Models\Product;
 
 class POSController extends BaseController
 {
@@ -55,7 +59,7 @@ class POSController extends BaseController
         $categories = $this->categoryRepo->getListWhere(orderBy: ['id' => 'desc'], filters: ['position' => 0], dataLimit: 'all');
         $searchValue = $request['searchValue'] ?? null;
         $products = $this->productRepo->getListWhere(
-            orderBy: ['id' => 'desc'],
+            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
             searchValue: $searchValue,
             filters: [
                 'added_by' => 'in_house',
@@ -65,7 +69,7 @@ class POSController extends BaseController
             ],
             relations: ['clearanceSale' => function ($query) {
                 return $query->active();
-            }],
+            }, 'activeDiscountRules.giftProduct'],
             dataLimit: getWebConfig('pagination_limit'),
         );
         $cartId = 'walk-in-customer-' . rand(10, 1000);
@@ -77,8 +81,98 @@ class POSController extends BaseController
         $order = $this->orderRepo->getFirstWhere(params: ['id' => session(SessionKey::LAST_ORDER)]);
         $totalHoldOrder = $summaryData['totalHoldOrders'];
 
-        $countries = getWebConfig(name: 'delivery_country_restriction') ? $this->get_delivery_country_array() : COUNTRIES;
-        $zipCodes = getWebConfig(name: 'delivery_zip_code_area_restriction') ? $this->deliveryZipCodeRepo->getListWhere(dataLimit: 'all') : 0;
+        $governorates = Governorate::all();
+
+        // Build category discount rules map for client-side POS
+        $rawCategoryRules = CategoryDiscountRule::with(['giftProduct'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
+        $categoryRulesMap = [];
+        foreach ($rawCategoryRules as $rule) {
+            $gift = null;
+            if ($rule->giftProduct) {
+                $gift = [
+                    'id' => $rule->giftProduct->id,
+                    'name' => $rule->giftProduct->name,
+                    'image' => getStorageImages(path: $rule->giftProduct->thumbnail_full_url, type: 'backend-product'),
+                    'unit' => $rule->giftProduct->unit,
+                    'stock' => (int) ($rule->giftProduct->current_stock ?? 0),
+                ];
+            }
+            $categoryRulesMap[$rule->category_id][] = [
+                'id' => $rule->id,
+                'quantity' => (int) $rule->quantity,
+                'discountAmount' => (float) $rule->discount_amount,
+                'giftProduct' => $gift,
+            ];
+        }
+
+        $editOrder = null;
+        $editPayload = null;
+
+        if ($request->filled('edit_order_id')) {
+            $editOrder = $this->orderRepo->getFirstWhere(
+                params: ['id' => $request->get('edit_order_id')],
+                relations: ['details.product', 'customer', 'seller.shop']
+            );
+            if ($editOrder) {
+                session(['selected_shipping_cost' => (float)$editOrder->shipping_cost]);
+                $items = [];
+                foreach ($editOrder->details as $d) {
+                    // Skip previously granted gift items when loading into edit POS
+                    if ($d->product && (bool)$d->product->is_gift) {
+                        continue;
+                    }
+                    $productDetails = json_decode($d->product_details, true) ?: [];
+                    $items[] = [
+                        'id' => (int)$d->product_id,
+                        'name' => $productDetails['name'] ?? ($productDetails['defaultName'] ?? ''),
+                        'price' => (float)$d->price,
+                        'quantity' => (int)$d->qty,
+                        'image' => getStorageImages(path: $productDetails['thumbnail_full_url'] ?? null, type: 'backend-product'),
+                        'productType' => $productDetails['product_type'] ?? 'physical',
+                        'unit' => $productDetails['unit'] ?? null,
+                        'tax' => (float)($productDetails['tax'] ?? 0),
+                        'taxType' => $productDetails['tax_type'] ?? 'percent',
+                        'taxModel' => $productDetails['tax_model'] ?? 'exclude',
+                        'discount' => (float)$d->discount / max(1, (int)$d->qty),
+                        'discountType' => 'discount_on_product',
+                        'variant' => $d->variant,
+                        'variations' => json_decode($d->variation, true),
+                        'categoryId' => (int)($productDetails['category_id'] ?? 0),
+                        'isGift' => false,
+                    ];
+                }
+                $editPayload = [
+                    'order' => [
+                        'id' => (int)$editOrder->id,
+                        'couponCode' => $editOrder->coupon_code,
+                        'couponDiscount' => (float)$editOrder->discount_amount,
+                        'extraDiscount' => (float)$editOrder->extra_discount,
+                        'shippingCost' => (float)$editOrder->shipping_cost,
+                        'orderNote' => (string)$editOrder->order_note,
+                        'sellerId' => (int)$editOrder->seller_id,
+                        'cityId' => (int)$editOrder->city_id,
+                    ],
+                    'customer' => [
+                        'f_name' => $editOrder->customer?->f_name ?? '',
+                        'l_name' => $editOrder->customer?->l_name ?? '',
+                        'phone' => $editOrder->customer?->phone ?? data_get($editOrder, 'shipping_address_data.phone'),
+                        'alternative_phone' => data_get($editOrder, 'shipping_address_data.alternative_phone'),
+                        'address' => data_get($editOrder, 'shipping_address_data.address'),
+                        'city_id' => (int)$editOrder->city_id,
+                        'seller_id' => (int)$editOrder->seller_id,
+                    ],
+                    'cart' => [
+                        'items' => $items,
+                        'coupon_discount' => (float)$editOrder->discount_amount,
+                        'coupon_code' => $editOrder->coupon_code,
+                        'coupon_bearer' => $editOrder->coupon_discount_bearer ?? 'inhouse',
+                        'ext_discount' => (float)$editOrder->extra_discount,
+                        'ext_discount_type' => $editOrder->extra_discount > 0 ? 'amount' : null,
+                    ],
+                ];
+            }
+        }
+
         return view('admin-views.pos.index', compact(
             'categories',
             'categoryId',
@@ -90,9 +184,43 @@ class POSController extends BaseController
             'cartItems',
             'order',
             'totalHoldOrder',
-            'countries',
-            'zipCodes'
-        ));
+            'governorates',
+            'categoryRulesMap'
+        ))->with(['editOrder' => $editOrder, 'editPayload' => $editPayload]);
+    }
+
+    public function getSellers(Request $request): JsonResponse
+    {
+        $governorate = Governorate::with(['sellers.shop', 'shippingCost'])->find($request['governorate_id']);
+        $sellers = $governorate?->sellers->map(fn($seller) => [
+            'id' => $seller->id,
+            'name' => $seller->shop->name ?? ($seller->f_name . ' ' . $seller->l_name),
+        ]);
+        
+        $shippingCost = $governorate?->shippingCost?->cost ?? 0;
+        
+        return response()->json([
+            'sellers' => $sellers,
+            'shipping_cost' => $shippingCost
+        ]);
+    }
+
+    public function setShipping(Request $request): JsonResponse
+    {
+        session([
+            'selected_city_id' => $request['city_id'],
+            'selected_shipping_cost' => $request['shipping_cost']
+        ]);
+        
+        // Return updated cart summary instead of just success
+        $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
+        $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
+        $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));
+        
+        return response()->json([
+            'success' => true,
+            'view' => view('admin-views.pos.partials._cart-summary', compact('summaryData', 'cartItems'))->render()
+        ]);
     }
 
 
@@ -118,6 +246,13 @@ class POSController extends BaseController
      */
     public function updateDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'extraDiscount' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         if ($request['type'] == 'percent' && ($request['discount'] < 0 || $request['discount'] > 100)) {
             $cartItems = $this->getCartData(cartName: $cartId);
@@ -189,6 +324,13 @@ class POSController extends BaseController
      */
     public function getCouponDiscount(Request $request): JsonResponse
     {
+        if (!\App\Utils\Helpers::module_permission_check('discount')) {
+            return response()->json([
+                'coupon' => "permission_denied",
+                'message' => translate('access_denied')
+            ]);
+        }
+        
         $cartId = session(SessionKey::CURRENT_USER);
         $userId = $this->cartService->getUserId();
         if ($userId != 0) {
@@ -409,9 +551,11 @@ class POSController extends BaseController
             subTotalCalculation: $subTotalCalculation,
             cartName: $cartName
         );
+        $shippingCost = session('selected_shipping_cost', 0);
+        
         return [
             'countItem' => $subTotalCalculation['countItem'],
-            'total' => $totalCalculation['total'],
+            'total' => $totalCalculation['total'] + $shippingCost,
             'subtotal' => $subTotalCalculation['subtotal'],
             'taxCalculate' => $subTotalCalculation['taxCalculate'],
             'totalTaxShow' => $subTotalCalculation['totalTaxShow'],
@@ -422,6 +566,7 @@ class POSController extends BaseController
             'customerOnHold' => $subTotalCalculation['customerOnHold'] ?? false,
             'couponDiscount' => $totalCalculation['couponDiscount'],
             'extraDiscount' => $totalCalculation['extraDiscount'],
+            'shippingCost' => $shippingCost,
         ];
     }
 
@@ -436,11 +581,13 @@ class POSController extends BaseController
     {
         $products = $this->productRepo->getListWithScope(
             scope: 'active',
+            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
             filters: [
                 'added_by' => 'in_house',
                 'keywords' => $request['name'],
                 'search_from' => 'pos'
             ],
+            relations: ['activeDiscountRules.giftProduct'],
             dataLimit: 'all'
         );
         $data = [

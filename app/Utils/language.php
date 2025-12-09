@@ -278,6 +278,7 @@ if (!function_exists('getLanguageCode')) {
 if (!function_exists('autoTranslator')) {
     function autoTranslator($q, $sl, $tl): array|string
     {
+        $q = str_replace('_', ' ', $q);
         $res = file_get_contents("https://translate.googleapis.com/translate_a/single?client=gtx&ie=UTF-8&oe=UTF-8&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at&sl=" . $sl . "&tl=" . $tl . "&hl=hl&q=" . urlencode($q), $_SERVER['DOCUMENT_ROOT'] . "/transes.html");
         $res = json_decode($res);
         return str_replace('_', ' ', $res[0][0][0]);

@@ -18,7 +18,7 @@ class OrderDetailsService
             'tax_model' => $product['tax_model'],
             'discount' => $item['discount'] * $item['quantity'],
             'discount_type' => 'discount_on_product',
-            'delivery_status' => 'delivered',
+            'delivery_status' => 'pending',
             'payment_status' => 'paid',
             'variant' => $item['variant'],
             'variation' => json_encode($item['variations']),

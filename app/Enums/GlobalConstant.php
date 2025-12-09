@@ -1294,6 +1294,9 @@ enum GlobalConstant
         'dashboard' => 'dashboard',
         'pos_management' => 'pos_management',
         'order_management' => 'order_management',
+        'order_edit' => 'order_edit',
+        'refund_actions' => 'refund_actions',
+        'late_delivery_actions' => 'late_delivery_actions',
         'product_management' => 'product_management',
         'promotion_management' => 'promotion_management',
         'support_section' => 'help_and_support_section',
@@ -1304,6 +1307,7 @@ enum GlobalConstant
         'system_settings' => 'system_settings',
         '3rd_party_setup' => '3rd_party_setup',
         'themes_and_addons' => 'themes_and_addons',
+        'discount' => 'discount_management',
     ];
 
 

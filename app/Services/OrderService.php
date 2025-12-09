@@ -8,15 +8,15 @@ class OrderService
     {
     }
 
-    public function getPOSOrderData(int|string $orderId, array $cart, float $amount, float $paidAmount, string $paymentType, string $addedBy, int $userId): array
+    public function getPOSOrderData(int|string $orderId, array $cart, float $amount, float $paidAmount, string $paymentType, string $addedBy, int $userId, ?int $sellerId = null, ?int $cityId = null, float $shippingCost = 0, ?string $orderNote = null): array
     {
         return [
             'id' => $orderId,
             'customer_id' => $userId,
             'customer_type' => 'customer',
             'payment_status' => 'paid',
-            'order_status' => 'delivered',
-            'seller_id' => $addedBy == 'seller' ? auth('seller')->id() : auth('admin')->id(),
+            'order_status' => 'pending',
+            'seller_id' => $sellerId ?? ($addedBy == 'seller' ? auth('seller')->id() : auth('admin')->id()),
             'seller_is' => $addedBy,
             'payment_method' => $paymentType,
             'order_type' => 'POS',
@@ -29,6 +29,9 @@ class OrderService
             'coupon_code' => $cart['coupon_code'] ?? null,
             'discount_type' => (isset($cart['coupon_code']) && $cart['coupon_code']) ? 'coupon_discount' : NULL,
             'coupon_discount_bearer' => $cart['coupon_bearer'] ?? 'inhouse',
+            'city_id' => $cityId,
+            'shipping_cost' => currencyConverter(amount: $shippingCost),
+            'order_note' => $orderNote,
             'created_at' => now(),
             'updated_at' => now(),
         ];

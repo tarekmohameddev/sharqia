@@ -7,6 +7,7 @@ use App\Http\Controllers\RestAPI\v1\auth\PassportAuthController;
 use App\Http\Controllers\RestAPI\v1\auth\PhoneVerificationController;
 use App\Http\Controllers\RestAPI\v1\auth\SocialAuthController;
 use App\Http\Controllers\RestAPI\v1\BannerController;
+use App\Http\Controllers\RestAPI\v1\EasyOrdersWebhookController;
 use App\Http\Controllers\RestAPI\v1\BrandController;
 use App\Http\Controllers\RestAPI\v1\CartController;
 use App\Http\Controllers\RestAPI\v1\CategoryController;
@@ -42,6 +43,8 @@ use App\Http\Controllers\Customer\PaymentController;
  */
 
 Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['api_lang']], function () {
+
+    Route::post('easyorders/webhook', [EasyOrdersWebhookController::class, 'handle']);
 
     Route::controller(ConfigController::class)->group(function () {
         Route::get('config', 'configuration');

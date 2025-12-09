@@ -128,6 +128,12 @@ class DashboardController extends BaseController
             relations: ['withdraw_method'],
             dataLimit: 'all'
         );
+        $lastOrders = $this->orderRepo->getListWhere(
+            orderBy: ['id' => 'desc'],
+            filters: ['seller_is' => 'seller', 'seller_id' => $vendorId],
+            relations: [],
+            dataLimit: 10
+        );
         return view('vendor-views.dashboard.index', [
             'vendorWallet' => $vendorWallet,
             'withdrawRequests' => $withdrawRequests,
@@ -139,6 +145,7 @@ class DashboardController extends BaseController
             'withdrawalMethods' => $withdrawalMethods,
             'dateType' => $dateType,
             'label' => $label,
+            'lastOrders' => $lastOrders,
         ]);
     }
 

@@ -42,12 +42,12 @@
                         </span>
                     </button>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     <a class="btn-icon" href="{{ route('home') }}" target="_blank" data-bs-toggle="tooltip"
                         data-bs-title="{{ translate('Website') }}">
                         <i class="fi fi-rr-globe fs-18"></i>
                     </a>
-                </li>
+                </li> -->
 
                 <li class="nav-item">
                     @php($local = session()->has('local') ? session('local') : 'en')
@@ -199,7 +199,7 @@
                 @endif
 
                 @if (\App\Utils\Helpers::module_permission_check('support_section'))
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a class="btn-icon position-relative" href="{{ route('admin.contact.list') }}"
                             data-bs-title="{{ translate('message') }}" data-bs-toggle="tooltip">
                             <i class="fi fi-sr-comment-alt-dots fs-18"></i>
@@ -212,7 +212,7 @@
                                 </span>
                             @endif
                         </a>
-                    </li>
+                    </li> -->
                 @endif
 
                 <li class="nav-item">

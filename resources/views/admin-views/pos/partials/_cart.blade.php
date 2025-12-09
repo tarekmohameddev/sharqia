@@ -1,5 +1,8 @@
 <form action="{{route('admin.pos.place-order') }}" method="post" id='order-place'>
     @csrf
+    <input type="hidden" name="city_id" value="{{ session('selected_city_id') }}">
+    <input type="hidden" name="seller_id" value="{{ session('selected_seller_id') }}">
+    <input type="hidden" name="cart" value='@json(["items" => $cartItems["cartItemValue"]])'>
     <div id="cart">
         <div class="table-responsive pos-cart-table border">
             <table class="table table-align-middle m-0">
@@ -71,26 +74,38 @@
                 <div class="d-flex gap-2 justify-content-between">
                     <dt class="title-color text-capitalize font-weight-normal">{{ translate('extra_Discount') }} :</dt>
                     <dd>
+                        @if(\App\Utils\Helpers::module_permission_check('discount'))
                         <button id="extra_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-discount">
                             <i class="fi fi-rr-pencil"></i>
                         </button>
+                        @endif
                         {{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $cartItems['extraDiscount']), currencyCode: getCurrencyCode()) }}
                     </dd>
                 </div>
 
-                <div class="d-flex justify-content-between">
-                    <dt class="title-color gap-2 text-capitalize font-weight-normal">{{ translate('coupon_Discount') }} :</dt>
-                    <dd>
-                        <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
-                            <i class="fi fi-rr-pencil"></i>
-                        </button>
-                        {{setCurrencySymbol(amount: usdToDefaultCurrency(amount:$cartItems['couponDiscount']), currencyCode: getCurrencyCode())}}
-                    </dd>
+                <!-- Hidden as requested: Coupon Discount and Tax -->
+                <div class="d-none">
+                    <div class="d-flex justify-content-between">
+                        <dt class="title-color gap-2 text-capitalize font-weight-normal">{{ translate('coupon_Discount') }} :</dt>
+                        <dd>
+                            @if(\App\Utils\Helpers::module_permission_check('discount'))
+                            <button id="coupon_discount" class="btn btn-sm p-0" type="button" data-bs-toggle="modal" data-bs-target="#add-coupon-discount">
+                                <i class="fi fi-rr-pencil"></i>
+                            </button>
+                            @endif
+                            {{setCurrencySymbol(amount: usdToDefaultCurrency(amount:$cartItems['couponDiscount']), currencyCode: getCurrencyCode())}}
+                        </dd>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-between">
+                        <dt class="title-color text-capitalize font-weight-normal">{{ translate('tax') }} : </dt>
+                        <dd>{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: round($cartItems['totalTax'],2) ), currencyCode: getCurrencyCode())}}</dd>
+                    </div>
                 </div>
 
                 <div class="d-flex gap-2 justify-content-between">
-                    <dt class="title-color text-capitalize font-weight-normal">{{ translate('tax') }} : </dt>
-                    <dd>{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: round($cartItems['totalTax'],2) ), currencyCode: getCurrencyCode())}}</dd>
+                    <dt class="title-color text-capitalize font-weight-normal">{{ translate('shipping_cost') }} : </dt>
+                    <dd>{{setCurrencySymbol(amount: usdToDefaultCurrency(amount: $cartItems['shippingCost'] ?? 0), currencyCode: getCurrencyCode())}}</dd>
                 </div>
 
                 <div class="d-flex gap-2 border-top justify-content-between pt-2">
@@ -103,8 +118,9 @@
                 <input type="hidden" class="form-control total-amount" name="amount" min="0" step="0.01"
                         value="{{usdToDefaultCurrency(amount: $cartItems['total']+$cartItems['totalTax']-$cartItems['couponDiscount'])}}"
                         readonly>
+                <input type="hidden" name="shipping_cost" value="{{$cartItems['shippingCost'] ?? 0}}">
             </div>
-            <div class="p-4 bg-section rounded mt-4">
+            <div class="p-4 bg-section rounded mt-4 d-none">
                 <div>
                     <div class="text-dark d-flex mb-2">{{ translate('paid_By') }}:</div>
                     <ul class="list-unstyled option-buttons d-flex flex-wrap gap-2 align-items-center">

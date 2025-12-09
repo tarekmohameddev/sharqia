@@ -1979,7 +1979,7 @@ return [
     "Search by Name" => "Search by Name",
     "Search by Name or Email or Phone" => "Search by Name or Email or Phone",
     "Search by Name or Phone or Email" => "Search by Name or Phone or Email",
-    "Search by Order ID" => "Search by Order ID",
+    "Search by Order ID" => "Search by customer phone number or order id",
     "Search by Product Name" => "Search by Product Name",
     "Search by Product or Customer" => "Search by Product or Customer",
     "Search by Sub Sub Category" => "Search by Sub Sub Category",

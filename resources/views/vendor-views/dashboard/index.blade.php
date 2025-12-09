@@ -14,9 +14,9 @@
                 </div>
 
                 <div>
-                    <a class="btn btn--primary" href="{{route('vendor.products.list',['type'=>'all'])}}">
+                    <!-- <a class="btn btn--primary" href="{{route('vendor.products.list',['type'=>'all'])}}">
                         <i class="tio-premium-outlined mr-1"></i> {{translate('products')}}
-                    </a>
+                    </a> -->
                 </div>
             </div>
         </div>
@@ -48,6 +48,8 @@
                 </div>
             </div>
         </div>
+        {{-- Hide Vendor Wallet section --}}
+        {{--
         <div class="card mb-3 remove-card-shadow">
             <div class="card-body">
                 <div class="row justify-content-between align-items-center g-2 mb-3">
@@ -63,6 +65,7 @@
                 </div>
             </div>
         </div>
+        --}}
 
         <div class="modal fade" id="balance-modal" tabindex="-1" aria-labelledby="balanceModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -93,6 +96,8 @@
         </div>
         <div class="row g-2">
             @php( $shippingMethod = getWebConfig('shipping_method'))
+            {{-- Hide earning statistics, top-rated products, top-selling products --}}
+            {{--
             <div class="col-12" id="earn-statistics-div">
                 @include('vendor-views.dashboard.partials.earning-statistics')
             </div>
@@ -104,6 +109,41 @@
             <div class="col-lg-{{ $shippingMethod != 'sellerwise_shipping' ? '6':'4' }}">
                 <div class="card h-100 remove-card-shadow">
                     @include('vendor-views.partials._top-selling-products',['topSell'=>$dashboardData['topSell']])
+                </div>
+            </div>
+            --}}
+            <div class="col-12">
+                <div class="card h-100 remove-card-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="mb-0 text-capitalize">{{ translate('Last_10_orders') }}</h4>
+                            <a href="{{ route('vendor.orders.list',['all']) }}" class="btn btn-sm btn--primary">{{ translate('view_all') }}</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-borderless align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>{{ translate('order_id') }}</th>
+                                        <th>{{ translate('customer') }}</th>
+                                        <th>{{ translate('status') }}</th>
+                                        <th>{{ translate('total') }}</th>
+                                        <th>{{ translate('date') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($lastOrders as $order)
+                                        <tr class="cursor-pointer" onclick="window.location='{{ route('vendor.orders.list',['all']) }}'">
+                                            <td>#{{ $order['id'] }}</td>
+                                            <td>{{ $order['customer']?->name ?? ($order['customer']?->f_name.' '.$order['customer']?->l_name) ?? translate('guest') }}</td>
+                                            <td class="text-capitalize">{{ translate(str_replace('_',' ',$order['order_status'])) }}</td>
+                                            <td>{{ setCurrencySymbol(amount: usdToDefaultCurrency(amount: $order['order_amount']), currencyCode: getCurrencyCode()) }}</td>
+                                            <td>{{ $order['created_at']->format('Y-m-d H:i') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             @if($shippingMethod=='sellerwise_shipping')

@@ -100,6 +100,7 @@ class Order extends Model
         'deliveryman_charge',
         'expected_delivery_date',
         'order_note',
+        'is_printed',
         'billing_address',
         'billing_address_data',
         'order_type',
@@ -112,6 +113,7 @@ class Order extends Model
         'delivery_type',
         'delivery_service_name',
         'third_party_delivery_tracking_id',
+        'city_id',
     ];
 
     protected $casts = [
@@ -152,6 +154,7 @@ class Order extends Model
         'delivery_man_id' => 'integer',
         'deliveryman_charge' => 'double',
         'order_note' => 'string',
+        'is_printed' => 'boolean',
         'billing_address' => 'integer',
         'billing_address_data' => 'object',
         'order_type' => 'string',
@@ -163,6 +166,7 @@ class Order extends Model
         'delivery_type' => 'string',
         'delivery_service_name' => 'string',
         'third_party_delivery_tracking_id' => 'string',
+        'city_id' => 'integer',
     ];
 
 

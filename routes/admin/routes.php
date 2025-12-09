@@ -71,6 +71,7 @@ use App\Http\Controllers\Admin\Shipping\ShippingMethodController;
 use App\Http\Controllers\Admin\ThirdParty\GoogleMapAPIController;
 use App\Http\Controllers\Admin\Vendor\WithdrawalMethodController;
 use App\Http\Controllers\Admin\VendorProductSaleReportController;
+use App\Http\Controllers\Admin\VendorProductSalesReportController;
 use App\Http\Controllers\Admin\Customer\CustomerLoyaltyController;
 use App\Http\Controllers\Admin\HelpAndSupport\HelpTopicController;
 use App\Http\Controllers\Admin\Report\RefundTransactionController;
@@ -85,6 +86,8 @@ use App\Http\Controllers\Admin\ThirdParty\SocialMediaChatController;
 use App\Http\Controllers\Admin\Deliveryman\EmergencyContactController;
 use App\Http\Controllers\Admin\HelpAndSupport\SupportTicketController;
 use App\Http\Controllers\Admin\Payment\OfflinePaymentMethodController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrderController as AdminEasyOrderController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
 use App\Http\Controllers\Admin\Settings\EnvironmentSettingsController;
@@ -154,6 +157,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('coupon-discount', 'getCouponDiscount')->name('coupon-discount');
             Route::get('quick-view', 'getQuickView')->name('quick-view');
             Route::get('search-product', 'getSearchedProductsView')->name('search-product');
+            Route::get('get-sellers', 'getSellers')->name('get-sellers');
+            Route::post('set-shipping', 'setShipping')->name('set-shipping');
         });
 
         Route::controller(CartController::class)->group(function () {
@@ -219,6 +224,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('request-restock-list', 'getRequestRestockListView')->name('request-restock-list');
             Route::get('export-restock', 'exportRestockList')->name('restock-export');
             Route::delete('restock-delete/{id}', 'deleteRestock')->name('restock-delete');
+            Route::get('gift-products', 'getGiftProducts')->name('gift-products');
+            Route::post('update-pos-order', 'updatePosOrder')->name('update-pos-order');
         });
     });
 
@@ -234,6 +241,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('export-excel/{status}', 'exportList')->name('export-excel');
             Route::get('generate-invoice/{id}', 'generateInvoice')->name('generate-invoice')->withoutMiddleware(['module:order_management']);
             Route::get('details/{id}', 'getView')->name('details');
+            // New: edit and update routes guarded by order_edit permission
+            Route::get('edit/{id}', 'edit')->name('edit')->middleware('module:order_edit');
+            Route::post('update/{id}', 'update')->name('update')->middleware('module:order_edit');
             Route::post('address-update', 'updateAddress')->name('address-update'); // update address from order details
             Route::post('update-deliver-info', 'updateDeliverInfo')->name('update-deliver-info');
             Route::get('add-delivery-man/{order_id}/{d_man_id}', 'addDeliveryMan')->name('add-delivery-man');
@@ -243,6 +253,22 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('inhouse-order-filter', 'filterInHouseOrder')->name('inhouse-order-filter');
             Route::post('digital-file-upload-after-sell', 'uploadDigitalFileAfterSell')->name('digital-file-upload-after-sell');
             Route::post('status', 'updateStatus')->name('status');
+            Route::post('bulk-status', 'bulkUpdateStatus')->name('bulk-status');
+            Route::get('list-ids', 'listIds')->name('list-ids');
+            Route::post('bulk-invoices', 'bulkInvoices')->name('bulk-invoices');
+            Route::post('bulk-change-seller', 'bulkChangeSeller')->name('bulk-change-seller')->middleware('module:order_edit');
+            Route::post('create-refund/{orderId}', 'createRefundRequest')->name('create-refund')->middleware('module:refund_actions');
+            Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund')->middleware('module:refund_actions');
+            Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund')->middleware('module:refund_actions');
+            Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order')->middleware('module:refund_actions');
+        });
+
+        Route::controller(AdminEasyOrderController::class)->group(function () {
+            Route::get('easy-orders', 'index')->name('easy-orders.index');
+            Route::get('easy-orders/{id}', 'show')->name('easy-orders.show');
+            Route::post('easy-orders/{id}/import', 'import')->name('easy-orders.import');
+            Route::post('easy-orders/bulk-import', 'bulkImport')->name('easy-orders.bulk-import');
+            Route::post('easy-orders/{id}/reject', 'reject')->name('easy-orders.reject');
         });
     });
 
@@ -334,6 +360,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('customer-list-search', 'getCustomerList')->name('customer-list-search');
             Route::get('customer-list-without-all-customer', 'getCustomerListWithoutAllCustomerName')->name('customer-list-without-all-customer');
             Route::post('add', 'add')->name('add');
+            Route::post('address-add', 'addAddress')->name('address-add');
         });
 
         Route::group(['prefix' => 'wallet', 'as' => 'wallet.'], function () {
@@ -372,6 +399,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('order-list-export/{vendor_id}', 'exportOrderList')->name('order-list-export');
             Route::post('status', 'updateStatus')->name('updateStatus');
             Route::get('export', 'exportList')->name('export');
+            Route::delete('delete/{id}', 'delete')->name('delete');
+            Route::post('reset-password/{id}', 'resetPassword')->name('reset-password');
 
             Route::post('sales-commission-update/{id}', 'updateSalesCommission')->name('sales-commission-update');
             Route::get('order-details/{order_id}/{vendor_id}', 'getOrderDetailsView')->name('order-details');
@@ -460,6 +489,11 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
         Route::controller(VendorProductSaleReportController::class)->group(function () {
             Route::get('vendor-report', 'vendorReport')->name('vendor-report');
             Route::get('vendor-report-export', 'exportVendorReport')->name('vendor-report-export');
+        });
+
+        Route::controller(VendorProductSalesReportController::class)->group(function () {
+            Route::get('vendor-product-sales', 'index')->name('vendor-product-sales');
+            Route::get('vendor-product-sales-export', 'exportExcel')->name('vendor-product-sales-export');
         });
     });
 
@@ -989,6 +1023,15 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                 });
             });
 
+            Route::group(['prefix' => 'easyorders', 'as' => 'easyorders.'], function () {
+                Route::controller(EasyOrdersGovernorateMappingController::class)->group(function () {
+                    Route::get('governorate-mappings', 'index')->name('governorate-mappings.index');
+                    Route::post('governorate-mappings', 'store')->name('governorate-mappings.store');
+                    Route::post('governorate-mappings/{id}', 'update')->name('governorate-mappings.update');
+                    Route::delete('governorate-mappings/{id}', 'destroy')->name('governorate-mappings.destroy');
+                });
+            });
+
             Route::group(['prefix' => 'delivery-restriction', 'as' => 'delivery-restriction.'], function () {
                 Route::controller(DeliveryRestrictionController::class)->group(function () {
                     Route::get('/', 'index')->name('index');
@@ -1156,8 +1199,40 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::controller(RefundController::class)->group(function () {
                 Route::get('list/{status}', 'index')->name('list');
                 Route::get('export/{status}', 'exportList')->name('export');
-                Route::get('details/{id}', 'getDetailsView')->name('details');
-                Route::post('refund-status-update', 'updateRefundStatus')->name('refund-status-update');
+            });
+        });
+    });
+
+    Route::group(['prefix' => 'late-delivery', 'as' => 'late-delivery.', 'middleware' => ['module:order_management']], function () {
+        Route::controller(\App\Http\Controllers\Admin\Order\LateDeliveryController::class)->group(function () {
+            Route::get('list/{status}', 'index')->name('list');
+            Route::post('flag/{orderId}', 'flag')->name('flag')->middleware('module:late_delivery_actions');
+            Route::post('status-update', 'updateStatus')->name('status-update')->middleware('module:late_delivery_actions');
+        });
+    });
+
+    // Shipping Cost Management Routes
+    Route::group(['prefix' => 'shipping-cost', 'as' => 'shipping-cost.'], function () {
+        Route::controller(\App\Http\Controllers\Admin\ShippingCostController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::put('{shippingCost}', 'update')->name('update');
+            Route::delete('{shippingCost}', 'destroy')->name('destroy');
+        });
+    });
+
+    // City Zone Shipping Management Routes (with unique prefix)
+    Route::group(['prefix' => 'shipping', 'as' => 'shipping.'], function () {
+        Route::group(['prefix' => 'city-zone-shipping', 'as' => 'city-zone-shipping.'], function () {
+            Route::controller(\App\Http\Controllers\Admin\Shipping\CityZoneShippingController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('store', 'store')->name('store');
+                Route::get('{cityZoneShipping}/edit', 'edit')->name('edit');
+                Route::put('{cityZoneShipping}', 'update')->name('update');
+                Route::delete('{cityZoneShipping}', 'destroy')->name('destroy');
+                Route::get('{cityZoneShipping}', 'show')->name('show');
+                Route::post('update-status', 'updateStatus')->name('update-status');
             });
         });
     });
