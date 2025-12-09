@@ -129,4 +129,10 @@ interface ProductRepositoryInterface extends RepositoryInterface
 
     public function updateByParams(array $params, array $data): bool;
 
+    /**
+     * Get count of products matching filters (optimized SQL count)
+     * @param array $filters
+     * @return int
+     */
+    public function getCountWhere(array $filters = []): int;
 }

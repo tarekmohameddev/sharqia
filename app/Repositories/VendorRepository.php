@@ -111,4 +111,19 @@ class VendorRepository implements VendorRepositoryInterface
             ? $query->get()
             : $query->paginate($dataLimit)->appends($filters);
     }
+
+    /**
+     * Get count of vendors matching filters (optimized SQL count)
+     */
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->vendor
+            ->when(isset($filters['status']), function ($query) use ($filters) {
+                return $query->where('status', $filters['status']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->count();
+    }
 }

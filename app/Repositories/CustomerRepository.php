@@ -192,4 +192,22 @@ class CustomerRepository implements CustomerRepositoryInterface
         DB::table('oauth_access_tokens')->where('user_id', $id)->delete();
         return true;
     }
+
+    /**
+     * Get count of customers matching filters (optimized SQL count)
+     */
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->user
+            ->when(isset($filters['avoid_walking_customer']) && $filters['avoid_walking_customer'] == 1, function ($query) {
+                return $query->whereNot('email', 'walking@customer.com');
+            })
+            ->when(isset($filters['is_active']), function ($query) use ($filters) {
+                return $query->where('is_active', $filters['is_active']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->count();
+    }
 }

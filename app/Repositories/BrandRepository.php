@@ -99,4 +99,18 @@ class BrandRepository implements BrandRepositoryInterface
         return true;
     }
 
+    /**
+     * Get count of brands matching filters (optimized SQL count)
+     */
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->brand
+            ->when(isset($filters['status']), function ($query) use ($filters) {
+                return $query->where('status', $filters['status']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->count();
+    }
 }

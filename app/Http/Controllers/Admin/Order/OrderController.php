@@ -48,6 +48,7 @@ use App\Contracts\Repositories\DeliveryCountryCodeRepositoryInterface;
 use App\Contracts\Repositories\DeliveryManTransactionRepositoryInterface;
 use App\Contracts\Repositories\LoyaltyPointTransactionRepositoryInterface;
 use App\Contracts\Repositories\OrderExpectedDeliveryHistoryRepositoryInterface;
+use App\Services\OrderStatsService;
 use App\Models\RefundRequest;
 use App\Events\RefundEvent;
 use App\Models\OrderRefund;
@@ -78,6 +79,7 @@ class OrderController extends BaseController
         private readonly OrderStatusHistoryRepositoryInterface           $orderStatusHistoryRepo,
         private readonly OrderTransactionRepository                      $orderTransactionRepo,
         private readonly LoyaltyPointTransactionRepositoryInterface      $loyaltyPointTransactionRepo,
+        private readonly OrderStatsService                               $orderStatsService,
     )
     {
     }
@@ -163,19 +165,17 @@ class OrderController extends BaseController
         $includeDiscounts = $request->get('include_discounts', '1') === '1';
         $includeDelivery = $request->get('include_delivery', '1') === '1';
 
-        // Calculate order components
-        $orderComponents = $this->calculateOrderComponents($filters, $includeProducts, $includeShipping, $includeDiscounts, $includeDelivery);
+        // Calculate order components using optimized SQL aggregations (not PHP loops)
+        $orderComponents = $this->orderStatsService->getOrderComponentTotals(
+            $filters,
+            $includeProducts,
+            $includeShipping,
+            $includeDiscounts,
+            $includeDelivery
+        );
         
-        // Calculate fixed product sales total (always shows full products, not affected by checkboxes)
-        $productSalesTotal = $this->orderRepo->getListWhere(
-            filters: $filters,
-            relations: ['orderDetails'],
-            dataLimit: 'all'
-        )->sum(function($order) {
-            return $order->orderDetails->sum(function($detail) {
-                return $detail->qty * $detail->price;
-            });
-        });
+        // Calculate fixed product sales total using SQL (always shows full products, not affected by checkboxes)
+        $productSalesTotal = $this->orderStatsService->getProductSalesTotal($filters);
 
         $stats = [
             'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
@@ -1074,69 +1074,4 @@ class OrderController extends BaseController
         return response()->json(['updated' => $updated, 'skipped' => $skipped]);
     }
 
-    /**
-     * Calculate order components broken down by type
-     * Senior Dev Pattern: Separate calculation logic for maintainability
-     *
-     * @param array $filters Order filters
-     * @param bool $includeProducts Include products in total
-     * @param bool $includeShipping Include shipping costs
-     * @param bool $includeDiscounts Subtract discounts from total  
-     * @param bool $includeDelivery Include delivery fees
-     * @return array Components breakdown and custom total
-     */
-    private function calculateOrderComponents(array $filters, bool $includeProducts, bool $includeShipping, bool $includeDiscounts, bool $includeDelivery): array
-    {
-        $orders = $this->orderRepo->getListWhere(
-            filters: $filters,
-            relations: ['orderDetails'],
-            dataLimit: 'all'
-        );
-
-        $products = 0;
-        $shipping = 0;
-        $discounts = 0;
-        $delivery = 0;
-
-        foreach ($orders as $order) {
-            // Products: sum of (qty × price) from order details
-            if ($includeProducts) {
-                $products += $order->orderDetails->sum(function($detail) {
-                    return $detail->qty * $detail->price;
-                });
-            }
-
-            // Shipping cost
-            if ($includeShipping) {
-                $shipping += $order->shipping_cost ?? 0;
-            }
-
-            // Discounts (these reduce the total)
-            if ($includeDiscounts) {
-                $discounts += ($order->discount_amount ?? 0) + ($order->extra_discount ?? 0);
-            }
-
-            // Delivery fees
-            if ($includeDelivery) {
-                $delivery += $order->deliveryman_charge ?? 0;
-            }
-        }
-
-        // Calculate custom total: Products + Shipping - Discounts + Delivery
-        $customTotal = $products + $shipping - $discounts + $delivery;
-
-        return [
-            'products' => $products,
-            'shipping' => $shipping,
-            'discounts' => $discounts,
-            'delivery' => $delivery,
-            'custom_total' => $customTotal,
-            'breakdown' => [
-                'include_products' => $includeProducts,
-                'include_shipping' => $includeShipping,
-                'include_discounts' => $includeDiscounts,
-                'include_delivery' => $includeDelivery,
-            ],
-        ];
-    }
 }

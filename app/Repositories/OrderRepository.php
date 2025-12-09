@@ -649,6 +649,9 @@ class OrderRepository implements OrderRepositoryInterface
             ->when(isset($filters['is_printed']) && $filters['is_printed'] !== 'all', function ($query) use ($filters) {
                 return $query->where('is_printed', (bool)$filters['is_printed']);
             })
+            ->when(isset($filters['checked']), function ($query) use ($filters) {
+                return $query->where('checked', $filters['checked']);
+            })
             ->count();
     }
 }

@@ -14,6 +14,7 @@ use App\Contracts\Repositories\VendorRepositoryInterface;
 use App\Contracts\Repositories\VendorWalletRepositoryInterface;
 use App\Http\Controllers\BaseController;
 use App\Services\DashboardService;
+use App\Services\OrderStatsService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,9 +22,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends BaseController
 {
+    private const CACHE_TTL = 60; // Cache dashboard stats for 60 seconds
+
     public function __construct(
         private readonly AdminWalletRepositoryInterface      $adminWalletRepo,
         private readonly CustomerRepositoryInterface         $customerRepo,
@@ -36,6 +40,7 @@ class DashboardController extends BaseController
         private readonly VendorWalletRepositoryInterface     $vendorWalletRepo,
         private readonly RestockProductRepositoryInterface   $restockProductRepo,
         private readonly DashboardService                    $dashboardService,
+        private readonly OrderStatsService                   $orderStatsService,
     )
     {
     }
@@ -48,12 +53,27 @@ class DashboardController extends BaseController
      */
     public function index(Request|null $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
-        $mostRatedProducts = $this->productRepo->getTopRatedList()->take(DASHBOARD_DATA_LIMIT);
-        $topSellProduct = $this->productRepo->getTopSellList(relations: ['orderDetails'])->take(DASHBOARD_TOP_SELL_DATA_LIMIT);
-        $topCustomer = $this->orderRepo->getTopCustomerList(relations: ['customer'], dataLimit: 'all')->take(DASHBOARD_DATA_LIMIT);
-        $topRatedDeliveryMan = $this->deliveryManRepo->getTopRatedList(filters: ['seller_id' => 0], relations: ['deliveredOrders'], dataLimit: 'all')->take(DASHBOARD_DATA_LIMIT);
-        $topVendorByEarning = $this->vendorWalletRepo->getListWhere(orderBy: ['total_earning' => 'desc'], filters: [['column' => 'total_earning', 'operator' => '>', 'value' => 0]], relations: ['seller.shop'])->take(DASHBOARD_DATA_LIMIT);
-        $topVendorByOrderReceived = $this->vendorRepo->getTopVendorListByWishlist(relations: ['shop'], dataLimit: 'all')->take(DASHBOARD_DATA_LIMIT);
+        // Use cache for expensive queries - these are dashboard stats that don't need real-time updates
+        $dashboardData = Cache::remember('dashboard_main_data', self::CACHE_TTL, function () {
+            // Use SQL LIMIT instead of fetching all and taking in PHP
+            $mostRatedProducts = $this->productRepo->getTopRatedList(dataLimit: DASHBOARD_DATA_LIMIT);
+            $topSellProduct = $this->productRepo->getTopSellList(relations: ['orderDetails'], dataLimit: DASHBOARD_TOP_SELL_DATA_LIMIT);
+            $topCustomer = $this->orderRepo->getTopCustomerList(relations: ['customer'], dataLimit: DASHBOARD_DATA_LIMIT);
+            $topRatedDeliveryMan = $this->deliveryManRepo->getTopRatedList(filters: ['seller_id' => 0], relations: ['deliveredOrders'], dataLimit: DASHBOARD_DATA_LIMIT);
+            $topVendorByEarning = $this->vendorWalletRepo->getListWhere(orderBy: ['total_earning' => 'desc'], filters: [['column' => 'total_earning', 'operator' => '>', 'value' => 0]], relations: ['seller.shop'], dataLimit: DASHBOARD_DATA_LIMIT);
+            $topVendorByOrderReceived = $this->vendorRepo->getTopVendorListByWishlist(relations: ['shop'], dataLimit: DASHBOARD_DATA_LIMIT);
+
+            return [
+                'mostRatedProducts' => $mostRatedProducts,
+                'topSellProduct' => $topSellProduct,
+                'topCustomer' => $topCustomer,
+                'topRatedDeliveryMan' => $topRatedDeliveryMan,
+                'topVendorByEarning' => $topVendorByEarning,
+                'topVendorByOrderReceived' => $topVendorByOrderReceived,
+            ];
+        });
+
+        // Get order status counts using optimized SQL (cached)
         $data = self::getOrderStatusData();
         $admin_wallet = $this->adminWalletRepo->getFirstWhere(params: ['admin_id' => 1]);
 
@@ -61,30 +81,53 @@ class DashboardController extends BaseController
         $to = now()->endOfYear()->format('Y-m-d');
         $range = range(1, 12);
         $label = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        $inHouseOrderEarningArray = $this->getOrderStatisticsData(from: $from, to: $to, range: $range, type: 'month', userType: 'admin');
-        $vendorOrderEarningArray = $this->getOrderStatisticsData(from: $from, to: $to, range: $range, type: 'month', userType: 'seller');
-        $inHouseEarning = $this->getEarning(from: $from, to: $to, range: $range, type: 'month', userType: 'admin');
-        $vendorEarning = $this->getEarning(from: $from, to: $to, range: $range, type: 'month', userType: 'seller');
-        $commissionEarn = $this->getAdminCommission(from: $from, to: $to, range: $range, type: 'month');
+        
+        // Cache earning statistics
+        $earningStats = Cache::remember('dashboard_earning_stats', self::CACHE_TTL, function () use ($from, $to, $range) {
+            return [
+                'inHouseOrderEarning' => $this->getOrderStatisticsData(from: $from, to: $to, range: $range, type: 'month', userType: 'admin'),
+                'vendorOrderEarning' => $this->getOrderStatisticsData(from: $from, to: $to, range: $range, type: 'month', userType: 'seller'),
+                'inHouseEarning' => $this->getEarning(from: $from, to: $to, range: $range, type: 'month', userType: 'admin'),
+                'vendorEarning' => $this->getEarning(from: $from, to: $to, range: $range, type: 'month', userType: 'seller'),
+                'commissionEarn' => $this->getAdminCommission(from: $from, to: $to, range: $range, type: 'month'),
+            ];
+        });
+
+        $inHouseOrderEarningArray = $earningStats['inHouseOrderEarning'];
+        $vendorOrderEarningArray = $earningStats['vendorOrderEarning'];
+        $inHouseEarning = $earningStats['inHouseEarning'];
+        $vendorEarning = $earningStats['vendorEarning'];
+        $commissionEarn = $earningStats['commissionEarn'];
         $dateType = 'yearEarn';
-        $getTotalCustomerCount = $this->customerRepo->getListWhereBetween(filters: ['avoid_walking_customer' => 1], dataLimit: 'all')->count();
+
+        // Use optimized SQL COUNT instead of loading all records
+        $entityCounts = Cache::remember('dashboard_entity_counts', self::CACHE_TTL, function () {
+            return [
+                'order' => $this->orderRepo->getCountWhere(),
+                'brand' => $this->brandRepo->getCountWhere(),
+                'customer' => $this->customerRepo->getCountWhere(filters: ['avoid_walking_customer' => 1]),
+                'vendor' => $this->vendorRepo->getCountWhere(),
+                'deliveryMan' => $this->deliveryManRepo->getCountWhere(filters: ['seller_id' => 0]),
+            ];
+        });
+
         $data += [
-            'order' => $this->orderRepo->getListWhere(dataLimit: 'all')->count(),
-            'brand' => $this->brandRepo->getListWhere(dataLimit: 'all')->count(),
-            'topSellProduct' => $topSellProduct,
-            'mostRatedProducts' => $mostRatedProducts,
-            'topVendorByEarning' => $topVendorByEarning,
-            'top_customer' => $topCustomer,
-            'top_store_by_order_received' => $topVendorByOrderReceived,
-            'topRatedDeliveryMan' => $topRatedDeliveryMan,
+            'order' => $entityCounts['order'],
+            'brand' => $entityCounts['brand'],
+            'topSellProduct' => $dashboardData['topSellProduct'],
+            'mostRatedProducts' => $dashboardData['mostRatedProducts'],
+            'topVendorByEarning' => $dashboardData['topVendorByEarning'],
+            'top_customer' => $dashboardData['topCustomer'],
+            'top_store_by_order_received' => $dashboardData['topVendorByOrderReceived'],
+            'topRatedDeliveryMan' => $dashboardData['topRatedDeliveryMan'],
             'inhouse_earning' => $admin_wallet['inhouse_earning'] ?? 0,
             'commission_earned' => $admin_wallet['commission_earned'] ?? 0,
             'delivery_charge_earned' => $admin_wallet['delivery_charge_earned'] ?? 0,
             'pending_amount' => $admin_wallet['pending_amount'] ?? 0,
             'total_tax_collected' => $admin_wallet['total_tax_collected'] ?? 0,
-            'getTotalCustomerCount' => $getTotalCustomerCount,
-            'getTotalVendorCount' => $this->vendorRepo->getListWhere(dataLimit: 'all')->count(),
-            'getTotalDeliveryManCount' => $this->deliveryManRepo->getListWhere(filters: ['seller_id' => 0], dataLimit: 'all')->count(),
+            'getTotalCustomerCount' => $entityCounts['customer'],
+            'getTotalVendorCount' => $entityCounts['vendor'],
+            'getTotalDeliveryManCount' => $entityCounts['deliveryMan'],
         ];
         return view('admin-views.system.dashboard', compact('data', 'inHouseEarning', 'vendorEarning', 'commissionEarn', 'inHouseOrderEarningArray', 'vendorOrderEarningArray', 'label', 'dateType'));
     }
@@ -96,48 +139,64 @@ class DashboardController extends BaseController
         return response()->json(['view' => view('admin-views.partials._dashboard-order-status', compact('data'))->render()], 200);
     }
 
+    /**
+     * Get order status data using optimized SQL counts with caching
+     * This replaces the old approach that loaded all records into PHP
+     */
     public function getOrderStatusData(): array
     {
-        $orderQuery = $this->orderRepo->getListWhere(dataLimit: 'all');
-        $storeQuery = $this->vendorRepo->getListWhere(dataLimit: 'all');
-        $productQuery = $this->productRepo->getListWhere(dataLimit: 'all');
-        $customerQuery = $this->customerRepo->getListWhere(filters: ['avoid_walking_customer' => 1], dataLimit: 'all');
-        $failedQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'failed'], dataLimit: 'all');
-        $pendingQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'pending'], dataLimit: 'all');
-        $returnedQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'returned'], dataLimit: 'all');
-        $canceledQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'canceled'], dataLimit: 'all');
-        $confirmedQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'confirmed'], dataLimit: 'all');
-        $deliveredQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'delivered'], dataLimit: 'all');
-        $processingQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'processing'], dataLimit: 'all');
-        $outForDeliveryQuery = $this->orderRepo->getListWhere(filters: ['order_status' => 'out_for_delivery'], dataLimit: 'all');
+        // Build date filter based on session statistics_type
+        $dateFilter = $this->getDateFilterForStatistics();
+        $cacheKey = 'dashboard_order_status_' . md5(json_encode($dateFilter));
 
-        return [
-            'order' => self::getCommonQueryOrderStatus($orderQuery),
-            'store' => self::getCommonQueryOrderStatus($storeQuery),
-            'failed' => self::getCommonQueryOrderStatus($failedQuery),
-            'pending' => self::getCommonQueryOrderStatus($pendingQuery),
-            'product' => self::getCommonQueryOrderStatus($productQuery),
-            'customer' => self::getCommonQueryOrderStatus($customerQuery),
-            'returned' => self::getCommonQueryOrderStatus($returnedQuery),
-            'canceled' => self::getCommonQueryOrderStatus($canceledQuery),
-            'confirmed' => self::getCommonQueryOrderStatus($confirmedQuery),
-            'delivered' => self::getCommonQueryOrderStatus($deliveredQuery),
-            'processing' => self::getCommonQueryOrderStatus($processingQuery),
-            'out_for_delivery' => self::getCommonQueryOrderStatus($outForDeliveryQuery),
-        ];
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($dateFilter) {
+            // Get all order status counts in a single optimized query
+            $orderStats = $this->orderStatsService->getDashboardOrderStats($dateFilter);
+
+            // Get entity counts with date filter using SQL COUNT
+            $storeCount = $this->vendorRepo->getCountWhere($dateFilter);
+            $productCount = $this->productRepo->getCountWhere($dateFilter);
+            $customerCount = $this->customerRepo->getCountWhere(array_merge(['avoid_walking_customer' => 1], $dateFilter));
+
+            return [
+                'order' => $orderStats['order'],
+                'store' => $storeCount,
+                'failed' => $orderStats['failed'],
+                'pending' => $orderStats['pending'],
+                'product' => $productCount,
+                'customer' => $customerCount,
+                'returned' => $orderStats['returned'],
+                'canceled' => $orderStats['canceled'],
+                'confirmed' => $orderStats['confirmed'],
+                'delivered' => $orderStats['delivered'],
+                'processing' => $orderStats['processing'],
+                'out_for_delivery' => $orderStats['out_for_delivery'],
+            ];
+        });
     }
 
-    public function getCommonQueryOrderStatus($query)
+    /**
+     * Get date filter array based on session statistics_type
+     */
+    private function getDateFilterForStatistics(): array
     {
-        $today = session()->has('statistics_type') && session('statistics_type') == 'today' ? 1 : 0;
-        $this_month = session()->has('statistics_type') && session('statistics_type') == 'this_month' ? 1 : 0;
+        $statisticsType = session('statistics_type');
 
-        return $query->when($today, function ($query) {
-            return $query->where('created_at', '>=', now()->startOfDay())
-                ->where('created_at', '<', now()->endOfDay());
-        })->when($this_month, function ($query) {
-            return $query->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]);
-        })->count();
+        if ($statisticsType === 'today') {
+            return [
+                'created_at_from' => now()->startOfDay(),
+                'created_at_to' => now()->endOfDay(),
+            ];
+        }
+
+        if ($statisticsType === 'this_month') {
+            return [
+                'created_at_from' => now()->startOfMonth(),
+                'created_at_to' => now()->endOfMonth(),
+            ];
+        }
+
+        return []; // No date filter (all time)
     }
 
     public function getOrderStatistics(Request $request): JsonResponse
@@ -240,33 +299,44 @@ class DashboardController extends BaseController
 
     public function getRealTimeActivities(): JsonResponse
     {
-        $newOrder = $this->orderRepo->getListWhere(filters: ['checked' => 0], dataLimit: 'all')->count();
-        $restockProductList = $this->restockProductRepo->getListWhere(filters: ['added_by' => 'in_house'], dataLimit: 'all')->groupBy('product_id');
-        $restockProduct = [];
-        if (count($restockProductList) == 1) {
-            $products = $this->restockProductRepo->getListWhere(orderBy: ['updated_at' => 'desc'], filters: ['added_by' => 'in_house'], relations: ['product'], dataLimit: 'all');
-            $firstProduct = $products->first();
-            $count = $products?->sum('restock_product_customers_count') ?? 0;
-            $restockProduct = [
-                'title' => $firstProduct?->product?->name ?? '',
-                'body' => $count < 100 ? translate('This_product_has') . ' ' . $count . ' ' . translate('restock_request') : translate('This_product_has') . ' 99+ ' . translate('restock_request'),
-                'image' => getStorageImages(path: $firstProduct?->product?->thumbnail_full_url ?? '', type: 'product'),
-                'route' => route('admin.products.request-restock-list')
+        // Use SQL COUNT for new orders instead of loading all records
+        $newOrder = $this->orderRepo->getCountWhere(filters: ['checked' => 0]);
+        
+        // Cache restock product data briefly since it's polled frequently
+        $restockData = Cache::remember('dashboard_restock_data', 30, function () {
+            $restockProductList = $this->restockProductRepo->getListWhere(filters: ['added_by' => 'in_house'], dataLimit: 'all')->groupBy('product_id');
+            $restockProduct = [];
+            
+            if (count($restockProductList) == 1) {
+                $products = $this->restockProductRepo->getListWhere(orderBy: ['updated_at' => 'desc'], filters: ['added_by' => 'in_house'], relations: ['product'], dataLimit: 1);
+                $firstProduct = $products->first();
+                $count = $this->restockProductRepo->getListWhere(filters: ['added_by' => 'in_house'], dataLimit: 'all')->sum('restock_product_customers_count') ?? 0;
+                $restockProduct = [
+                    'title' => $firstProduct?->product?->name ?? '',
+                    'body' => $count < 100 ? translate('This_product_has') . ' ' . $count . ' ' . translate('restock_request') : translate('This_product_has') . ' 99+ ' . translate('restock_request'),
+                    'image' => getStorageImages(path: $firstProduct?->product?->thumbnail_full_url ?? '', type: 'product'),
+                    'route' => route('admin.products.request-restock-list')
+                ];
+            } elseif (count($restockProductList) > 1) {
+                $restockProduct = [
+                    'title' => translate('Restock_Request'),
+                    'body' => count($restockProductList) < 100 ? (count($restockProductList) . ' ' . translate('products_have_restock_request')) : ('99 +' . ' ' . translate('more_products_have_restock_request')),
+                    'image' => dynamicAsset(path: 'public/assets/back-end/img/icons/restock-request-icon.svg'),
+                    'route' => route('admin.products.request-restock-list')
+                ];
+            }
+
+            return [
+                'restockProductCount' => $restockProductList->count(),
+                'restockProduct' => $restockProduct,
             ];
-        } elseif (count($restockProductList) > 1) {
-            $restockProduct = [
-                'title' => translate('Restock_Request'),
-                'body' => count($restockProductList) < 100 ? (count($restockProductList) . ' ' . translate('products_have_restock_request')) : ('99 +' . ' ' . translate('more_products_have_restock_request')),
-                'image' => dynamicAsset(path: 'public/assets/back-end/img/icons/restock-request-icon.svg'),
-                'route' => route('admin.products.request-restock-list')
-            ];
-        }
+        });
 
         return response()->json([
             'success' => 1,
             'new_order_count' => $newOrder,
-            'restockProductCount' => $restockProductList->count(),
-            'restockProduct' => $restockProduct
+            'restockProductCount' => $restockData['restockProductCount'],
+            'restockProduct' => $restockData['restockProduct']
         ]);
     }
 }

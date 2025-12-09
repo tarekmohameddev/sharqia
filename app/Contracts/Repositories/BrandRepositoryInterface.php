@@ -20,4 +20,11 @@ interface BrandRepositoryInterface extends RepositoryInterface
      * @return Collection|LengthAwarePaginator
      */
     public function getListWhereIn(array $orderBy = [], string $searchValue = null, array $filters = [], array $whereIn = [], array $relations = [], array $nullFields = [], int|string $dataLimit = DEFAULT_DATA_LIMIT, int $offset = null): Collection|LengthAwarePaginator;
+
+    /**
+     * Get count of brands matching filters (optimized SQL count)
+     * @param array $filters
+     * @return int
+     */
+    public function getCountWhere(array $filters = []): int;
 }

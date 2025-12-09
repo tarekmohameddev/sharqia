@@ -518,4 +518,25 @@ class ProductRepository implements ProductRepositoryInterface
         cacheRemoveByType(type: 'products');
         return DB::table('products')->insert($data);
     }
+
+    /**
+     * Get count of products matching filters (optimized SQL count)
+     */
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->product
+            ->when(isset($filters['added_by']) && $this->isAddedByInHouse(addedBy: $filters['added_by']), function ($query) {
+                return $query->where(['added_by' => 'admin']);
+            })
+            ->when(isset($filters['added_by']) && !$this->isAddedByInHouse($filters['added_by']), function ($query) use ($filters) {
+                return $query->where(['added_by' => 'seller']);
+            })
+            ->when(isset($filters['status']), function ($query) use ($filters) {
+                return $query->where('status', $filters['status']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->count();
+    }
 }

@@ -120,4 +120,22 @@ class DeliveryManRepository implements DeliveryManRepositoryInterface
         $filters += ['searchValue' => $searchValue];
         return $dataLimit == 'all' ? $query->get() : $query->paginate($dataLimit)->appends($filters);
     }
+
+    /**
+     * Get count of delivery men matching filters (optimized SQL count)
+     */
+    public function getCountWhere(array $filters = []): int
+    {
+        return $this->deliveryMan
+            ->when(isset($filters['seller_id']), function ($query) use ($filters) {
+                return $query->where('seller_id', $filters['seller_id']);
+            })
+            ->when(isset($filters['is_active']), function ($query) use ($filters) {
+                return $query->where('is_active', $filters['is_active']);
+            })
+            ->when(isset($filters['created_at_from']) && isset($filters['created_at_to']), function ($query) use ($filters) {
+                return $query->whereBetween('created_at', [$filters['created_at_from'], $filters['created_at_to']]);
+            })
+            ->count();
+    }
 }
