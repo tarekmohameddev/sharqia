@@ -1229,6 +1229,43 @@
                     </small>
                 </li>
 
+                <li class="{{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*')) ? 'sub-menu-opened' : '' }}">
+                    <a class="nav-link nav-link-toggle {{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*')) ? 'active' : '' }}"
+                       href="javascript:" title="{{ translate('EasyOrders_Integration') }}">
+                        <i class="fi fi-sr-link"></i>
+                        <span
+                            class="aside-mini-hidden-element flex-grow-1 d-flex justify-content-between align-items-center">
+                            <span class="text-truncate max-w-180">
+                                {{ translate('EasyOrders_Integration') }}
+                            </span>
+                            <i class="fi fi-sr-angle-down"></i>
+                        </span>
+                    </a>
+                    <ul class="aside-submenu navbar-nav">
+                        <li class="nav-item px-3 py-2 fw-semibold text-dark bg-section2 aside-mini-show-element">
+                            {{ translate('EasyOrders_Integration') }}
+                        </li>
+                        <li>
+                            <a class="nav-link {{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*')) ? 'active' : '' }}"
+                               href="{{ route('admin.orders.easy-orders.index') }}"
+                               title="{{ translate('EasyOrders_Staging_Orders') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('EasyOrders_Staging_Orders') }}
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/business-settings/easyorders/governorate-mappings*') ? 'active' : '' }}"
+                               href="{{ route('admin.business-settings.easyorders.governorate-mappings.index') }}"
+                               title="{{ translate('EasyOrders_Governorate_Mappings') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('EasyOrders_Governorate_Mappings') }}
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
                 <li>
                     <a class="nav-link
                 {{ Request::is('admin/third-party/payment-method') ||

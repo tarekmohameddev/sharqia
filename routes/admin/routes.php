@@ -86,6 +86,8 @@ use App\Http\Controllers\Admin\ThirdParty\SocialMediaChatController;
 use App\Http\Controllers\Admin\Deliveryman\EmergencyContactController;
 use App\Http\Controllers\Admin\HelpAndSupport\SupportTicketController;
 use App\Http\Controllers\Admin\Payment\OfflinePaymentMethodController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrderController as AdminEasyOrderController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
 use App\Http\Controllers\Admin\Settings\EnvironmentSettingsController;
@@ -259,6 +261,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund')->middleware('module:refund_actions');
             Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund')->middleware('module:refund_actions');
             Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order')->middleware('module:refund_actions');
+        });
+
+        Route::controller(AdminEasyOrderController::class)->group(function () {
+            Route::get('easy-orders', 'index')->name('easy-orders.index');
+            Route::get('easy-orders/{id}', 'show')->name('easy-orders.show');
+            Route::post('easy-orders/{id}/import', 'import')->name('easy-orders.import');
+            Route::post('easy-orders/bulk-import', 'bulkImport')->name('easy-orders.bulk-import');
+            Route::post('easy-orders/{id}/reject', 'reject')->name('easy-orders.reject');
         });
     });
 
@@ -1010,6 +1020,15 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::group(['prefix' => 'category-shipping-cost', 'as' => 'category-shipping-cost.'], function () {
                 Route::controller(CategoryShippingCostController::class)->group(function () {
                     Route::post('store', 'add')->name('store');
+                });
+            });
+
+            Route::group(['prefix' => 'easyorders', 'as' => 'easyorders.'], function () {
+                Route::controller(EasyOrdersGovernorateMappingController::class)->group(function () {
+                    Route::get('governorate-mappings', 'index')->name('governorate-mappings.index');
+                    Route::post('governorate-mappings', 'store')->name('governorate-mappings.store');
+                    Route::post('governorate-mappings/{id}', 'update')->name('governorate-mappings.update');
+                    Route::delete('governorate-mappings/{id}', 'destroy')->name('governorate-mappings.destroy');
                 });
             });
 
