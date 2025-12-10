@@ -457,6 +457,7 @@ class POSOrderController extends BaseController
             cityId: $cityId,
             shippingCost: $shippingCost,
             orderNote: $orderNote,
+            createdByAdminId: auth('admin')->id(),
         );
         $this->orderRepo->add(data: $order);
         // Persist minimal shipping address data (with alternative phone) on the order for reference

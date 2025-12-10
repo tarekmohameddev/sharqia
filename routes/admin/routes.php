@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\Order\OrderController;
 use App\Http\Controllers\Admin\OrderReportController;
+use App\Http\Controllers\Admin\EmployeeOrderReportController;
 use App\Http\Controllers\Admin\Order\RefundController;
 use App\Http\Controllers\Admin\POS\POSOrderController;
 use App\Http\Controllers\Admin\Product\BrandController;
@@ -479,6 +480,11 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::get('order', 'order_list')->name('order');
             Route::get('order-report-excel', 'orderReportExportExcel')->name('order-report-excel');
             Route::get('order-report-pdf', 'exportOrderReportInPDF')->name('order-report-pdf');
+        });
+
+        Route::controller(EmployeeOrderReportController::class)->group(function () {
+            Route::get('employee-order', 'index')->name('employee-order');
+            Route::get('employee-order-export-excel', 'exportExcel')->name('employee-order-export-excel');
         });
 
         Route::controller(ProductReportController::class)->group(function () {

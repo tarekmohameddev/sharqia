@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\User;
+use App\Models\Admin;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -59,6 +60,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $delivery_type
  * @property string $delivery_service_name
  * @property string $third_party_delivery_tracking_id
+ * @property int|null $created_by_admin_id
  */
 class Order extends Model
 {
@@ -95,6 +97,7 @@ class Order extends Model
         'verification_status',
         'seller_id',
         'seller_is',
+        'created_by_admin_id',
         'shipping_address_data',
         'delivery_man_id',
         'deliveryman_charge',
@@ -150,6 +153,7 @@ class Order extends Model
         'verification_status' => 'boolean',
         'seller_id' => 'integer',
         'seller_is' => 'string',
+        'created_by_admin_id' => 'integer',
         'shipping_address_data' => 'object',
         'delivery_man_id' => 'integer',
         'deliveryman_charge' => 'double',
@@ -178,6 +182,11 @@ class Order extends Model
     public function seller(): BelongsTo
     {
         return $this->belongsTo(Seller::class);
+    }
+
+    public function createdByAdmin(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'created_by_admin_id');
     }
 
     public function sellerName(): HasOne

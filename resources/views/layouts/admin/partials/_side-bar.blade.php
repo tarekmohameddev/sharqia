@@ -792,6 +792,16 @@
                         </span>
                     </a>
                 </li>
+
+                <li>
+                    <a class="nav-link {{ Request::is('admin/report/employee-order') ? 'active' : '' }}"
+                       href="{{ route('admin.report.employee-order') }}" title="{{ translate('employee_order_Report') }}">
+                        <i class="fi fi-sr-rectangle-list"></i>
+                        <span class="aside-mini-hidden-element text-truncate">
+                            {{ translate('employee_order_Report') }}
+                        </span>
+                    </a>
+                </li>
             @endif
 
             @if (Helpers::module_permission_check('blog_management'))

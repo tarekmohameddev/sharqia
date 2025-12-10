@@ -8,7 +8,20 @@ class OrderService
     {
     }
 
-    public function getPOSOrderData(int|string $orderId, array $cart, float $amount, float $paidAmount, string $paymentType, string $addedBy, int $userId, ?int $sellerId = null, ?int $cityId = null, float $shippingCost = 0, ?string $orderNote = null): array
+    public function getPOSOrderData(
+        int|string $orderId,
+        array $cart,
+        float $amount,
+        float $paidAmount,
+        string $paymentType,
+        string $addedBy,
+        int $userId,
+        ?int $sellerId = null,
+        ?int $cityId = null,
+        float $shippingCost = 0,
+        ?string $orderNote = null,
+        ?int $createdByAdminId = null
+    ): array
     {
         return [
             'id' => $orderId,
@@ -18,6 +31,7 @@ class OrderService
             'order_status' => 'pending',
             'seller_id' => $sellerId ?? ($addedBy == 'seller' ? auth('seller')->id() : auth('admin')->id()),
             'seller_is' => $addedBy,
+            'created_by_admin_id' => $createdByAdminId,
             'payment_method' => $paymentType,
             'order_type' => 'POS',
             'checked' => 1,
