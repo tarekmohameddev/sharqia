@@ -264,3 +264,4 @@ CREATE INDEX idx_orders_status_created ON orders(order_status, created_at);
 4. **Combine multiple counts into one query** — use `SUM(CASE WHEN ...)` pattern
 5. **Use SQL LIMIT when you only need N records** — don't fetch all and take in PHP
 
+
