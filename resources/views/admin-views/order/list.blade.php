@@ -438,6 +438,20 @@
                                                     @if (!empty($altPhone))
                                                         <small class="d-block text-muted">Alt: <a class="text-muted" href="tel:{{ $altPhone }}">{{ $altPhone }}</a></small>
                                                     @endif
+                                                    @php($address = data_get($order, 'shipping_address_data.address'))
+                                                    @if (!empty($address))
+                                                        <small class="d-block text-muted" title="{{ $address }}">{{ Str::limit($address, 40) }}</small>
+                                                    @endif
+                                                    <div class="mt-1">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary js-edit-customer-info"
+                                                            data-order-id="{{ $order['id'] }}"
+                                                            data-customer-name="{{ ($order->customer['f_name'] ?? '') . ' ' . ($order->customer['l_name'] ?? '') }}"
+                                                            data-customer-phone="{{ data_get($order, 'shipping_address_data.phone') ?: ($order->customer['phone'] ?? '') }}"
+                                                            data-customer-address="{{ data_get($order, 'shipping_address_data.address') ?? '' }}"
+                                                            title="{{ translate('edit_customer_info') }}">
+                                                            <i class="fi fi-rr-edit"></i>
+                                                        </button>
+                                                    </div>
                                                 @else
                                                     <label class="badge badge-danger text-bg-danger">
                                                         {{ translate('customer_not_found') }}
@@ -460,8 +474,19 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @php($__city = $order['city_id'] ? $governorates->firstWhere('id', $order['city_id']) : null)
-                                            {{ $__city->name_ar ?? '-' }}
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span>
+                                                    @php($__city = $order['city_id'] ? $governorates->firstWhere('id', $order['city_id']) : null)
+                                                    {{ $__city->name_ar ?? '-' }}
+                                                </span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary js-edit-city"
+                                                    data-order-id="{{ $order['id'] }}"
+                                                    data-city-id="{{ $order['city_id'] }}"
+                                                    data-seller-id="{{ $order['seller_id'] }}"
+                                                    title="{{ translate('edit_city') }}">
+                                                    <i class="fi fi-rr-edit"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                         <td>
                                             <div>
@@ -616,6 +641,76 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
                     <button type="button" id="confirm-print-by-city" class="btn btn-primary">{{ translate('print_unprinted') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Info Modal -->
+    <div class="modal fade" id="edit-customer-info-modal" tabindex="-1" aria-labelledby="editCustomerInfoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editCustomerInfoLabel">{{ translate('edit_customer_info') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-customer-order-id">
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="edit-customer-name">{{ translate('customer_name') }}</label>
+                        <input type="text" id="edit-customer-name" class="form-control">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="edit-customer-phone">{{ translate('phone') }}</label>
+                        <input type="text" id="edit-customer-phone" class="form-control">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="edit-customer-address">{{ translate('address') }}</label>
+                        <textarea id="edit-customer-address" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
+                    <button type="button" id="save-customer-info" class="btn btn-primary">{{ translate('save') }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit City Modal -->
+    <div class="modal fade" id="edit-city-modal" tabindex="-1" aria-labelledby="editCityLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editCityLabel">{{ translate('edit_city') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-city-order-id">
+                    <input type="hidden" id="edit-city-current-seller-id">
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="edit-city-select">{{ translate('city') }}</label>
+                        <div class="select-wrapper">
+                            <select id="edit-city-select" class="form-select">
+                                @foreach($governorates as $gov)
+                                    <option value="{{ $gov->id }}">{{ $gov->name_ar }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="edit-city-seller-select">{{ translate('seller') }}</label>
+                        <div class="select-wrapper">
+                            <select id="edit-city-seller-select" class="form-select">
+                                <option value="">{{ translate('loading') }}...</option>
+                            </select>
+                        </div>
+                        <small class="text-muted">{{ translate('seller_will_be_auto_selected_based_on_city_coverage') }}</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate('close') }}</button>
+                    <button type="button" id="save-city" class="btn btn-primary">{{ translate('save') }}</button>
                 </div>
             </div>
         </div>
@@ -925,5 +1020,133 @@
                 });
             }
         })();
+    </script>
+    <script>
+        // Edit Customer Info Modal Handler
+        $(document).on('click', '.js-edit-customer-info', function () {
+            const orderId = $(this).data('order-id');
+            const customerName = $(this).data('customer-name');
+            const customerPhone = $(this).data('customer-phone');
+            const customerAddress = $(this).data('customer-address');
+
+            $('#edit-customer-order-id').val(orderId);
+            $('#edit-customer-name').val(customerName);
+            $('#edit-customer-phone').val(customerPhone);
+            $('#edit-customer-address').val(customerAddress);
+
+            const modal = new bootstrap.Modal(document.getElementById('edit-customer-info-modal'));
+            modal.show();
+        });
+
+        $('#save-customer-info').on('click', function () {
+            const orderId = $('#edit-customer-order-id').val();
+            const customerName = $('#edit-customer-name').val();
+            const customerPhone = $('#edit-customer-phone').val();
+            const customerAddress = $('#edit-customer-address').val();
+
+            if (!customerPhone) {
+                toastMagic.warning('{{ translate('phone_is_required') }}');
+                return;
+            }
+
+            $.post({
+                url: '{{ route('admin.orders.quick-update-customer-info') }}',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    order_id: orderId,
+                    customer_name: customerName,
+                    customer_phone: customerPhone,
+                    customer_address: customerAddress
+                }
+            }).done(function (res) {
+                toastMagic.success(res.message ?? '{{ translate('updated_successfully') }}');
+                $('#edit-customer-info-modal').modal('hide');
+            }).fail(function (xhr) {
+                const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                toastMagic.error(msg);
+            });
+        });
+
+        // Edit City Modal Handler
+        function loadSellersForCity(cityId, currentSellerId = null) {
+            $('#edit-city-seller-select').html('<option value="">{{ translate('loading') }}...</option>').prop('disabled', true);
+            
+            $.get({
+                url: '{{ route('admin.pos.get-sellers') }}',
+                data: { governorate_id: cityId }
+            }).done(function (res) {
+                const sellers = res.sellers || [];
+                let options = '';
+                
+                // Add sellers from city coverage
+                sellers.forEach(function(seller, index) {
+                    const selected = (currentSellerId && seller.id == currentSellerId) || (!currentSellerId && sellers.length > 0 && index === 0) ? 'selected' : '';
+                    options += `<option value="${seller.id}" ${selected}>${seller.name}</option>`;
+                });
+                
+                $('#edit-city-seller-select').html(options).prop('disabled', false);
+            }).fail(function () {
+                // On error, at least show In-House option
+                const inhouseSelected = 'selected';
+                const options = `<option value="0" ${inhouseSelected}>{{ translate('in_House') }}</option>`;
+                $('#edit-city-seller-select').html(options).prop('disabled', false);
+            });
+        }
+
+        $(document).on('click', '.js-edit-city', function () {
+            const orderId = $(this).data('order-id');
+            const cityId = $(this).data('city-id');
+            const sellerId = $(this).data('seller-id');
+
+            $('#edit-city-order-id').val(orderId);
+            $('#edit-city-current-seller-id').val(sellerId);
+            $('#edit-city-select').val(cityId);
+
+            // Load sellers for current city
+            loadSellersForCity(cityId, sellerId);
+
+            const modal = new bootstrap.Modal(document.getElementById('edit-city-modal'));
+            modal.show();
+        });
+
+        // When city changes, reload sellers and auto-select first one
+        $('#edit-city-select').on('change', function () {
+            const cityId = $(this).val();
+            if (cityId) {
+                loadSellersForCity(cityId);
+            }
+        });
+
+        $('#save-city').on('click', function () {
+            const orderId = $('#edit-city-order-id').val();
+            const cityId = $('#edit-city-select').val();
+            const sellerId = $('#edit-city-seller-select').val();
+
+            if (!cityId) {
+                toastMagic.warning('{{ translate('please_select_city') }}');
+                return;
+            }
+
+            if (!sellerId) {
+                toastMagic.warning('{{ translate('please_select_seller') }}');
+                return;
+            }
+
+            $.post({
+                url: '{{ route('admin.orders.quick-update-city') }}',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    order_id: orderId,
+                    city_id: cityId,
+                    seller_id: sellerId
+                }
+            }).done(function (res) {
+                toastMagic.success(res.message ?? '{{ translate('updated_successfully') }}');
+                
+            }).fail(function (xhr) {
+                const msg = xhr.responseJSON?.error ?? '{{ translate('something_went_wrong') }}';
+                toastMagic.error(msg);
+            });
+        });
     </script>
 @endpush

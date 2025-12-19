@@ -488,14 +488,8 @@ class OrderController extends BaseController
         $companyName = getWebConfig(name: 'company_name');
         $companyWebLogo = getWebConfig(name: 'company_web_logo');
         $order = $this->orderRepo->getFirstWhere(params: ['id' => $id], relations: ['seller', 'shipping', 'details', 'customer']);
-        // Resolve latest shipping address by customer_id (fallback to order shipping_address_data)
-        $shippingAddress = null;
-        if (!empty($order['customer_id'])) {
-            $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
-        $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+        // Use order's shipping_address_data directly (this is what gets updated from quick edit)
+        $shippingAddress = $order['shipping_address_data'] ?? null;
 
         // Resolve governorate name by city_id stored on order
         $governorateName = null;
@@ -958,14 +952,8 @@ class OrderController extends BaseController
             $companyName = getWebConfig(name: 'company_name');
             $companyWebLogo = getWebConfig(name: 'company_web_logo');
             $invoiceSettings = getWebConfig(name: 'invoice_settings');
-            // Resolve latest shipping address and governorate name per order
-            $shippingAddress = null;
-            if (!empty($order['customer_id'])) {
-                $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-            }
-            $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+            // Use order's shipping_address_data directly (this is what gets updated from quick edit)
+            $shippingAddress = $order['shipping_address_data'] ?? null;
             $governorateName = null;
             if (!empty($order['city_id'])) {
                 $governorateName = Governorate::find($order['city_id'])?->name_ar;
@@ -1072,6 +1060,99 @@ class OrderController extends BaseController
         }
 
         return response()->json(['updated' => $updated, 'skipped' => $skipped]);
+    }
+
+    public function updateCustomerInfoQuick(Request $request): JsonResponse
+    {
+        $orderId = $request->input('order_id');
+        $customerName = $request->input('customer_name');
+        $customerPhone = $request->input('customer_phone');
+        $customerAddress = $request->input('customer_address');
+
+        // Validation - only phone is required
+        if (!$orderId || !$customerPhone) {
+            return response()->json(['error' => translate('invalid_request')], 422);
+        }
+
+        $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId]);
+        if (!$order) {
+            return response()->json(['error' => translate('order_not_found')], 404);
+        }
+
+        // Get existing shipping address data or initialize empty array
+        $shippingAddressData = json_decode(json_encode($order['shipping_address_data'] ?? []), true);
+
+        // Update the shipping address data fields
+        if (!empty($customerName)) {
+            $shippingAddressData['contact_person_name'] = $customerName;
+        }
+        $shippingAddressData['phone'] = $customerPhone;
+        if (!empty($customerAddress)) {
+            $shippingAddressData['address'] = $customerAddress;
+        }
+        $shippingAddressData['updated_at'] = now();
+
+        // Update the order
+        $this->orderRepo->update(id: $orderId, data: [
+            'shipping_address_data' => json_encode($shippingAddressData)
+        ]);
+
+        // Also update customer record if customer exists and name is provided
+        if ($order->customer && !empty($customerName)) {
+            // Split customer name into first and last name
+            $nameParts = explode(' ', trim($customerName), 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName = $nameParts[1] ?? '';
+            
+            $this->customerRepo->update(id: $order->customer_id, data: [
+                'f_name' => $firstName,
+                'l_name' => $lastName,
+                'phone' => $customerPhone,
+            ]);
+        } elseif ($order->customer) {
+            // Only update phone if name is not provided
+            $this->customerRepo->update(id: $order->customer_id, data: [
+                'phone' => $customerPhone,
+            ]);
+        }
+
+        return response()->json(['message' => translate('customer_info_updated_successfully')]);
+    }
+
+    public function updateCityQuick(Request $request): JsonResponse
+    {
+        $orderId = $request->input('order_id');
+        $cityId = $request->input('city_id');
+        $sellerId = $request->input('seller_id');
+
+        // Validation
+        if (!$orderId || !$cityId || !$sellerId) {
+            return response()->json(['error' => translate('invalid_request')], 422);
+        }
+
+        $order = $this->orderRepo->getFirstWhere(params: ['id' => $orderId], relations: ['details']);
+        if (!$order) {
+            return response()->json(['error' => translate('order_not_found')], 404);
+        }
+
+        // Determine seller_is based on seller_id (0 = admin/inhouse, others = seller)
+        $sellerIs = $sellerId == 0 ? 'admin' : 'seller';
+
+        // Update the order city and seller
+        $this->orderRepo->update(id: $orderId, data: [
+            'city_id' => $cityId,
+            'seller_id' => $sellerId,
+            'seller_is' => $sellerIs
+        ]);
+
+        // Also update all order details to match the new seller
+        foreach ($order->details as $detail) {
+            $this->orderDetailRepo->update(id: $detail['id'], data: [
+                'seller_id' => $sellerId
+            ]);
+        }
+
+        return response()->json(['message' => translate('city_and_seller_updated_successfully')]);
     }
 
 }

@@ -289,14 +289,8 @@ class OrderController extends BaseController
         $relations = ['details', 'customer', 'shipping', 'seller'];
         $order = $this->orderRepo->getFirstWhere(params: $params, relations: $relations);
         $invoiceSettings = getWebConfig(name: 'invoice_settings');
-        // Resolve latest shipping address by customer_id (fallback to order shipping_address_data)
-        $shippingAddress = null;
-        if (!empty($order['customer_id'])) {
-            $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
-        $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+        // Use order's shipping_address_data directly (this is what gets updated from quick edit)
+        $shippingAddress = $order['shipping_address_data'] ?? null;
 
         // Resolve governorate name by city_id stored on order
         $governorateName = null;
@@ -480,14 +474,8 @@ class OrderController extends BaseController
             $companyWebLogo = getWebConfig(name: 'company_web_logo');
             $invoiceSettings = getWebConfig(name: 'invoice_settings');
 
-            // Resolve latest shipping address and governorate name per order
-            $shippingAddress = null;
-            if (!empty($order['customer_id'])) {
-                $shippingAddress = ShippingAddress::where('customer_id', $order['customer_id'])
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-            }
-            $shippingAddress = $shippingAddress ?: ($order['shipping_address_data'] ?? null);
+            // Use order's shipping_address_data directly (this is what gets updated from quick edit)
+            $shippingAddress = $order['shipping_address_data'] ?? null;
             $governorateName = null;
             if (!empty($order['city_id'])) {
                 $governorateName = Governorate::find($order['city_id'])?->name_ar;

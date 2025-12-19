@@ -262,6 +262,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('approve-refund/{refundId}', 'approveRefund')->name('approve-refund')->middleware('module:refund_actions');
             Route::post('reject-refund/{refundId}', 'rejectRefund')->name('reject-refund')->middleware('module:refund_actions');
             Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order')->middleware('module:refund_actions');
+            Route::post('quick-update-customer-info', 'updateCustomerInfoQuick')->name('quick-update-customer-info');
+            Route::post('quick-update-city', 'updateCityQuick')->name('quick-update-city');
         });
 
         Route::controller(AdminEasyOrderController::class)->group(function () {
