@@ -418,39 +418,83 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function getTopSellList(array $filters = [], array $relations = [], int|string $dataLimit = DEFAULT_DATA_LIMIT, int $offset = null): Collection|LengthAwarePaginator
     {
-        $query = $this->product->with($relations)
+        // OPTIMIZED V2: Use single JOIN + GROUP BY instead of correlated subqueries
+        // This is much faster than whereHas + withCount which run separate subqueries per row
+        
+        $limit = $dataLimit === 'all' ? 1000 : (int) $dataLimit;
+        $page = $offset ?? 1;
+        $offsetValue = ($page - 1) * $limit;
+        
+        // Step 1: Get top product IDs with delivered order count using efficient JOIN
+        // This single query replaces both whereHas and withCount
+        $topProductsQuery = \DB::table('order_details')
+            ->select('product_id', \DB::raw('COUNT(*) as delivered_order_details_count'))
+            ->where('delivery_status', 'delivered')
+            ->groupBy('product_id')
+            ->orderByDesc('delivered_order_details_count');
+        
+        // Apply limit for non-'all' queries
+        if ($dataLimit !== 'all') {
+            $topProductsQuery->limit($limit)->offset($offsetValue);
+        }
+        
+        $topProducts = $topProductsQuery->get();
+        
+        if ($topProducts->isEmpty()) {
+            return $dataLimit === 'all' ? collect() : new LengthAwarePaginator([], 0, $limit, $page);
+        }
+        
+        $productIds = $topProducts->pluck('product_id')->toArray();
+        $countMap = $topProducts->pluck('delivered_order_details_count', 'product_id')->toArray();
+        
+        // Step 2: Fetch products with filters applied
+        $query = $this->product
+            ->whereIn('id', $productIds)
             ->when(isset($filters['added_by']) && $this->isAddedByInHouse(addedBy: $filters['added_by']), function ($query) {
                 return $query->where(['added_by' => 'admin']);
-            })->when(isset($filters['added_by']) && !$this->isAddedByInHouse($filters['added_by']), function ($query) use ($filters) {
-                return $query->where(['added_by' => 'seller', 'request_status' => $filters['request_status']]);
-            })->when(isset($filters['seller_id']), function ($query) use ($filters) {
+            })
+            ->when(isset($filters['added_by']) && !$this->isAddedByInHouse($filters['added_by']), function ($query) use ($filters) {
+                return $query->where(['added_by' => 'seller', 'request_status' => $filters['request_status'] ?? 1]);
+            })
+            ->when(isset($filters['seller_id']), function ($query) use ($filters) {
                 return $query->where('user_id', $filters['seller_id']);
             })
             ->when(isset($filters['request_status']), function ($query) use ($filters) {
                 return $query->where('request_status', $filters['request_status']);
-            })
-            ->whereHas('orderDetails', function ($query) {
-                $query->where(['delivery_status' => 'delivered']);
-            })
-            ->withCount('orderDetails');
-
-        $result = $query->get()->sortByDesc('order_details_count')->values();
-
-        if ($dataLimit === 'all') {
-            return $result;
-        } else {
-            $page = $offset ?? 1;
-            $perPage = $dataLimit;
-            $paged = $result->slice(($page - 1) * $perPage, $perPage)->values();
-
-            return new LengthAwarePaginator(
-                $paged,
-                $result->count(),
-                $perPage,
-                $page,
-                ['path' => request()->url(), 'query' => request()->query()]
-            );
+            });
+        
+        $products = $query->get();
+        
+        // Load relations if needed
+        if (!empty($relations)) {
+            $products->load($relations);
         }
+        
+        // Add the count to each product and sort by it
+        $products = $products->map(function ($product) use ($countMap) {
+            $product->delivered_order_details_count = $countMap[$product->id] ?? 0;
+            return $product;
+        })->sortByDesc('delivered_order_details_count')->values();
+        
+        if ($dataLimit === 'all') {
+            return $products;
+        }
+        
+        // Get total count for pagination (cached for performance)
+        $totalCount = \Illuminate\Support\Facades\Cache::remember('top_sell_products_total_count', 60, function () {
+            return \DB::table('order_details')
+                ->where('delivery_status', 'delivered')
+                ->distinct('product_id')
+                ->count('product_id');
+        });
+        
+        return new LengthAwarePaginator(
+            $products,
+            $totalCount,
+            $limit,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
     }
 
     public function delete(array $params): bool

@@ -55,9 +55,8 @@ class DashboardController extends BaseController
     {
         // Use cache for expensive queries - these are dashboard stats that don't need real-time updates
         $dashboardData = Cache::remember('dashboard_main_data', self::CACHE_TTL, function () {
-            // Use SQL LIMIT instead of fetching all and taking in PHP
             $mostRatedProducts = $this->productRepo->getTopRatedList(dataLimit: DASHBOARD_DATA_LIMIT);
-            $topSellProduct = $this->productRepo->getTopSellList(relations: ['orderDetails'], dataLimit: DASHBOARD_TOP_SELL_DATA_LIMIT);
+            $topSellProduct = $this->productRepo->getTopSellList(relations: [], dataLimit: DASHBOARD_TOP_SELL_DATA_LIMIT);
             $topCustomer = $this->orderRepo->getTopCustomerList(relations: ['customer'], dataLimit: DASHBOARD_DATA_LIMIT);
             $topRatedDeliveryMan = $this->deliveryManRepo->getTopRatedList(filters: ['seller_id' => 0], relations: ['deliveredOrders'], dataLimit: DASHBOARD_DATA_LIMIT);
             $topVendorByEarning = $this->vendorWalletRepo->getListWhere(orderBy: ['total_earning' => 'desc'], filters: [['column' => 'total_earning', 'operator' => '>', 'value' => 0]], relations: ['seller.shop'], dataLimit: DASHBOARD_DATA_LIMIT);
@@ -129,6 +128,7 @@ class DashboardController extends BaseController
             'getTotalVendorCount' => $entityCounts['vendor'],
             'getTotalDeliveryManCount' => $entityCounts['deliveryMan'],
         ];
+        
         return view('admin-views.system.dashboard', compact('data', 'inHouseEarning', 'vendorEarning', 'commissionEarn', 'inHouseOrderEarningArray', 'vendorOrderEarningArray', 'label', 'dateType'));
     }
 
