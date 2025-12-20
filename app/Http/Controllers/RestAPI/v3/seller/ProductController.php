@@ -1290,13 +1290,14 @@ class ProductController extends Controller
     {
         $seller = $request->seller;
 
+        // OPTIMIZED: Remove orderDetails relation (count is now included in optimized query)
         $topSellProducts = $this->productRepo->getTopSellList(
             filters: [
                 'added_by' => 'seller',
                 'seller_id' => $seller['id'],
                 'request_status' => 1
             ],
-            relations: ['orderDetails'],
+            relations: [],
             dataLimit: (int)$request['limit'],
             offset: (int)$request['offset'],
         );
@@ -1305,7 +1306,7 @@ class ProductController extends Controller
         foreach ($topSellProducts as $topSellProduct) {
             $product = [
                'product_id' => $topSellProduct['id'],
-               'count' => (string)($topSellProduct['order_details_count'] ?? 0),
+               'count' => (string)($topSellProduct['delivered_order_details_count'] ?? 0),
                'product' => Helpers::product_data_formatting($topSellProduct, false),
             ];
             $collection[] = $product;

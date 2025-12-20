@@ -57,14 +57,16 @@ class DashboardController extends BaseController
     public function index(?Request $request, string $type = null): View|Collection|LengthAwarePaginator|null|callable|RedirectResponse
     {
         $vendorId = auth('seller')->id();
+        // OPTIMIZED: Remove orderDetails relation (only count is needed), use dataLimit instead of take()
         $topSell = $this->productRepo->getTopSellList(
             filters: [
                 'added_by' => 'seller',
                 'seller_id' => $vendorId,
                 'request_status' => 1
             ],
-            relations: ['orderDetails']
-        )->take(DASHBOARD_TOP_SELL_DATA_LIMIT);
+            relations: [],
+            dataLimit: DASHBOARD_TOP_SELL_DATA_LIMIT
+        );
         $topRatedProducts = $this->productRepo->getTopRatedList(
             filters: [
                 'user_id' => $vendorId,
@@ -72,7 +74,8 @@ class DashboardController extends BaseController
                 'request_status' => 1
             ],
             relations: ['reviews'],
-        )->take(DASHBOARD_DATA_LIMIT);
+            dataLimit: DASHBOARD_DATA_LIMIT
+        );
         $topRatedDeliveryMan = $this->deliveryManRepo->getTopRatedList(
             orderBy: ['delivered_orders_count' => 'desc'],
             filters: [
@@ -83,7 +86,8 @@ class DashboardController extends BaseController
                 'seller_id' => $vendorId
             ],
             relations: ['deliveredOrders'],
-        )->take(DASHBOARD_DATA_LIMIT);
+            dataLimit: DASHBOARD_DATA_LIMIT
+        );
 
         $from = now()->startOfYear()->format('Y-m-d');
         $to = now()->endOfYear()->format('Y-m-d');
@@ -93,12 +97,13 @@ class DashboardController extends BaseController
         $vendorWallet = $this->vendorWalletRepo->getFirstWhere(params: ['seller_id' => $vendorId]);
         $label = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         $dateType = 'yearEarn';
+        // OPTIMIZED: Use SQL COUNT instead of loading all records into PHP
         $dashboardData = [
             'orderStatus' => $this->getOrderStatusArray(type: 'overall'),
-            'customers' => $this->customerRepo->getList(dataLimit: 'all')->count(),
-            'products' => $this->productRepo->getListWhere(filters: ['seller_id' => $vendorId, 'added_by' => 'seller'])->count(),
-            'orders' => $this->orderRepo->getListWhere(filters: ['seller_id' => $vendorId, 'seller_is' => 'seller'])->count(),
-            'brands' => $this->brandRepo->getListWhere(dataLimit: 'all')->count(),
+            'customers' => $this->customerRepo->getCountWhere(),
+            'products' => $this->productRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'added_by' => 'seller']),
+            'orders' => $this->orderRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'seller_is' => 'seller']),
+            'brands' => $this->brandRepo->getCountWhere(),
             'topSell' => $topSell,
             'topRatedProducts' => $topRatedProducts,
             'topRatedDeliveryMan' => $topRatedDeliveryMan,
@@ -295,10 +300,10 @@ class DashboardController extends BaseController
 
     public function getRealTimeActivities(): JsonResponse
     {
-        $newOrder = $this->orderRepo->getListWhere(
-            filters: ['seller_is' => 'seller', 'seller_id' => auth('seller')->id(), 'checked' => 0],
-            dataLimit: 'all'
-        )->count();
+        // OPTIMIZED: Use SQL COUNT instead of loading all records
+        $newOrder = $this->orderRepo->getCountWhere(
+            filters: ['seller_is' => 'seller', 'seller_id' => auth('seller')->id(), 'checked' => 0]
+        );
         $restockProductList = $this->restockProductRepo->getListWhere(filters: ['added_by' => 'seller', 'seller_id' => auth('seller')->id()], dataLimit: 'all')->groupBy('product_id');
         $restockProduct = [];
         if (count($restockProductList) == 1) {

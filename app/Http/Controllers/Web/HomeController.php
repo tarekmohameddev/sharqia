@@ -373,12 +373,13 @@ class HomeController extends Controller
             return ProductManager::getPriorityWiseFeaturedProductsQuery(query: $featuredProductsList, dataLimit: 15);
         });
 
+        // OPTIMIZED: Use SQL LIMIT instead of loading all and taking in PHP
         $mostSearchingProducts = Cache::remember(CACHE_FOR_MOST_SEARCHING_PRODUCTS_LIST, CACHE_FOR_3_HOURS, function () {
             return Product::active()->with(['category', 'clearanceSale' => function ($query) {
                 return $query->active();
             }])
                 ->withCount('reviews')
-                ->withSum('tags', 'visit_count')->orderBy('tags_sum_visit_count', 'desc')->get()->take(10);
+                ->withSum('tags', 'visit_count')->orderBy('tags_sum_visit_count', 'desc')->limit(10)->get();
         });
 
         $dealOfTheDay = $this->dealOfTheDay->with(['product' => function ($query) {
