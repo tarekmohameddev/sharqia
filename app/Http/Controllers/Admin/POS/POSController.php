@@ -74,7 +74,8 @@ class POSController extends BaseController
         );
         $cartId = 'walk-in-customer-' . rand(10, 1000);
         $this->cartService->getNewCartSession(cartId: $cartId);
-        $customers = $this->customerRepo->getListWhereNotIn(ids: [0]);
+        // OPTIMIZED: Skip loading all customers - legacy dropdown is hidden (d-none)
+        $customers = collect();
         $getCurrentCustomerData = $this->getCustomerDataFromSessionForPOS();
         $summaryData = array_merge($this->POSService->getSummaryData(), $getCurrentCustomerData);
         $cartItems = $this->getCartData(cartName: session(SessionKey::CURRENT_USER));

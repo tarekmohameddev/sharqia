@@ -16,7 +16,7 @@ class OrderStatsService
     private const CACHE_TTL = 60; // Cache for 60 seconds
 
     /**
-     * Get order component totals using SQL aggregations (much faster than PHP loops)
+     * Get order component totals using SQL aggregations with SUBQUERIES and CACHING
      *
      * @param array $filters Order filters
      * @param bool $includeProducts Include products in total
@@ -32,19 +32,26 @@ class OrderStatsService
         bool $includeDiscounts = true,
         bool $includeDelivery = true
     ): array {
-        // Build the base query with filters
-        $orderQuery = $this->buildFilteredOrderQuery($filters);
-
-        // Get order IDs that match the filters
-        $orderIds = $orderQuery->pluck('id');
-
-        if ($orderIds->isEmpty()) {
+        // Create cache key based on filters
+        $cacheKey = 'order_component_totals_' . md5(json_encode($filters));
+        
+        // Try to get from cache first
+        $cachedData = Cache::get($cacheKey);
+        if ($cachedData !== null) {
+            // Recalculate custom total based on checkbox selections
+            $products = $includeProducts ? (float) $cachedData['raw_products'] : 0;
+            $shipping = $includeShipping ? (float) $cachedData['raw_shipping'] : 0;
+            $discounts = $includeDiscounts ? (float) $cachedData['raw_discounts'] : 0;
+            $delivery = $includeDelivery ? (float) $cachedData['raw_delivery'] : 0;
+            $customTotal = $products + $shipping - $discounts + $delivery;
+            
             return [
-                'products' => 0,
-                'shipping' => 0,
-                'discounts' => 0,
-                'delivery' => 0,
-                'custom_total' => 0,
+                'products' => $products,
+                'shipping' => $shipping,
+                'discounts' => $discounts,
+                'delivery' => $delivery,
+                'custom_total' => $customTotal,
+                'product_sales_total' => (float) $cachedData['raw_products'],
                 'breakdown' => [
                     'include_products' => $includeProducts,
                     'include_shipping' => $includeShipping,
@@ -54,19 +61,49 @@ class OrderStatsService
             ];
         }
 
-        // Use SQL SUM for order-level fields (shipping, discounts, delivery)
-        $orderTotals = Order::whereIn('id', $orderIds)
+        // Build the base query with filters - use as SUBQUERY instead of fetching IDs
+        $orderSubquery = $this->buildFilteredOrderQuery($filters)->select('id');
+
+        // Use SQL SUM with subquery - no need to fetch IDs into PHP
+        $orderTotals = Order::whereIn('id', $orderSubquery)
             ->selectRaw('
+                COUNT(*) as order_count,
                 COALESCE(SUM(shipping_cost), 0) as total_shipping,
                 COALESCE(SUM(discount_amount), 0) + COALESCE(SUM(extra_discount), 0) as total_discounts,
                 COALESCE(SUM(deliveryman_charge), 0) as total_delivery
             ')
             ->first();
 
-        // Use SQL SUM for product totals from order_details
-        $productTotal = OrderDetail::whereIn('order_id', $orderIds)
+        if (($orderTotals->order_count ?? 0) == 0) {
+            return [
+                'products' => 0,
+                'shipping' => 0,
+                'discounts' => 0,
+                'delivery' => 0,
+                'custom_total' => 0,
+                'product_sales_total' => 0,
+                'breakdown' => [
+                    'include_products' => $includeProducts,
+                    'include_shipping' => $includeShipping,
+                    'include_discounts' => $includeDiscounts,
+                    'include_delivery' => $includeDelivery,
+                ],
+            ];
+        }
+
+        // Use subquery for product totals
+        $productTotal = OrderDetail::whereIn('order_id', $orderSubquery)
             ->selectRaw('COALESCE(SUM(qty * price), 0) as total_products')
             ->value('total_products') ?? 0;
+
+        // Store raw values in cache (before applying checkbox selections)
+        $rawData = [
+            'raw_products' => (float) $productTotal,
+            'raw_shipping' => (float) ($orderTotals->total_shipping ?? 0),
+            'raw_discounts' => (float) ($orderTotals->total_discounts ?? 0),
+            'raw_delivery' => (float) ($orderTotals->total_delivery ?? 0),
+        ];
+        Cache::put($cacheKey, $rawData, self::CACHE_TTL);
 
         $products = $includeProducts ? (float) $productTotal : 0;
         $shipping = $includeShipping ? (float) ($orderTotals->total_shipping ?? 0) : 0;
@@ -82,6 +119,7 @@ class OrderStatsService
             'discounts' => $discounts,
             'delivery' => $delivery,
             'custom_total' => $customTotal,
+            'product_sales_total' => (float) $productTotal,
             'breakdown' => [
                 'include_products' => $includeProducts,
                 'include_shipping' => $includeShipping,
@@ -92,18 +130,14 @@ class OrderStatsService
     }
 
     /**
-     * Get product sales total using SQL aggregation
+     * Get product sales total using SQL aggregation with SUBQUERY
      */
     public function getProductSalesTotal(array $filters): float
     {
-        $orderQuery = $this->buildFilteredOrderQuery($filters);
-        $orderIds = $orderQuery->pluck('id');
+        // Build the base query with filters - use as SUBQUERY
+        $orderSubquery = $this->buildFilteredOrderQuery($filters)->select('id');
 
-        if ($orderIds->isEmpty()) {
-            return 0;
-        }
-
-        return (float) OrderDetail::whereIn('order_id', $orderIds)
+        return (float) OrderDetail::whereIn('order_id', $orderSubquery)
             ->selectRaw('COALESCE(SUM(qty * price), 0) as total')
             ->value('total') ?? 0;
     }
@@ -214,4 +248,3 @@ class OrderStatsService
         });
     }
 }
-

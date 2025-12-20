@@ -654,4 +654,55 @@ class OrderRepository implements OrderRepositoryInterface
             })
             ->count();
     }
+
+    /**
+     * Get multiple stats counts in a single optimized query with CACHING
+     * This replaces 5 separate COUNT queries with 1 query using conditional aggregation
+     */
+    public function getOrderStatsOptimized(array $baseFilters, $startOfMonth, $endOfMonth, $startOfDay, $endOfDay): array
+    {
+        // Create cache key based on filters and date ranges
+        $cacheKey = 'order_stats_optimized_' . md5(json_encode([
+            $baseFilters,
+            $startOfMonth->toDateString(),
+            $endOfMonth->toDateString(),
+            $startOfDay->toDateString(),
+            $endOfDay->toDateString(),
+        ]));
+
+        // Try to get from cache first (cached for 30 seconds)
+        $cachedResult = \Cache::get($cacheKey);
+        if ($cachedResult !== null) {
+            return $cachedResult;
+        }
+
+        $query = $this->order
+            ->when(isset($baseFilters['seller_is']) && $baseFilters['seller_is'] != 'all', function ($query) use ($baseFilters) {
+                return $query->where('seller_is', $baseFilters['seller_is']);
+            })
+            ->when(isset($baseFilters['seller_id']) && $baseFilters['seller_id'] != 'all' && $baseFilters['seller_id'] !== null, function ($query) use ($baseFilters) {
+                return $query->where('seller_id', $baseFilters['seller_id']);
+            })
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as this_month,
+                SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as today,
+                SUM(CASE WHEN is_printed = 1 THEN 1 ELSE 0 END) as printed,
+                SUM(CASE WHEN is_printed = 0 THEN 1 ELSE 0 END) as unprinted
+            ", [$startOfMonth, $endOfMonth, $startOfDay, $endOfDay])
+            ->first();
+
+        $result = [
+            'total' => (int) ($query->total ?? 0),
+            'this_month' => (int) ($query->this_month ?? 0),
+            'today' => (int) ($query->today ?? 0),
+            'printed' => (int) ($query->printed ?? 0),
+            'unprinted' => (int) ($query->unprinted ?? 0),
+        ];
+
+        // Cache for 30 seconds
+        \Cache::put($cacheKey, $result, 30);
+
+        return $result;
+    }
 }

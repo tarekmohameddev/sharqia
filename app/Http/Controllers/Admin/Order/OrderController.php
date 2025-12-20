@@ -99,7 +99,11 @@ class OrderController extends BaseController
         $from = $request['from'];
         $to = $request['to'];
 
-        $this->orderRepo->updateWhere(params: ['checked' => 0], data: ['checked' => 1]);
+        // Only run UPDATE if there are unchecked orders (avoids slow query when nothing to update)
+        $uncheckedCount = $this->orderRepo->getCountWhere(filters: ['checked' => 0]);
+        if ($uncheckedCount > 0) {
+            $this->orderRepo->updateWhere(params: ['checked' => 0], data: ['checked' => 1]);
+        }
 
         $vendorId = $request['seller_id'] == '0' ? 1 : $request['seller_id'];
         if ($request['seller_id'] == null) {
@@ -126,6 +130,7 @@ class OrderController extends BaseController
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',
         ];
+
         $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: getWebConfig(name: WebConfigKey::PAGINATION_LIMIT));
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
 
@@ -165,7 +170,7 @@ class OrderController extends BaseController
         $includeDiscounts = $request->get('include_discounts', '1') === '1';
         $includeDelivery = $request->get('include_delivery', '1') === '1';
 
-        // Calculate order components using optimized SQL aggregations (not PHP loops)
+        // Calculate order components using optimized SQL aggregations with caching
         $orderComponents = $this->orderStatsService->getOrderComponentTotals(
             $filters,
             $includeProducts,
@@ -174,24 +179,26 @@ class OrderController extends BaseController
             $includeDelivery
         );
         
-        // Calculate fixed product sales total using SQL (always shows full products, not affected by checkboxes)
-        $productSalesTotal = $this->orderStatsService->getProductSalesTotal($filters);
+        // Product sales total is included in orderComponents to avoid duplicate query
+        $productSalesTotal = $orderComponents['product_sales_total'] ?? $orderComponents['products'];
 
+        // Use single optimized query with caching instead of 5 separate count queries
+        $orderStats = $this->orderRepo->getOrderStatsOptimized(
+            $countBaseFilters,
+            $startOfMonth,
+            $endOfMonth,
+            $startOfDay,
+            $endOfDay
+        );
         $stats = [
-            'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
-            'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
-                'created_at_from' => $startOfMonth,
-                'created_at_to' => $endOfMonth,
-            ]),
-            'today' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
-                'created_at_from' => $startOfDay,
-                'created_at_to' => $endOfDay,
-            ]),
-            'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
-            'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
+            'total' => $orderStats['total'],
+            'this_month' => $orderStats['this_month'],
+            'today' => $orderStats['today'],
+            'printed' => $orderStats['printed'],
+            'unprinted' => $orderStats['unprinted'],
             'custom_total' => $orderComponents['custom_total'],
-            'product_sales_total' => $productSalesTotal, // Fixed value, not affected by checkboxes
-            'components' => $orderComponents, // Pass all components for display
+            'product_sales_total' => $productSalesTotal,
+            'components' => $orderComponents,
         ];
 
         $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);
