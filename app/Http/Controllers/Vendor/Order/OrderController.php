@@ -105,7 +105,11 @@ class OrderController extends BaseController
         $to = $request['to'];
         $status = $request['status'];
         $deliveryManId = $request['delivery_man_id'];
-        $this->orderRepo->updateWhere(params: ['seller_id' => $vendorId, 'checked' => 0], data: ['checked' => 1]);
+        // Only run UPDATE if there are unchecked orders (avoids slow query when nothing to update)
+        $uncheckedCount = $this->orderRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'checked' => 0]);
+        if ($uncheckedCount > 0) {
+            $this->orderRepo->updateWhere(params: ['seller_id' => $vendorId, 'checked' => 0], data: ['checked' => 1]);
+        }
         $sellerPos = getWebConfig(name: 'seller_pos');
 
         $relation = ['customer', 'shipping', 'shippingAddress', 'deliveryMan', 'billingAddress'];
@@ -133,7 +137,7 @@ class OrderController extends BaseController
         $vendorId = $request['seller_id'];
         $customerId = $request['customer_id'];
 
-        // Stats section for vendor
+        // Stats section for vendor - use single optimized query with caching instead of 5 separate queries
         $countBaseFilters = [
             'seller_is' => 'seller',
             'seller_id' => $seller['id'],
@@ -143,19 +147,13 @@ class OrderController extends BaseController
         $startOfDay = Carbon::now()->startOfDay();
         $endOfDay = Carbon::now()->endOfDay();
 
-        $stats = [
-            'total' => $this->orderRepo->getCountWhere(filters: $countBaseFilters),
-            'this_month' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
-                'created_at_from' => $startOfMonth,
-                'created_at_to' => $endOfMonth,
-            ]),
-            'today' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + [
-                'created_at_from' => $startOfDay,
-                'created_at_to' => $endOfDay,
-            ]),
-            'printed' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 1]),
-            'unprinted' => $this->orderRepo->getCountWhere(filters: $countBaseFilters + ['is_printed' => 0]),
-        ];
+        $stats = $this->orderRepo->getOrderStatsOptimized(
+            $countBaseFilters,
+            $startOfMonth,
+            $endOfMonth,
+            $startOfDay,
+            $endOfDay
+        );
 
         // All governorates for filters; coverage-only list for modal
         $governorates = Governorate::orderBy('name_ar')->get(['id','name_ar']);

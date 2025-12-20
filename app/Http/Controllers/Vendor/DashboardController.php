@@ -27,9 +27,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends BaseController
 {
+    private const CACHE_TTL = 60; // Cache dashboard stats for 60 seconds
+
     public function __construct(
         private readonly OrderTransactionRepository                  $orderTransactionRepo,
         private readonly ProductRepositoryInterface                  $productRepo,
@@ -97,13 +100,22 @@ class DashboardController extends BaseController
         $vendorWallet = $this->vendorWalletRepo->getFirstWhere(params: ['seller_id' => $vendorId]);
         $label = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         $dateType = 'yearEarn';
-        // OPTIMIZED: Use SQL COUNT instead of loading all records into PHP
+        // OPTIMIZED: Use SQL COUNT with caching instead of loading all records into PHP
+        $entityCounts = Cache::remember('vendor_dashboard_entity_counts_' . $vendorId, self::CACHE_TTL, function () use ($vendorId) {
+            return [
+                'customers' => $this->customerRepo->getCountWhere(),
+                'products' => $this->productRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'added_by' => 'seller']),
+                'orders' => $this->orderRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'seller_is' => 'seller']),
+                'brands' => $this->brandRepo->getCountWhere(),
+            ];
+        });
+
         $dashboardData = [
             'orderStatus' => $this->getOrderStatusArray(type: 'overall'),
-            'customers' => $this->customerRepo->getCountWhere(),
-            'products' => $this->productRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'added_by' => 'seller']),
-            'orders' => $this->orderRepo->getCountWhere(filters: ['seller_id' => $vendorId, 'seller_is' => 'seller']),
-            'brands' => $this->brandRepo->getCountWhere(),
+            'customers' => $entityCounts['customers'],
+            'products' => $entityCounts['products'],
+            'orders' => $entityCounts['orders'],
+            'brands' => $entityCounts['brands'],
             'topSell' => $topSell,
             'topRatedProducts' => $topRatedProducts,
             'topRatedDeliveryMan' => $topRatedDeliveryMan,
