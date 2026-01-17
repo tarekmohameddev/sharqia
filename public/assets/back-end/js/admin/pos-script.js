@@ -31,24 +31,53 @@ function computeCategoryDeals(items, categoryRulesMap) {
     Object.keys(byCategory).forEach(catId => {
         const rules = (categoryRulesMap && categoryRulesMap[catId]) ? categoryRulesMap[catId].slice().sort((a,b)=>b.quantity-a.quantity) : [];
         if (!rules.length) return;
-        let remaining = byCategory[catId].count;
+        const totalCount = byCategory[catId].count;
+        let remaining = totalCount;
         for (const rule of rules) {
             if (remaining < rule.quantity) continue;
             const times = Math.floor(remaining / rule.quantity);
             if (times <= 0) continue;
             // Only flat amount supported
             totalDiscount += (parseFloat(rule.discountAmount || 0) * times);
-            if (rule.giftProduct && rule.giftProduct.id) {
-                gifts.push({ categoryId: parseInt(catId), ruleId: rule.id, gift: rule.giftProduct, quantity: times });
-            }
             remaining = remaining % rule.quantity;
         }
+
+        /**
+         * Gifts should not be "overridden" by another rule that has no gift.
+         * We compute gifts per gift-rule independently from the greedy discount application.
+         *
+         * Example:
+         * - Rule A: buy 2 => gift
+         * - Rule B: buy 5 => no gift
+         * For 5 items, the greedy discount may pick Rule B, but we must still keep
+         * gifts earned from Rule A (floor(5/2)=2).
+         */
+        rules.forEach(rule => {
+            if (!rule || !rule.giftProduct || !rule.giftProduct.id) return;
+            const giftQty = parseInt(rule.quantity || 0);
+            if (!giftQty || giftQty <= 0) return;
+            const giftTimes = Math.floor(totalCount / giftQty);
+            if (giftTimes > 0) {
+                gifts.push({
+                    categoryId: parseInt(catId),
+                    ruleId: rule.id,
+                    gift: rule.giftProduct,
+                    quantity: giftTimes
+                });
+            }
+        });
     });
 
     return { discountAmount: totalDiscount, giftsToEnsure: gifts };
 }
 
 function ensureCategoryGifts(giftsToEnsure) {
+    const isCategoryGiftItem = (item) =>
+        item &&
+        item.isGift &&
+        typeof item.offerKey === 'string' &&
+        item.offerKey.startsWith('cat_');
+
     const desired = {};
     (giftsToEnsure || []).forEach(g => {
         const key = `cat_${g.categoryId}_rule_${g.ruleId}_gift_${g.gift.id}`;
@@ -58,7 +87,7 @@ function ensureCategoryGifts(giftsToEnsure) {
     // Current gifts in cart
     const currentCounts = {};
     clientCart.items.forEach(item => {
-        if (item && item.isGift && item.offerKey) {
+        if (isCategoryGiftItem(item)) {
             currentCounts[item.offerKey] = (currentCounts[item.offerKey] || 0) + (item.quantity || 0);
         }
     });
@@ -101,7 +130,9 @@ function ensureCategoryGifts(giftsToEnsure) {
     const remainingDesired = { ...desired };
     const filtered = [];
     clientCart.items.forEach(item => {
-        if (!item || !item.isGift || !item.offerKey) {
+        // Only manage gifts created by category rules (offerKey prefixed with "cat_").
+        // Never remove other gift lines (e.g. product-offer gifts) here.
+        if (!isCategoryGiftItem(item)) {
             filtered.push(item);
             return;
         }
