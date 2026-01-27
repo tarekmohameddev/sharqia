@@ -1273,6 +1273,15 @@
                                 </span>
                             </a>
                         </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/orders/easy-orders/excel-import') ? 'active' : '' }}"
+                               href="{{ route('admin.orders.easy-orders.excel-import') }}"
+                               title="{{ translate('Excel_Import') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('Excel_Import') }}
+                                </span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 

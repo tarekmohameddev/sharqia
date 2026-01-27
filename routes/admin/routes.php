@@ -88,6 +88,7 @@ use App\Http\Controllers\Admin\Deliveryman\EmergencyContactController;
 use App\Http\Controllers\Admin\HelpAndSupport\SupportTicketController;
 use App\Http\Controllers\Admin\Payment\OfflinePaymentMethodController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrderController as AdminEasyOrderController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrdersExcelImportController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
@@ -264,6 +265,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('refund-order/{refundId}', 'refundOrder')->name('refund-order')->middleware('module:refund_actions');
             Route::post('quick-update-customer-info', 'updateCustomerInfoQuick')->name('quick-update-customer-info');
             Route::post('quick-update-city', 'updateCityQuick')->name('quick-update-city');
+        });
+
+        // Excel Import routes must come before {id} route to avoid conflicts
+        Route::controller(EasyOrdersExcelImportController::class)->group(function () {
+            Route::get('easy-orders/excel-import', 'index')->name('easy-orders.excel-import');
+            Route::post('easy-orders/excel-import', 'import')->name('easy-orders.excel-import.process');
         });
 
         Route::controller(AdminEasyOrderController::class)->group(function () {
