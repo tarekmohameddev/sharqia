@@ -948,6 +948,28 @@ class OrderController extends BaseController
             return back();
         }
 
+        // Batch load: one query for orders with relations (avoids 500+ per-order queries)
+        $ordersCollection = \App\Models\Order::with(['seller', 'shipping', 'details', 'customer'])
+            ->whereIn('id', $ids)
+            ->orderByRaw(\Illuminate\Support\Facades\DB::raw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')'))
+            ->get();
+        $ordersById = $ordersCollection->keyBy('id');
+
+        // Batch load vendors (sellers) used by these orders
+        $sellerIds = $ordersCollection->pluck('details')->flatten()->pluck('seller_id')->unique()->filter()->values()->toArray();
+        $vendorsById = $sellerIds ? \App\Models\Seller::whereIn('id', $sellerIds)->get()->keyBy('id') : collect();
+
+        // Batch load governorates for city names
+        $cityIds = $ordersCollection->pluck('city_id')->unique()->filter()->values()->toArray();
+        $governoratesById = $cityIds ? Governorate::whereIn('id', $cityIds)->get()->keyBy('id') : collect();
+
+        // Config once (avoids 5 × 500 getWebConfig calls)
+        $companyPhone = getWebConfig(name: 'company_phone');
+        $companyEmail = getWebConfig(name: 'company_email');
+        $companyName = getWebConfig(name: 'company_name');
+        $companyWebLogo = getWebConfig(name: 'company_web_logo');
+        $invoiceSettings = getWebConfig(name: 'invoice_settings');
+
         $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
@@ -956,20 +978,13 @@ class OrderController extends BaseController
 
         $isFirst = true;
         foreach ($ids as $oid) {
-            $order = $this->orderRepo->getFirstWhere(params: ['id' => $oid], relations: ['seller', 'shipping', 'details', 'customer']);
+            $order = $ordersById->get($oid);
             if (!$order) continue;
-            $vendor = $this->vendorRepo->getFirstWhere(params: ['id' => $order['details']->first()->seller_id]);
-            $companyPhone = getWebConfig(name: 'company_phone');
-            $companyEmail = getWebConfig(name: 'company_email');
-            $companyName = getWebConfig(name: 'company_name');
-            $companyWebLogo = getWebConfig(name: 'company_web_logo');
-            $invoiceSettings = getWebConfig(name: 'invoice_settings');
-            // Use order's shipping_address_data directly (this is what gets updated from quick edit)
-            $shippingAddress = $order['shipping_address_data'] ?? null;
-            $governorateName = null;
-            if (!empty($order['city_id'])) {
-                $governorateName = Governorate::find($order['city_id'])?->name_ar;
-            }
+            $firstDetail = $order->details->first();
+            $vendor = $firstDetail ? $vendorsById->get($firstDetail->seller_id) : null;
+            if (!$vendor) continue;
+            $shippingAddress = $order->shipping_address_data ?? null;
+            $governorateName = $order->city_id ? ($governoratesById->get($order->city_id)?->name_ar) : null;
 
             $view = PdfView::make('admin-views.order.invoice', compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName'));
             $html = $view->render();
@@ -981,11 +996,9 @@ class OrderController extends BaseController
         }
 
         $fileName = 'orders_invoices_' . date('Ymd_His') . '.pdf';
-        
-        // mark printed and set status to out_for_delivery for included orders BEFORE output
-        foreach ($ids as $oid) {
-            $this->orderRepo->update(id: $oid, data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
-        }
+
+        // Bulk update: one query instead of 500
+        \App\Models\Order::whereIn('id', $ids)->update(['is_printed' => 1, 'order_status' => 'out_for_delivery']);
         
         // Calculate remaining orders for flash message
         $printedCount = count($ids);
