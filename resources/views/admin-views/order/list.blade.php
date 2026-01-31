@@ -234,6 +234,18 @@
                             </div>
                             <div class="col-sm-6 col-lg-4 col-xl-3">
                                 <div class="form-group">
+                                    <label class="form-label" for="per_page">{{ translate('orders_per_page') }}</label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" name="per_page" id="per_page">
+                                            @foreach([10, 25, 50, 100] as $num)
+                                                <option value="{{ $num }}" {{ (int) request('per_page', $orders->perPage()) === $num ? 'selected' : '' }}>{{ $num }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3">
+                                <div class="form-group">
                                     <label class="form-label" for="is_printed">{{ translate('printed_status') }}</label>
                                     <div class="select-wrapper">
                                         <select class="form-select" name="is_printed" id="is_printed">
@@ -298,6 +310,8 @@
 
                         <div class="d-flex gap-3 align-items-center flex-wrap">
                             <form action="{{ url()->current() }}" method="GET">
+                                <input type="hidden" name="status" value="{{ request('status', 'all') }}">
+                                <input type="hidden" name="per_page" value="{{ request('per_page', $orders->perPage()) }}">
                                 <div class="form-group">
                                     <div class="input-group">
                                         <input id="datatableSearch_" type="search" name="searchValue"
@@ -582,7 +596,20 @@
                         </table>
                     </div>
                     <div class="table-responsive">
-                        <div class="d-flex justify-content-lg-end">
+                        <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-3">
+                            <form action="{{ url()->current() }}" method="GET" class="d-flex align-items-center gap-2 order-list-per-page-form">
+                                @foreach(request()->except(['page', 'per_page']) as $key => $value)
+                                    @if(is_scalar($value))
+                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                    @endif
+                                @endforeach
+                                <label class="form-label mb-0 text-nowrap">{{ translate('orders_per_page') }}:</label>
+                                <select name="per_page" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                    @foreach([10, 25, 50, 100] as $num)
+                                        <option value="{{ $num }}" {{ (int) request('per_page', $orders->perPage()) === $num ? 'selected' : '' }}>{{ $num }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
                             {!! $orders->links() !!}
                         </div>
                     </div>

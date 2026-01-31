@@ -112,6 +112,13 @@ class OrderController extends BaseController
         }
         $sellerPos = getWebConfig(name: 'seller_pos');
 
+        $allowedPerPage = [10, 25, 50, 100];
+        $defaultLimit = (int) getWebConfig(name: WebConfigKey::PAGINATION_LIMIT) ?: 10;
+        $perPage = (int) ($request->get('per_page') ?? $defaultLimit);
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = in_array($defaultLimit, $allowedPerPage, true) ? $defaultLimit : 10;
+        }
+
         $relation = ['customer', 'shipping', 'shippingAddress', 'deliveryMan', 'billingAddress'];
         $filters = [
             'order_status' => $status,
@@ -125,8 +132,9 @@ class OrderController extends BaseController
             'seller_id' => $vendorId,
             'seller_is' => 'seller',
             'is_printed' => $request['is_printed'] ?? 'all',
+            'per_page' => $perPage,
         ];
-        $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $searchValue, filters: $filters, relations: $relation, dataLimit: getWebConfig(name: WebConfigKey::PAGINATION_LIMIT));
+        $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $searchValue, filters: $filters, relations: $relation, dataLimit: $perPage);
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
 
         $customer = "all";

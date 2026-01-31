@@ -116,6 +116,13 @@ class OrderController extends BaseController
             $vendorIs = 'seller';
         }
         $dateType = $request['date_type'];
+        $allowedPerPage = [10, 25, 50, 100];
+        $defaultLimit = (int) getWebConfig(name: WebConfigKey::PAGINATION_LIMIT) ?: 10;
+        $perPage = (int) ($request->get('per_page') ?? $defaultLimit);
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = in_array($defaultLimit, $allowedPerPage, true) ? $defaultLimit : 10;
+        }
+
         $filters = [
             'order_status' => $status,
             'filter' => $request['filter'] ?? 'all',
@@ -129,9 +136,10 @@ class OrderController extends BaseController
             'seller_id' => $vendorId,
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',
+            'per_page' => $perPage,
         ];
 
-        $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: getWebConfig(name: WebConfigKey::PAGINATION_LIMIT));
+        $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: $perPage);
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
 
         $customer = "all";
