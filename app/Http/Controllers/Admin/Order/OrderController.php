@@ -908,6 +908,8 @@ class OrderController extends BaseController
         $ids = (array)$request->get('ids', []);
         $applyTo = $request->get('apply_to');
         $status = $request->get('status', 'all');
+        $printLimit = 500; // Maximum orders to print at once
+        $totalUnprinted = 0;
 
         if ($applyTo === 'all') {
             $vendorId = $request['seller_id'] == '0' ? 1 : $request['seller_id'];
@@ -935,7 +937,10 @@ class OrderController extends BaseController
                 'is_printed' => $request['is_printed'] ?? 'all',
             ];
             $ordersAll = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: [], dataLimit: 'all');
-            $ids = $ordersAll->pluck('id')->toArray();
+            $allIds = $ordersAll->pluck('id')->toArray();
+            $totalUnprinted = count($allIds);
+            // Limit to first 500 orders
+            $ids = array_slice($allIds, 0, $printLimit);
         }
 
         if (empty($ids)) {
@@ -976,11 +981,20 @@ class OrderController extends BaseController
         }
 
         $fileName = 'orders_invoices_' . date('Ymd_His') . '.pdf';
-        $mpdf->Output($fileName, 'D');
-        // mark printed and set status to out_for_delivery for included orders
+        
+        // mark printed and set status to out_for_delivery for included orders BEFORE output
         foreach ($ids as $oid) {
             $this->orderRepo->update(id: $oid, data: ['is_printed' => 1, 'order_status' => 'out_for_delivery']);
         }
+        
+        // Calculate remaining orders for flash message
+        $printedCount = count($ids);
+        $remainingCount = $totalUnprinted - $printedCount;
+        if ($remainingCount > 0) {
+            session()->flash('print_remaining', $remainingCount);
+        }
+        
+        $mpdf->Output($fileName, 'D');
         return null;
     }
 

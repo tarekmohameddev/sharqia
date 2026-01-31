@@ -206,8 +206,13 @@
                             <button id="apply-bulk-action" type="button" class="btn btn--primary">
                                 {{ translate('apply') }}
                             </button>
-                            <button id="print-unprinted" type="button" class="btn btn-outline--primary">
+                            <button id="print-unprinted" type="button" class="btn btn-outline--primary"
+                                data-bs-toggle="tooltip" data-bs-placement="top" 
+                                data-bs-title="{{ translate('prints_max_500_orders_at_a_time') }}">
                                 {{ translate('print_unprinted') }}
+                                @isset($stats['unprinted'])
+                                    <span class="badge bg-secondary ms-1">{{ $stats['unprinted'] > 500 ? '500/' . $stats['unprinted'] : $stats['unprinted'] }}</span>
+                                @endisset
                             </button>
                             <button id="print-unprinted-by-city" type="button" class="btn btn-outline--primary">
                                 {{ translate('print_unprinted_by_city_distribution') }}
