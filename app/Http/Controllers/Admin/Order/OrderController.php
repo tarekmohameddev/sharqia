@@ -1091,8 +1091,13 @@ class OrderController extends BaseController
                 continue;
             }
 
-            // Update order and its details seller_id
-            $this->orderRepo->update(id: $id, data: ['seller_id' => $targetSellerId, 'seller_is' => $newSellerIs]);
+            // Update order: new seller, reset to unprinted and confirmed so the new seller can print it again
+            $this->orderRepo->update(id: $id, data: [
+                'seller_id' => $targetSellerId,
+                'seller_is' => $newSellerIs,
+                'is_printed' => 0,
+                'order_status' => 'confirmed',
+            ]);
             // Update all order details rows to new seller to keep consistency
             foreach ($order->details as $detail) {
                 $this->orderDetailRepo->update(id: $detail['id'], data: ['seller_id' => $targetSellerId]);
