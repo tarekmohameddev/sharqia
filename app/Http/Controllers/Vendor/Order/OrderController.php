@@ -473,7 +473,7 @@ class OrderController extends BaseController
             ->whereIn('id', $ids)
             ->where('seller_id', $sellerId)
             ->where('seller_is', 'seller')
-            ->orderByRaw(\Illuminate\Support\Facades\DB::raw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')'))
+            ->orderByRaw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')')
             ->get();
         $ordersById = $ordersCollection->keyBy('id');
 

@@ -957,14 +957,14 @@ class OrderController extends BaseController
         }
 
         // Batch load: one query for orders with relations (avoids 500+ per-order queries)
-        $ordersCollection = \App\Models\Order::with(['seller', 'shipping', 'details', 'customer'])
+        $ordersCollection = \App\Models\Order::with(['seller.shop', 'shipping', 'details', 'customer'])
             ->whereIn('id', $ids)
-            ->orderByRaw(\Illuminate\Support\Facades\DB::raw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')'))
+            ->orderByRaw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')')
             ->get();
         $ordersById = $ordersCollection->keyBy('id');
 
-        // Batch load vendors (sellers) used by these orders
-        $sellerIds = $ordersCollection->pluck('details')->flatten()->pluck('seller_id')->unique()->filter()->values()->toArray();
+        // Batch load vendors (sellers) used by these orders (keep 0 for inhouse)
+        $sellerIds = $ordersCollection->pluck('details')->flatten()->pluck('seller_id')->unique()->filter(fn ($id) => $id !== null)->values()->toArray();
         $vendorsById = $sellerIds ? \App\Models\Seller::whereIn('id', $sellerIds)->get()->keyBy('id') : collect();
 
         // Batch load governorates for city names
@@ -989,8 +989,8 @@ class OrderController extends BaseController
             $order = $ordersById->get($oid);
             if (!$order) continue;
             $firstDetail = $order->details->first();
-            $vendor = $firstDetail ? $vendorsById->get($firstDetail->seller_id) : null;
-            if (!$vendor) continue;
+            // Admin invoice uses $order['seller'] for shop name; $vendor is optional (fallback to order's seller or null for inhouse)
+            $vendor = $firstDetail ? ($vendorsById->get($firstDetail->seller_id) ?? $order->seller) : $order->seller;
             $shippingAddress = $order->shipping_address_data ?? null;
             $governorateName = $order->city_id ? ($governoratesById->get($order->city_id)?->name_ar) : null;
 
