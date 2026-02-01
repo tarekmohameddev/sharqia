@@ -487,7 +487,7 @@ class OrderController extends BaseController
         $companyEmail = getWebConfig(name: 'company_email');
         $companyName = getWebConfig(name: 'company_name');
         $companyWebLogo = getWebConfig(name: 'company_web_logo');
-        $invoiceSettings = getWebConfig(name: 'invoice_settings');
+        $invoiceSettings = getWebConfig(name: 'invoice_settings') ?? [];
 
         $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;

@@ -16,14 +16,24 @@ if (!function_exists('getStorageImages')) {
     function getStorageImages($path, $type = null, $source = null): string
     {
         $path = is_array($path) ? $path : (array)$path;
+        // If $path is a raw path (no 'status' key), resolve it via storageLink for known types
+        if (!isset($path['status']) && !empty($path)) {
+            $pathValue = is_array($path) ? ($path[0] ?? $path['path'] ?? $path['image_name'] ?? null) : $path;
+            if (is_string($pathValue) && $type) {
+                $folder = ($type === 'shop' || $type === 'shop-banner') ? 'shop' : 'company';
+                $data = str_contains($pathValue, '/') ? basename($pathValue) : $pathValue;
+                $path = storageLink($folder, $data, 'public');
+            }
+        }
+        $hasValidPath = !empty($path) && isset($path['status']) && $path['status'] == 200;
         if ($source && base_path($source)) {
             if ($type == 'payment-banner' && DOMAIN_POINTED_DIRECTORY == 'public') {
                 return asset(str_replace('app/public/', '', $source));
             }
-            return (!empty($path) && $path['status'] == 200) ? $path['path'] : dynamicAsset($source);
+            return $hasValidPath ? $path['path'] : dynamicAsset($source);
         }
         if ($source && file_exists($source)) {
-            return (!empty($path) && $path['status'] == 200) ? $path['path'] : $source;
+            return $hasValidPath ? $path['path'] : $source;
         }
         $placeholderMap = [
             'backend-basic' => 'back-end/img/placeholder/placeholder-1-1.png',
@@ -94,13 +104,13 @@ if (!function_exists('getStorageImages')) {
                 if ($theme == 'default') {
                     $placeholderPath = theme_asset(path: $placeholderMap[$type][$theme]);
                 }
-                return (!empty($path) && $path['status'] == 200) ? $path['path'] : $placeholderPath;
+                return $hasValidPath ? $path['path'] : $placeholderPath;
             } else {
-                return (!empty($path) && isset($path['status']) && $path['status'] == 200) ? $path['path'] : dynamicAsset(path: 'public/assets/' . $placeholderMap[$type]);
+                return $hasValidPath ? $path['path'] : dynamicAsset(path: 'public/assets/' . $placeholderMap[$type]);
             }
         }
 
-        return (!empty($path) && $path['status'] == 200) ? $path['path'] : dynamicStorage(path: 'public/assets/front-end/img/placeholder/placeholder-2-1.png');
+        return $hasValidPath ? $path['path'] : dynamicStorage(path: 'public/assets/front-end/img/placeholder/placeholder-2-1.png');
     }
 }
 
