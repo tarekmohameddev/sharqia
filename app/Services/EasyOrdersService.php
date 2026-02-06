@@ -33,6 +33,43 @@ class EasyOrdersService
     }
 
     /**
+     * Build a combined SKU string from ALL cart items in the webhook payload.
+     *
+     * Handles both:
+     * - Multiple cart_items (each with its own product.sku)
+     * - Compound SKUs within a single cart item (e.g. "313DMT(5)+XTJGAI(5)")
+     *
+     * Cart item quantity is multiplied into the SKU quantities.
+     * Example: cart_item with quantity=2 and sku="112244(1)" → "112244(2)"
+     *
+     * @param array $payload The full webhook payload
+     * @return string Combined SKU string like "112244(1)+5456567768(1)"
+     */
+    public function buildSkuStringFromPayload(array $payload): string
+    {
+        $skuParts = [];
+
+        foreach ($payload['cart_items'] ?? [] as $cartItem) {
+            $sku = $cartItem['product']['sku'] ?? null;
+            $cartQty = max(1, (int)($cartItem['quantity'] ?? 1));
+
+            if (!$sku) {
+                continue;
+            }
+
+            // Parse the SKU (may be compound like "A(5)+B(3)")
+            $parsed = $this->parseSkuString($sku);
+
+            foreach ($parsed as $item) {
+                $effectiveQty = $item['quantity'] * $cartQty;
+                $skuParts[] = "{$item['code']}({$effectiveQty})";
+            }
+        }
+
+        return implode('+', $skuParts);
+    }
+
+    /**
      * Parse SKU string like "313DMT(5)+XTJGAI(5)" into [ ['code'=>'313DMT','quantity'=>5], ... ].
      */
     public function parseSkuString(?string $sku): array
@@ -246,8 +283,14 @@ class EasyOrdersService
         }
 
         return DB::transaction(function () use ($easyOrder) {
-            // 1) Resolve products from SKU
-            $skuItems = $this->parseSkuString($easyOrder->sku_string ?? Arr::get($easyOrder->raw_payload, 'cart_items.0.product.sku'));
+            // 1) Resolve products from ALL cart items in the payload, fallback to stored sku_string
+            $skuString = $this->buildSkuStringFromPayload($easyOrder->raw_payload ?? []);
+
+            if (empty($skuString)) {
+                $skuString = $easyOrder->sku_string;
+            }
+
+            $skuItems = $this->parseSkuString($skuString);
             $products = $this->findProductsBySku($skuItems);
             if (empty($products)) {
                 throw new \RuntimeException('No matching products were found for the provided SKU.');

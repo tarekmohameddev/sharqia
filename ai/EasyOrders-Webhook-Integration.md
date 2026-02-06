@@ -50,7 +50,11 @@ This feature integrates EasyOrders (external e‑commerce builder) with our syst
     2. Extract:
        - Basic customer fields (`full_name`, `phone`, `government`, `address`)
        - Money fields (`cost`, `shipping_cost`, `total_cost`)
-       - `sku_string` from `cart_items[0].product.sku`
+       - `sku_string` built from **ALL** `cart_items` via `EasyOrdersService::buildSkuStringFromPayload()`:
+         - Iterates every cart item and parses each `product.sku` (supports compound SKUs like `A(5)+B(3)`)
+         - Multiplies parsed quantities by the cart item's `quantity` field
+         - Concatenates all results with `+` into one combined SKU string
+         - Example: 2 cart items with SKUs `112244(1)` and `5456567768(1)` → `sku_string = "112244(1)+5456567768(1)"`
     3. `EasyOrder::updateOrCreate` by `easyorders_id`.
     4. Check `easyorders_auto_import` setting:
        - Uses `getWebConfig('easyorders_auto_import')` to retrieve the setting.
@@ -67,6 +71,14 @@ This feature integrates EasyOrders (external e‑commerce builder) with our syst
 ## Import Logic (EasyOrders → Orders)
 
 Service: `App\Services\EasyOrdersService`
+
+- **Multi-product SKU extraction from payload**
+  - `buildSkuStringFromPayload($payload)`:
+    - Iterates ALL `cart_items` in the webhook payload
+    - For each cart item, parses `product.sku` using `parseSkuString()` (handles compound SKUs)
+    - Multiplies each parsed quantity by the cart item's `quantity` field
+    - Returns a single combined SKU string (e.g. `"112244(1)+5456567768(1)"`)
+    - Used by both the webhook controller (to store `sku_string`) and `importOrder()` (as primary product source)
 
 - **SKU parsing**
   - `parseSkuString("313DMT(5)+XTJGAI(5)")` →  
@@ -175,7 +187,7 @@ Service: `App\Services\EasyOrdersService`
 
 ## Notes & Future Ideas
 
-- We currently only use `cart_items[0].product.sku` as SKU source; if EasyOrders starts sending multiple products per order, consider concatenating all product SKUs into `sku_string` or parsing from all `cart_items`.
+- Multiple cart items are fully supported: `buildSkuStringFromPayload()` iterates all `cart_items`, handles compound SKUs within each item, and correctly multiplies by cart item quantity. The `importOrder()` method uses the raw payload as primary source and falls back to the stored `sku_string`.
 - Category discount logic on EasyOrders orders mirrors POS; if POS rules change, keep this service aligned with POS controllers.
 - **Webhook Security**: Signature validation has been removed for easier integration. If security is needed in the future, consider implementing:
   - HMAC-based signature using the request body

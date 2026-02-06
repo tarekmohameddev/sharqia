@@ -26,8 +26,8 @@ class EasyOrdersWebhookController extends Controller
             return response()->json(['message' => 'Missing EasyOrders id'], 400);
         }
 
-        $cartItem = $payload['cart_items'][0] ?? null;
-        $product = $cartItem['product'] ?? null;
+        // Build combined SKU string from ALL cart items (supports multiple products & compound SKUs)
+        $skuString = $this->easyOrdersService->buildSkuStringFromPayload($payload);
 
         $easyOrder = EasyOrder::updateOrCreate(
             ['easyorders_id' => $easyordersId],
@@ -37,7 +37,7 @@ class EasyOrdersWebhookController extends Controller
                 'phone' => $payload['phone'] ?? null,
                 'government' => $payload['government'] ?? null,
                 'address' => $payload['address'] ?? null,
-                'sku_string' => $product['sku'] ?? null,
+                'sku_string' => $skuString ?: null,
                 'cost' => $payload['cost'] ?? 0,
                 'shipping_cost' => $payload['shipping_cost'] ?? 0,
                 'total_cost' => $payload['total_cost'] ?? 0,
