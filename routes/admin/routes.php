@@ -90,6 +90,7 @@ use App\Http\Controllers\Admin\Payment\OfflinePaymentMethodController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrderController as AdminEasyOrderController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersExcelImportController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrdersSkuValidationController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
 use App\Http\Controllers\Admin\Settings\EnvironmentSettingsController;
@@ -1044,6 +1045,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                     Route::post('governorate-mappings', 'store')->name('governorate-mappings.store');
                     Route::post('governorate-mappings/{id}', 'update')->name('governorate-mappings.update');
                     Route::delete('governorate-mappings/{id}', 'destroy')->name('governorate-mappings.destroy');
+                });
+                Route::controller(EasyOrdersSkuValidationController::class)->group(function () {
+                    Route::get('sku-validation', 'index')->name('sku-validation.index');
+                    Route::post('sku-validation/run', 'runValidation')->name('sku-validation.run');
+                    Route::get('sku-validation/download-report', 'downloadReport')->name('sku-validation.download-report');
+                    Route::post('sku-validation/save-api-key', 'saveApiKey')->name('sku-validation.save-api-key');
                 });
             });
 

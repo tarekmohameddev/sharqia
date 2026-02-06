@@ -1239,8 +1239,8 @@
                     </small>
                 </li>
 
-                <li class="{{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*')) ? 'sub-menu-opened' : '' }}">
-                    <a class="nav-link nav-link-toggle {{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*')) ? 'active' : '' }}"
+                <li class="{{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*') || Request::is('admin/business-settings/easyorders/sku-validation*')) ? 'sub-menu-opened' : '' }}">
+                    <a class="nav-link nav-link-toggle {{ (Request::is('admin/orders/easy-orders') || Request::is('admin/orders/easy-orders/*') || Request::is('admin/business-settings/easyorders/governorate-mappings*') || Request::is('admin/business-settings/easyorders/sku-validation*')) ? 'active' : '' }}"
                        href="javascript:" title="{{ translate('EasyOrders_Integration') }}">
                         <i class="fi fi-sr-link"></i>
                         <span
@@ -1279,6 +1279,15 @@
                                title="{{ translate('Excel_Import') }}">
                                 <span class="aside-mini-hidden-element text-truncate flex-grow-1">
                                     {{ translate('Excel_Import') }}
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/business-settings/easyorders/sku-validation*') ? 'active' : '' }}"
+                               href="{{ route('admin.business-settings.easyorders.sku-validation.index') }}"
+                               title="{{ translate('EasyOrders_SKU_Validation') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('EasyOrders_SKU_Validation') }}
                                 </span>
                             </a>
                         </li>

@@ -71,6 +71,7 @@ class EasyOrdersService
 
     /**
      * Parse SKU string like "313DMT(5)+XTJGAI(5)" into [ ['code'=>'313DMT','quantity'=>5], ... ].
+     * Only "CODE(quantity)" format is accepted; bare codes like "112233" are rejected.
      */
     public function parseSkuString(?string $sku): array
     {
