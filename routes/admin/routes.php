@@ -91,6 +91,7 @@ use App\Http\Controllers\Admin\EasyOrders\EasyOrderController as AdminEasyOrderC
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersExcelImportController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersSkuValidationController;
+use App\Http\Controllers\Admin\EasyOrders\EasyOrdersOrderValidationController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
 use App\Http\Controllers\Admin\Settings\EnvironmentSettingsController;
@@ -1051,6 +1052,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                     Route::post('sku-validation/run', 'runValidation')->name('sku-validation.run');
                     Route::get('sku-validation/download-report', 'downloadReport')->name('sku-validation.download-report');
                     Route::post('sku-validation/save-api-key', 'saveApiKey')->name('sku-validation.save-api-key');
+                });
+                Route::controller(EasyOrdersOrderValidationController::class)->group(function () {
+                    Route::get('order-validation', 'index')->name('order-validation.index');
+                    Route::post('order-validation/run-batch', 'runBatch')->name('order-validation.run-batch');
+                    Route::get('order-validation/download-report', 'downloadReport')->name('order-validation.download-report');
+                    Route::post('order-validation/clear-results', 'clearResults')->name('order-validation.clear-results');
                 });
             });
 

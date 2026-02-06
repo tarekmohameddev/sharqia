@@ -126,4 +126,50 @@ class EasyOrdersApiService
 
         return $allProducts;
     }
+
+    /**
+     * Fetch a single order from EasyOrders by its UUID.
+     *
+     * @param string $orderId EasyOrders order UUID
+     * @return array|null Order data or null if not found
+     * @throws \RuntimeException if API key is missing or request fails (non-404)
+     */
+    public function getOrderById(string $orderId): ?array
+    {
+        $apiKey = $this->getApiKey();
+        if (!$apiKey) {
+            throw new \RuntimeException('EasyOrders API key is not configured. Please set it in Business Settings.');
+        }
+
+        $this->rateLimit();
+
+        $response = Http::withHeaders([
+            'Api-Key' => $apiKey,
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ])->get(self::BASE_URL . '/orders/' . $orderId);
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if (!$response->successful()) {
+            Log::error('EasyOrders API order request failed', [
+                'order_id' => $orderId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \RuntimeException(
+                'EasyOrders API request failed: ' . $response->status() . ' - ' . $response->body()
+            );
+        }
+
+        $data = $response->json();
+
+        if (is_array($data) && isset($data['id'])) {
+            return $data;
+        }
+
+        return null;
+    }
 }
