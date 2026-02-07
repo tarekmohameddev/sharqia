@@ -947,6 +947,27 @@ function attachClientCartEventHandlers() {
     });
 }
 
+function normalizeEgyptianPhoneNumber(value) {
+    if (!value) return '';
+    const arabicMap = {
+        '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+        '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+    };
+    const easternMap = {
+        '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+        '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+    };
+    const normalized = String(value)
+        .split('')
+        .map(function(ch){
+            if (arabicMap[ch] !== undefined) return arabicMap[ch];
+            if (easternMap[ch] !== undefined) return easternMap[ch];
+            return ch;
+        })
+        .join('');
+    return normalized.replace(/[^0-9]/g, '');
+}
+
 // Place order with client cart data
 function placeClientOrder() {
     // Validate customer information
@@ -958,6 +979,10 @@ function placeClientOrder() {
         seller_id: $('#customer_seller_id').val(),
         address: $('#customer_address').val().trim()
     };
+    customerData.phone = normalizeEgyptianPhoneNumber(customerData.phone);
+    customerData.alternative_phone = normalizeEgyptianPhoneNumber(customerData.alternative_phone);
+    if (customerData.phone) $('#customer_phone').val(customerData.phone);
+    if (customerData.alternative_phone) $('#customer_alt_phone').val(customerData.alternative_phone);
     
     // Validate required fields
     if (!customerData.phone) {
@@ -965,17 +990,17 @@ function placeClientOrder() {
         $('#customer_phone').focus();
         return;
     }
-    // Egyptian mobile validation: 11 digits, starts with 010/011/012/015
-    const EGY_MOBILE_REGEX = /^0(10|11|12|15)[0-9]{8}$/;
-    if (!EGY_MOBILE_REGEX.test(customerData.phone)) {
+    // Egyptian phone validation: mobile or landline (raw digits only)
+    const EGY_PHONE_REGEX = /^(?:0(10|11|12|15)[0-9]{8}|0[2-9][0-9]{7,8})$/;
+    if (!EGY_PHONE_REGEX.test(customerData.phone)) {
         toastMagic.error($('#message-valid-egyptian-mobile').data('text'));
         $('#customer_phone')[0]?.reportValidity?.();
         $('#customer_phone').focus();
         return;
     }
-    if (customerData.alternative_phone && !EGY_MOBILE_REGEX.test(customerData.alternative_phone)) {
+    if (customerData.alternative_phone && !EGY_PHONE_REGEX.test(customerData.alternative_phone)) {
         const altMsg = document.getElementById('message-valid-egyptian-alt-mobile')?.getAttribute('data-text')
-            || 'Enter valid Egyptian alternative mobile (010/011/012/015 + 8 digits)';
+            || 'Enter valid Egyptian alternative phone number (mobile or landline)';
         toastMagic.error(altMsg);
         $('#customer_alt_phone')[0]?.reportValidity?.();
         $('#customer_alt_phone').focus();
@@ -1162,37 +1187,37 @@ $(document).ready(function() {
 
     // Ensure POS phone inputs accept raw numbers including leading zeros and allow paste
     try {
-        const EGY_MOBILE_REGEX = /^0(10|11|12|15)[0-9]{8}$/;
-        const MSG_VALID_EGY_MOBILE = document.getElementById('message-valid-egyptian-mobile')?.getAttribute('data-text') || 'Enter valid Egyptian mobile number (010/011/012/015 + 8 digits)';
+        const EGY_PHONE_REGEX = /^(?:0(10|11|12|15)[0-9]{8}|0[2-9][0-9]{7,8})$/;
+        const MSG_VALID_EGY_MOBILE = document.getElementById('message-valid-egyptian-mobile')?.getAttribute('data-text')
+            || 'Enter valid Egyptian phone number (mobile or landline)';
         ['#customer_phone', '#customer_alt_phone'].forEach(function(sel){
             const el = document.querySelector(sel);
             if (!el) return;
             // Remove any non-digit filtering that strips leading zeros; only block non-digits on keypress
             el.addEventListener('keypress', function(e){
                 const char = String.fromCharCode(e.which || e.keyCode);
-                if (!/[0-9]/.test(char)) {
+                if (!/[0-9٠-٩۰-۹]/.test(char)) {
                     e.preventDefault();
                 }
             });
             // Enforce max length of 11
             el.addEventListener('input', function(){
-                if (this.value.length > 11) {
-                    this.value = this.value.slice(0, 11);
-                }
+                const normalized = normalizeEgyptianPhoneNumber(this.value);
+                this.value = normalized.slice(0, 11);
             });
             // Allow paste as-is (no formatting), just trim whitespace
             el.addEventListener('paste', function(e){
                 e.preventDefault();
                 const text = (e.clipboardData || window.clipboardData).getData('text');
                 // Keep all digits including leading zeros; remove non-digits only
-                const cleaned = (text || '').replace(/[^0-9]/g, '');
+                const cleaned = normalizeEgyptianPhoneNumber(text || '');
                 // Preserve leading zeros in cleaned
                 this.value = cleaned.slice(0, 11);
             });
             // Set custom validity message using HTML5 validation API
             el.addEventListener('blur', function(){
                 if (!this.value) { this.setCustomValidity(''); return; }
-                if (!EGY_MOBILE_REGEX.test(this.value)) {
+                if (!EGY_PHONE_REGEX.test(this.value)) {
                     this.setCustomValidity(MSG_VALID_EGY_MOBILE);
                 } else {
                     this.setCustomValidity('');
