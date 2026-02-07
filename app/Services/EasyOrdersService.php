@@ -271,8 +271,10 @@ class EasyOrdersService
         }
 
         $categoryDiscount = 0.0;
+        $giftLines = [];
         if (!empty($categoryCounts)) {
-            $rules = CategoryDiscountRule::whereIn('category_id', array_keys($categoryCounts))
+            $rules = CategoryDiscountRule::with('giftProduct')
+                ->whereIn('category_id', array_keys($categoryCounts))
                 ->where('is_active', true)
                 ->orderBy('quantity', 'desc')
                 ->get()
@@ -292,6 +294,63 @@ class EasyOrdersService
                     $categoryDiscount += ((float)$rule->discount_amount) * $times;
                     $remaining = $remaining % (int)$rule->quantity;
                 }
+
+                // Gifts are computed independently from greedy discount application
+                foreach ($catRules as $rule) {
+                    $giftProduct = $rule->giftProduct;
+                    if (!$giftProduct || !$giftProduct->id) {
+                        continue;
+                    }
+                    if (isset($giftProduct->status) && (int)$giftProduct->status !== 1) {
+                        continue;
+                    }
+                    $giftQty = (int)$rule->quantity;
+                    if ($giftQty <= 0) {
+                        continue;
+                    }
+                    $giftTimes = intdiv($count, $giftQty);
+                    if ($giftTimes <= 0) {
+                        continue;
+                    }
+                    $giftKey = 'cat_' . (int)$rule->category_id . '_rule_' . (int)$rule->id . '_gift_' . (int)$giftProduct->id;
+                    if (!isset($giftLines[$giftKey])) {
+                        $giftLines[$giftKey] = [
+                            'product' => $giftProduct,
+                            'quantity' => 0,
+                        ];
+                    }
+                    $giftLines[$giftKey]['quantity'] += $giftTimes;
+                }
+            }
+        }
+
+        if (!empty($giftLines)) {
+            foreach ($giftLines as $giftLine) {
+                $giftProduct = $giftLine['product'];
+                $giftQty = (int)$giftLine['quantity'];
+                if ($giftQty <= 0) {
+                    continue;
+                }
+
+                $cartItems[] = [
+                    'id' => $giftProduct->id,
+                    'name' => $giftProduct->name . ' (Gift)',
+                    'price' => 0.0,
+                    'quantity' => $giftQty,
+                    'image' => $giftProduct->thumbnail,
+                    'productType' => $giftProduct->product_type,
+                    'unit' => $giftProduct->unit,
+                    'tax' => 0.0,
+                    'tax_type' => 'flat',
+                    'tax_model' => 'exclude',
+                    'discount' => 0.0,
+                    'discount_type' => 'flat',
+                    'variant' => '',
+                    'variations' => [],
+                    'category_id' => 0,
+                    'is_gift' => true,
+                    'productSubtotal' => 0.0,
+                ];
             }
         }
 
