@@ -91,10 +91,11 @@ class OrderRepository implements OrderRepositoryInterface
                 $query->when($filters['filter'] == 'all', function ($query) {
                     return $query;
                 })
-                    ->when($filters['filter'] == 'POS', function ($query) {
+                    // Only add order_type from filter when order_source has not already set it (avoids conflicting WHEREs)
+                    ->when($filters['filter'] == 'POS' && !isset($filters['order_type']), function ($query) {
                         return $query->where('order_type', 'POS');
                     })
-                    ->when($filters['filter'] == 'default_type', function ($query) {
+                    ->when($filters['filter'] == 'default_type' && !isset($filters['order_type']), function ($query) {
                         return $query->where('order_type', 'default_type');
                     })
                     ->when($filters['filter'] == 'admin' || $filters['filter'] == 'seller', function ($query) use ($filters) {
@@ -682,6 +683,9 @@ class OrderRepository implements OrderRepositoryInterface
             })
             ->when(isset($baseFilters['seller_id']) && $baseFilters['seller_id'] != 'all' && $baseFilters['seller_id'] !== null, function ($query) use ($baseFilters) {
                 return $query->where('seller_id', $baseFilters['seller_id']);
+            })
+            ->when(isset($baseFilters['order_type']) && $baseFilters['order_type'] != 'all', function ($query) use ($baseFilters) {
+                return $query->where('order_type', $baseFilters['order_type']);
             })
             ->selectRaw("
                 COUNT(*) as total,

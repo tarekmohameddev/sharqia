@@ -159,6 +159,26 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-sm-6 col-lg-4 col-xl-3">
+                                <div class="form-group">
+                                    <label class="form-label" for="order_source">
+                                        {{ translate('order_source') }}
+                                        <i class="fi fi-rr-info" data-bs-toggle="tooltip" data-bs-placement="top"
+                                           data-bs-title="{{ translate('order_source_filter_tooltip') }}"
+                                           style="font-size: 12px; cursor: help; color: #6c757d;"></i>
+                                    </label>
+                                    <div class="select-wrapper">
+                                        <select name="order_source" id="order_source" class="form-select">
+                                            <option value="all" {{ ($orderSource ?? 'all') == 'all' ? 'selected' : '' }}>
+                                                {{ translate('all') }}</option>
+                                            <option value="EasyOrders" {{ ($orderSource ?? 'all') == 'EasyOrders' ? 'selected' : '' }}>
+                                                {{ translate('EasyOrders') }}</option>
+                                            <option value="POS" {{ ($orderSource ?? 'all') == 'POS' ? 'selected' : '' }}>
+                                                {{ translate('POS_Order') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-sm-6 col-lg-4 col-xl-3" id="seller_id_area"
                                 style="{{ $filter && $filter == 'admin' ? 'display:none' : '' }}">
                                 <div class="form-group">
@@ -375,7 +395,7 @@
                             </div>
 
                             <a type="button" class="btn btn-outline-primary text-nowrap"
-                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType, 'date_field' => request('date_field', 'created_at'), 'city_id' => request('city_id')]) }}">
+                                href="{{ route('admin.orders.export-excel', ['delivery_man_id' => request('delivery_man_id'), 'status' => $status, 'from' => $from, 'to' => $to, 'filter' => $filter, 'order_source' => $orderSource ?? 'all', 'searchValue' => $searchValue, 'seller_id' => $vendorId, 'customer_id' => $customerId, 'date_type' => $dateType, 'date_field' => request('date_field', 'created_at'), 'city_id' => request('city_id'), 'is_printed' => request('is_printed', 'all')]) }}">
                                 <img width="14"
                                     src="{{ dynamicAsset(path: 'public/assets/back-end/img/excel.png') }}" alt=""
                                     class="excel">
@@ -428,7 +448,12 @@
                                         <td>
                                             <a class="text-dark"
                                                 href="{{ route('admin.orders.details', ['id' => $order['id']]) }}">{{ $order['id'] }}
-                                                {!! $order->order_type == 'POS' ? '<span class="text--primary">(POS)</span>' : '' !!}</a>
+                                                @if($order->order_type == 'POS')
+                                                    <span class="text--primary">(POS)</span>
+                                                @elseif($order->order_type == 'EasyOrders')
+                                                    <span class="text-info">(EasyOrders)</span>
+                                                @endif
+                                            </a>
                                         </td>
                                         <td>
                                             <div>{{ date('d M Y', strtotime($order['created_at'])) }},</div>

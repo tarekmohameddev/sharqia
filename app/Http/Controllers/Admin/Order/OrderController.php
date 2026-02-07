@@ -123,6 +123,8 @@ class OrderController extends BaseController
             $perPage = in_array($defaultLimit, $allowedPerPage, true) ? $defaultLimit : 10;
         }
 
+        $orderSource = $request->get('order_source', 'all');
+
         $filters = [
             'order_status' => $status,
             'filter' => $request['filter'] ?? 'all',
@@ -138,6 +140,9 @@ class OrderController extends BaseController
             'is_printed' => $request['is_printed'] ?? 'all',
             'per_page' => $perPage,
         ];
+        if ($orderSource !== 'all' && in_array($orderSource, ['EasyOrders', 'POS'], true)) {
+            $filters['order_type'] = $orderSource;
+        }
 
         $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: $perPage);
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
@@ -167,6 +172,9 @@ class OrderController extends BaseController
             'seller_id' => $vendorId,
             'seller_is' => $vendorIs,
         ];
+        if ($orderSource !== 'all' && in_array($orderSource, ['EasyOrders', 'POS'], true)) {
+            $countBaseFilters['order_type'] = $orderSource;
+        }
         $startOfMonth = Carbon::now()->startOfMonth()->startOfDay();
         $endOfMonth = Carbon::now()->endOfMonth()->endOfDay();
         $startOfDay = Carbon::now()->startOfDay();
@@ -218,6 +226,7 @@ class OrderController extends BaseController
             'to',
             'status',
             'filter',
+            'orderSource',
             'sellers',
             'customer',
             'vendorId',
@@ -369,6 +378,10 @@ class OrderController extends BaseController
             'seller_is' => $vendorIs,
             'is_printed' => $request['is_printed'] ?? 'all',
         ];
+        $orderSourceExport = $request->get('order_source', 'all');
+        if ($orderSourceExport !== 'all' && in_array($orderSourceExport, ['EasyOrders', 'POS'], true)) {
+            $filters['order_type'] = $orderSourceExport;
+        }
 
         $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: 'all');
 

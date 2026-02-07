@@ -190,10 +190,11 @@ class OrderStatsService
                     ->whereDate($dateField, '<=', $filters['to']);
             })
             ->when(isset($filters['filter']), function ($query) use ($filters) {
-                $query->when($filters['filter'] == 'POS', function ($query) {
+                // Only add order_type from filter when order_source has not already set it (avoids conflicting WHEREs)
+                $query->when($filters['filter'] == 'POS' && !isset($filters['order_type']), function ($query) {
                     return $query->where('order_type', 'POS');
                 })
-                    ->when($filters['filter'] == 'default_type', function ($query) {
+                    ->when($filters['filter'] == 'default_type' && !isset($filters['order_type']), function ($query) {
                         return $query->where('order_type', 'default_type');
                     });
             });
