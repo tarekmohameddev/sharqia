@@ -98,6 +98,38 @@ class EasyOrdersService
     }
 
     /**
+     * Validate cart item SKUs in payload.
+     *
+     * @return array{missing: array, invalid: array}
+     */
+    private function getSkuIssuesFromPayload(array $payload): array
+    {
+        $cartItems = $payload['cart_items'] ?? null;
+        if (!is_array($cartItems) || empty($cartItems)) {
+            return ['missing' => [], 'invalid' => []];
+        }
+
+        $missing = [];
+        $invalid = [];
+
+        foreach ($cartItems as $cartItem) {
+            $sku = Arr::get($cartItem, 'product.sku');
+            if (!$sku) {
+                $missing[] = Arr::get($cartItem, 'product.name')
+                    ?: Arr::get($cartItem, 'product.id')
+                    ?: 'unknown';
+                continue;
+            }
+
+            if (empty($this->parseSkuString($sku))) {
+                $invalid[] = $sku;
+            }
+        }
+
+        return ['missing' => $missing, 'invalid' => $invalid];
+    }
+
+    /**
      * Find products by SKU code.
      *
      * @param array $skuItems [['code' => string, 'quantity' => int], ...]
@@ -291,8 +323,40 @@ class EasyOrdersService
                 $skuString = $easyOrder->sku_string;
             }
 
+            $skuIssues = $this->getSkuIssuesFromPayload($easyOrder->raw_payload ?? []);
+            if (!empty($skuIssues['missing']) || !empty($skuIssues['invalid'])) {
+                $details = [];
+                if (!empty($skuIssues['missing'])) {
+                    $details[] = 'missing SKU for items: ' . implode(', ', $skuIssues['missing']);
+                }
+                if (!empty($skuIssues['invalid'])) {
+                    $details[] = 'invalid SKU format: ' . implode(', ', $skuIssues['invalid']);
+                }
+                throw new \RuntimeException(
+                    'EasyOrders payload has invalid/missing SKU(s): ' . implode(' | ', $details)
+                );
+            }
+
+            if (empty($skuString)) {
+                throw new \RuntimeException('Missing SKU string for order.');
+            }
+
             $skuItems = $this->parseSkuString($skuString);
+            if (empty($skuItems)) {
+                throw new \RuntimeException('Invalid SKU format in order SKU string.');
+            }
             $products = $this->findProductsBySku($skuItems);
+            $skuCodes = array_unique(array_column($skuItems, 'code'));
+            $foundCodes = array_unique(array_map(
+                static fn ($item) => $item['product']->code,
+                $products
+            ));
+            $missingCodes = array_values(array_diff($skuCodes, $foundCodes));
+            if (!empty($missingCodes)) {
+                throw new \RuntimeException(
+                    'Missing SKU(s) in order: ' . implode(', ', $missingCodes)
+                );
+            }
             if (empty($products)) {
                 throw new \RuntimeException('No matching products were found for the provided SKU.');
             }
