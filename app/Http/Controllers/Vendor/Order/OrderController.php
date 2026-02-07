@@ -119,7 +119,16 @@ class OrderController extends BaseController
             $perPage = in_array($defaultLimit, $allowedPerPage, true) ? $defaultLimit : 10;
         }
 
-        $relation = ['customer', 'shipping', 'shippingAddress', 'deliveryMan', 'billingAddress'];
+        $relation = [
+            'customer',
+            'shipping',
+            'shippingAddress',
+            'deliveryMan',
+            'billingAddress',
+            'details' => function ($query) {
+                $query->select('id', 'order_id', 'price', 'qty', 'discount', 'tax');
+            },
+        ];
         $filters = [
             'order_status' => $status,
             'order_type' => $request['filter'],

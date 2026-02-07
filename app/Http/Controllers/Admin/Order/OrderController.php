@@ -144,7 +144,19 @@ class OrderController extends BaseController
             $filters['order_type'] = $orderSource;
         }
 
-        $orders = $this->orderRepo->getListWhere(orderBy: ['id' => 'desc'], searchValue: $request['searchValue'], filters: $filters, relations: ['customer', 'seller.shop'], dataLimit: $perPage);
+        $orders = $this->orderRepo->getListWhere(
+            orderBy: ['id' => 'desc'],
+            searchValue: $request['searchValue'],
+            filters: $filters,
+            relations: [
+                'customer',
+                'seller.shop',
+                'details' => function ($query) {
+                    $query->select('id', 'order_id', 'price', 'qty', 'discount', 'tax');
+                },
+            ],
+            dataLimit: $perPage
+        );
         $sellers = $this->vendorRepo->getByStatusExcept(status: 'pending', relations: ['shop']);
 
         $customer = "all";
