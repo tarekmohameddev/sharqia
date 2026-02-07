@@ -4,6 +4,7 @@ namespace App\Exceptions;
 
 use App\Traits\ErrorLogsTrait;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -53,6 +54,22 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        // Redirect 419 (Page Expired / CSRF token mismatch) to login instead of showing error page
+        if ($exception instanceof TokenMismatchException) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your session has expired. Please refresh the page and try again.'], 419);
+            }
+            $request->session()->flash('error', translate('Your_session_has_expired_Please_login_again') ?: 'Your session has expired. Please login again.');
+            if ($request->is('admin/*')) {
+                $adminLoginSlug = getWebConfig('admin_login_url') ?? 'admin';
+                return redirect()->guest(url('login/' . $adminLoginSlug));
+            }
+            if ($request->is('vendor/*')) {
+                return redirect()->guest(url('vendor/auth/login'));
+            }
+            return redirect()->guest(route('customer.auth.login'));
+        }
+
         if ($this->isHttpException($exception) && $exception?->getStatusCode() == 404) {
             $redirectUrl = $this->storeErrorLogsUrl(url: $request->fullUrl(), statusCode: $exception->getStatusCode());
             if ($redirectUrl && isset($redirectUrl['redirect_url'])) {
