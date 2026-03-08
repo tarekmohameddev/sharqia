@@ -146,5 +146,12 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('global', function (Request $request) {
             return Limit::perMinute(3000);
         });
+
+        RateLimiter::for('authenticity-verify', function (\Illuminate\Http\Request $request) {
+            return [
+                Limit::perMinute(10)->by('user:' . $request->user()?->id),
+                Limit::perMinute(30)->by('ip:' . $request->ip()),
+            ];
+        });
     }
 }

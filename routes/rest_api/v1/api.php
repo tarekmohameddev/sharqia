@@ -8,6 +8,7 @@ use App\Http\Controllers\RestAPI\v1\auth\PhoneVerificationController;
 use App\Http\Controllers\RestAPI\v1\auth\SocialAuthController;
 use App\Http\Controllers\RestAPI\v1\BannerController;
 use App\Http\Controllers\RestAPI\v1\EasyOrdersWebhookController;
+use App\Http\Controllers\RestAPI\v1\AuthenticityVerifyController;
 use App\Http\Controllers\RestAPI\v1\BrandController;
 use App\Http\Controllers\RestAPI\v1\CartController;
 use App\Http\Controllers\RestAPI\v1\CategoryController;
@@ -419,4 +420,12 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
     });
 
     Route::post('contact-us', 'GeneralController@contact_store');
+
+    // Authenticity Scratch Card Verification (requires customer auth)
+    Route::group(['prefix' => 'authenticity', 'middleware' => 'auth:api'], function () {
+        Route::controller(AuthenticityVerifyController::class)->group(function () {
+            Route::post('verify', 'verify')->middleware('throttle:authenticity-verify');
+            Route::post('report-counterfeit', 'reportCounterfeit');
+        });
+    });
 });

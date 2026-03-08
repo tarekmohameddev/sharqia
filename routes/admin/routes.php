@@ -92,6 +92,11 @@ use App\Http\Controllers\Admin\EasyOrders\EasyOrdersExcelImportController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersGovernorateMappingController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersSkuValidationController;
 use App\Http\Controllers\Admin\EasyOrders\EasyOrdersOrderValidationController;
+use App\Http\Controllers\Admin\Authenticity\AuthenticityDashboardController;
+use App\Http\Controllers\Admin\Authenticity\AuthenticityBatchController;
+use App\Http\Controllers\Admin\Authenticity\AuthenticityAuditLogController;
+use App\Http\Controllers\Admin\Authenticity\AuthenticityCounterfeitReportController;
+use App\Http\Controllers\Admin\Authenticity\AuthenticityBatchExportController;
 use App\Http\Controllers\Admin\Settings\DeliverymanSettingsController;
 use App\Http\Controllers\Admin\Settings\DeliveryRestrictionController;
 use App\Http\Controllers\Admin\Settings\EnvironmentSettingsController;
@@ -1262,6 +1267,37 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
                 Route::delete('{cityZoneShipping}', 'destroy')->name('destroy');
                 Route::get('{cityZoneShipping}', 'show')->name('show');
                 Route::post('update-status', 'updateStatus')->name('update-status');
+            });
+        });
+    });
+
+    // Authenticity Scratch Cards
+    Route::group(['prefix' => 'authenticity', 'as' => 'authenticity.'], function () {
+        Route::controller(AuthenticityDashboardController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+        });
+
+        Route::group(['prefix' => 'batches', 'as' => 'batches.'], function () {
+            Route::controller(AuthenticityBatchController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('{id}', 'show')->name('show');
+            });
+            Route::controller(AuthenticityBatchExportController::class)->group(function () {
+                Route::get('{id}/export-pdf', 'exportPdf')->name('export-pdf');
+                Route::get('{id}/export-csv', 'exportCsv')->name('export-csv');
+            });
+        });
+
+        Route::controller(AuthenticityAuditLogController::class)->group(function () {
+            Route::get('audit-logs', 'index')->name('audit-logs');
+        });
+
+        Route::group(['prefix' => 'counterfeit-reports', 'as' => 'counterfeit-reports.'], function () {
+            Route::controller(AuthenticityCounterfeitReportController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('{id}/review', 'review')->name('review');
             });
         });
     });

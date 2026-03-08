@@ -1303,6 +1303,61 @@
                     </ul>
                 </li>
 
+                {{-- Authenticity Scratch Cards --}}
+                <li class="{{ Request::is('admin/authenticity*') ? 'sub-menu-opened' : '' }}">
+                    <a class="nav-link nav-link-toggle {{ Request::is('admin/authenticity*') ? 'active' : '' }}"
+                       href="javascript:" title="{{ translate('Authenticity_Scratch_Cards') }}">
+                        <i class="fi fi-sr-shield-check"></i>
+                        <span class="aside-mini-hidden-element flex-grow-1 d-flex justify-content-between align-items-center">
+                            <span class="text-truncate max-w-180">
+                                {{ translate('Authenticity_Scratch_Cards') }}
+                            </span>
+                            <i class="fi fi-sr-angle-down"></i>
+                        </span>
+                    </a>
+                    <ul class="aside-submenu navbar-nav">
+                        <li class="nav-item px-3 py-2 fw-semibold text-dark bg-section2 aside-mini-show-element">
+                            {{ translate('Authenticity_Scratch_Cards') }}
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/authenticity') ? 'active' : '' }}"
+                               href="{{ route('admin.authenticity.index') }}"
+                               title="{{ translate('Dashboard') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('Dashboard') }}
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/authenticity/batches*') ? 'active' : '' }}"
+                               href="{{ route('admin.authenticity.batches.index') }}"
+                               title="{{ translate('Code_Batches') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('Code_Batches') }}
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/authenticity/audit-logs*') ? 'active' : '' }}"
+                               href="{{ route('admin.authenticity.audit-logs') }}"
+                               title="{{ translate('Audit_Logs') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('Audit_Logs') }}
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link {{ Request::is('admin/authenticity/counterfeit-reports*') ? 'active' : '' }}"
+                               href="{{ route('admin.authenticity.counterfeit-reports.index') }}"
+                               title="{{ translate('Counterfeit_Reports') }}">
+                                <span class="aside-mini-hidden-element text-truncate flex-grow-1">
+                                    {{ translate('Counterfeit_Reports') }}
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
                 <li>
                     <a class="nav-link
                 {{ Request::is('admin/third-party/payment-method') ||
