@@ -1,29 +1,70 @@
 <?php
 
-/** @var Factory $factory */
+namespace Database\Factories;
 
 use App\Models\User;
-use Faker\Generator as Faker;
-use Illuminate\Database\Eloquent\Factory;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-/*
-|--------------------------------------------------------------------------
-| Model Factories
-|--------------------------------------------------------------------------
-|
-| This directory should contain each of the model factory definitions for
-| your application. Factories provide a convenient way to generate new
-| model instances for testing / seeding your application's database.
-|
-*/
+class UserFactory extends Factory
+{
+    protected $model = User::class;
 
-$factory->define(User::class, function (Faker $faker) {
-    return [
-        'name' => $faker->name,
-        'email' => $faker->unique()->safeEmail,
-        'email_verified_at' => now(),
-        'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-        'remember_token' => Str::random(10),
-    ];
-});
+    public function definition(): array
+    {
+        return [
+            'name' => $this->faker->name,
+            'f_name' => $this->faker->firstName,
+            'l_name' => $this->faker->lastName,
+            'email' => $this->faker->unique()->safeEmail,
+            'phone' => $this->faker->unique()->numerify('+966#########'),
+            'email_verified_at' => now(),
+            'is_phone_verified' => 1,
+            'is_email_verified' => 1,
+            'is_active' => 1,
+            'password' => bcrypt('password'),
+            'remember_token' => Str::random(10),
+            'referral_code' => Str::random(10),
+            'registration_source' => 'web',
+            'claimed_at' => now(),
+        ];
+    }
+
+    /**
+     * POS-created unclaimed account (no email, random password, not claimed).
+     */
+    public function posUnclaimed(): static
+    {
+        return $this->state(fn() => [
+            'email' => null,
+            'email_verified_at' => null,
+            'is_email_verified' => 0,
+            'password' => bcrypt(Str::random(32)),
+            'registration_source' => 'pos',
+            'claimed_at' => null,
+        ]);
+    }
+
+    /**
+     * User with no email (but claimed -- e.g. OTP or social login with no email).
+     */
+    public function noEmail(): static
+    {
+        return $this->state(fn() => [
+            'email' => null,
+            'email_verified_at' => null,
+            'is_email_verified' => 0,
+        ]);
+    }
+
+    /**
+     * Already claimed user (normal mobile registration).
+     */
+    public function claimed(): static
+    {
+        return $this->state(fn() => [
+            'registration_source' => 'mobile',
+            'claimed_at' => now(),
+        ]);
+    }
+}

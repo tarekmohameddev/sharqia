@@ -424,7 +424,9 @@
                                     @if($order->customer->id != 0)
                                         <span
                                             class="text-dark break-all"><strong>{{$order->customer['phone']}}</strong></span>
+                                        @if($order->customer['email'])
                                         <span class="text-dark break-all">{{$order->customer['email']}}</span>
+                                        @endif
                                     @endif
                                 </div>
                             </div>

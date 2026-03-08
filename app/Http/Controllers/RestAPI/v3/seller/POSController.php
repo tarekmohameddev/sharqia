@@ -162,8 +162,8 @@ class POSController extends Controller
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
             'l_name' => 'required',
-            'email' => 'required|email|unique:users',
-            'phone' => 'unique:users',
+            'email' => 'nullable|email|unique:users',
+            'phone' => 'nullable|unique:users',
             'country' => 'required',
             'city' => 'required',
             'zip_code' => 'required',
@@ -186,7 +186,9 @@ class POSController extends Controller
             'zip' => $request['zip_code'],
             'street_address' => $request['address'],
             'is_active' => 1,
-            'password' => bcrypt('password')
+            'password' => bcrypt(Str::random(32)),
+            'registration_source' => 'pos',
+            'claimed_at' => null,
         ]);
 
         $token = Str::random(120);

@@ -230,10 +230,12 @@ class POSOrderController extends BaseController
                 $customer = $this->customerRepo->add([
                     'f_name' => $customerData['f_name'],
                     'l_name' => $customerData['l_name'] ?? '',
-                    'email' => null, // No email in POS flow
+                    'email' => null,
                     'phone' => $customerData['phone'],
                     'alternative_phone' => $customerData['alternative_phone'] ?? null,
-                    'password' => bcrypt('123456'), // Default password
+                    'password' => bcrypt(Str::random(32)),
+                    'registration_source' => 'pos',
+                    'claimed_at' => null,
                     'is_active' => 1,
                 ]);
                 
@@ -264,11 +266,17 @@ class POSOrderController extends BaseController
                 [
                     'f_name' => $customerInfo['f_name'] ?? '',
                     'l_name' => $customerInfo['l_name'] ?? '',
-                    'email' => $customerInfo['email'] ?? null,
-                    'phone' => $customerInfo['phone'],
-                    'password' => bcrypt('123456'),
                 ]
             );
+            if ($customer->wasRecentlyCreated) {
+                $customer->update([
+                    'email' => null,
+                    'password' => bcrypt(Str::random(32)),
+                    'registration_source' => 'pos',
+                    'claimed_at' => null,
+                    'is_active' => 1,
+                ]);
+            }
             $userId = $customer['id'];
         }
 

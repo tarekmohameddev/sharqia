@@ -104,7 +104,9 @@ class SocialAuthController extends Controller
                     'is_phone_verified' => 0,
                     'is_email_verified' => 1,
                     'referral_code' => Helpers::generate_referer_code(),
-                    'temporary_token' => Str::random(40)
+                    'temporary_token' => Str::random(40),
+                    'registration_source' => 'social',
+                    'claimed_at' => now(),
                 ]);
             } else {
                 $user->temporary_token = Str::random(40);
@@ -148,7 +150,9 @@ class SocialAuthController extends Controller
                     'is_phone_verified' => 0,
                     'is_email_verified' => 1,
                     'referral_code' => Helpers::generate_referer_code(),
-                    'temporary_token' => Str::random(40)
+                    'temporary_token' => Str::random(40),
+                    'registration_source' => 'social',
+                    'claimed_at' => now(),
                 ]);
             } else {
                 $user->temporary_token = Str::random(40);
@@ -371,13 +375,15 @@ class SocialAuthController extends Controller
             'name' => $request['name'],
             'f_name' => $request['name'],
             'l_name' => '',
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'password' => bcrypt(rand(11111111, 99999999)),
             'temporary_token' => $temporaryToken,
             'email_verified_at' => now(),
             'referral_code' => Helpers::generate_referer_code(),
             'login_medium' => 'social',
+            'registration_source' => 'social',
+            'claimed_at' => now(),
         ]);
 
         $phoneVerificationStatus = getLoginConfig(key: 'phone_verification') ?? 0;

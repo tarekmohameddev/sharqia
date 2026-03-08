@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterval;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Utils\SMSModule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -32,8 +33,8 @@ class PassportAuthController extends Controller
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
             'l_name' => 'required',
-            'email' => 'required|unique:users',
-            'phone' => 'required|unique:users',
+            'email' => 'nullable|email|unique:users',
+            'phone' => 'required',
             'password' => 'required|min:8',
         ], [
             'f_name.required' => 'The first name field is required.',
@@ -42,6 +43,38 @@ class PassportAuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        // Check if phone already exists -- claim flow
+        $existingUser = User::where('phone', $request['phone'])->first();
+        if ($existingUser) {
+            if ($existingUser->claimed_at === null) {
+                $temporary_token = Str::random(40);
+                $otp = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+                PhoneOrEmailVerification::updateOrCreate(
+                    ['phone_or_email' => $request['phone']],
+                    [
+                        'token' => $otp,
+                        'claim_data' => json_encode([
+                            'f_name' => $request['f_name'],
+                            'l_name' => $request['l_name'],
+                            'email' => $request['email'] ?? null,
+                            'password' => bcrypt($request['password']),
+                            'temporary_token' => $temporary_token,
+                        ]),
+                    ]
+                );
+                SMSModule::sendCentralizedSMS($request['phone'], $otp);
+                return response()->json([
+                    'temporary_token' => $temporary_token,
+                    'claim_account' => true,
+                    'phone' => $request['phone'],
+                    'status' => false,
+                ], 200);
+            }
+            return response()->json(['errors' => [
+                ['code' => 'phone', 'message' => 'Account already registered, please login']
+            ]], 403);
         }
 
         if ($request->referral_code) {
@@ -53,13 +86,15 @@ class PassportAuthController extends Controller
             'name' => $request['f_name'] . ' ' . $request['l_name'],
             'f_name' => $request['f_name'],
             'l_name' => $request['l_name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'is_active' => 1,
             'password' => bcrypt($request['password']),
             'temporary_token' => $temporary_token,
             'referral_code' => Helpers::generate_referer_code(),
             'referred_by' => (isset($refer_user) && $refer_user) ? $refer_user->id : null,
+            'registration_source' => 'mobile',
+            'claimed_at' => now(),
         ]);
 
         $phoneVerification = getLoginConfig(key: 'phone_verification');
@@ -67,7 +102,7 @@ class PassportAuthController extends Controller
         if ($phoneVerification && !$user->is_phone_verified) {
             return response()->json(['temporary_token' => $temporary_token], 200);
         }
-        if ($emailVerification && !$user->is_email_verified) {
+        if ($emailVerification && $user->email && !$user->is_email_verified) {
             return response()->json(['temporary_token' => $temporary_token], 200);
         }
 

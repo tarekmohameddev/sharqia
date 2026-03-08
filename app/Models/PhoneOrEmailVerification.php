@@ -27,6 +27,7 @@ class PhoneOrEmailVerification extends Model
         'is_temp_blocked',
         'temp_block_time',
         'expires_at',
+        'claim_data',
         'created_at',
         'updated_at',
     ];
@@ -38,6 +39,7 @@ class PhoneOrEmailVerification extends Model
         'is_temp_blocked' => 'integer',
         'temp_block_time' => 'datetime',
         'expires_at' => 'datetime',
+        'claim_data' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

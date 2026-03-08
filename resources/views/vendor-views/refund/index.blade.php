@@ -87,7 +87,9 @@
                                         @if($refund->customer->phone)
                                             <a href="tel:{{$refund->customer->phone}}" class="title-color hover-c1 fs-12">{{$refund->customer->phone}}</a>
                                         @else
+                                            @if($refund->customer['email'])
                                             <a href="mailto:{{$refund->customer['email']}}" class="title-color hover-c1 fs-12">{{$refund->customer['email']}}</a>
+                                            @endif
                                         @endif
                                     </div>
                                 @else

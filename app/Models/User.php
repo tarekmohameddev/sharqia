@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\ShippingAddress;
 use App\Traits\StorageTrait;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -56,7 +57,7 @@ use Laravel\Passport\HasApiTokens;
  */
 class User extends Authenticatable
 {
-    use Notifiable, HasApiTokens,StorageTrait;
+    use Notifiable, HasApiTokens, StorageTrait, HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -100,6 +101,8 @@ class User extends Authenticatable
         'temp_block_time',
         'referral_code',
         'referred_by',
+        'registration_source',
+        'claimed_at',
     ];
 
     /**
@@ -153,6 +156,8 @@ class User extends Authenticatable
         'temp_block_time' => 'datetime',
         'referral_code' => 'string',
         'referred_by' => 'integer',
+        'registration_source' => 'string',
+        'claimed_at' => 'datetime',
     ];
 
     // Old Relation: wish_list

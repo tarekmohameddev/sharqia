@@ -459,6 +459,29 @@ class CustomerAuthController extends Controller
                     return redirect()->back();
                 }
 
+                // If this is a web claim flow, apply claim data atomically
+                if (session()->has('claim_account_data')) {
+                    $claimData = session()->pull('claim_account_data');
+                    \App\Models\User::where('phone', $identity)
+                        ->whereNull('claimed_at')
+                        ->update([
+                            'f_name' => $claimData['f_name'],
+                            'l_name' => $claimData['l_name'],
+                            'email' => $claimData['email'],
+                            'password' => $claimData['password'],
+                            'claimed_at' => now(),
+                            'registration_source' => 'web',
+                            'is_phone_verified' => 1,
+                            'is_active' => 1,
+                        ]);
+                    $user = $this->customerRepo->getByIdentity(filters: ['identity' => $identity]);
+                    $this->phoneOrEmailVerificationRepo->delete(params: ['phone_or_email' => $identity]);
+                    auth('customer')->login($user);
+                    CustomerManager::updateCustomerSessionData(userId: auth('customer')->id());
+                    Toastr::success(translate('account_claimed_successfully'));
+                    return redirect()->route('home');
+                }
+
                 $this->customerRepo->updateWhere(params: ['phone' => $identity], data: [
                     'is_phone_verified' => 1,
                 ]);
@@ -659,8 +682,8 @@ class CustomerAuthController extends Controller
         $this->customerRepo->updateWhere(params: ['phone' => $responseData['phoneNumber']], data: ['is_phone_verified' => 1]);
         $user = $this->customerRepo->getByIdentity(filters: ['identity' => $responseData['phoneNumber']]);
         if ($user && ($user['name'] == null || $user['email'] == null)) {
-            return redirect()->route('customer.auth.login.update-info', ['identity' => base64_encode($user['email'])]);
-        } elseif ($user && $user['name'] && $user['email']) {
+            return redirect()->route('customer.auth.login.update-info', ['identity' => base64_encode($user['phone'])]);
+        } elseif ($user && $user['name']) {
             auth('customer')->login($user);
             CustomerManager::updateCustomerSessionData(userId: auth('customer')->id());
             return redirect()->route('home');
@@ -670,6 +693,12 @@ class CustomerAuthController extends Controller
                 'password' => bcrypt(rand(11111111, 99999999)),
                 'referral_code' => Helpers::generate_referer_code(),
             ]);
+            if ($user->wasRecentlyCreated) {
+                $user->update([
+                    'registration_source' => 'otp',
+                    'claimed_at' => now(),
+                ]);
+            }
             return redirect()->route('customer.auth.login.update-info', ['identity' => base64_encode($responseData['phoneNumber'])]);
         }
     }

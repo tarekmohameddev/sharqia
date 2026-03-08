@@ -96,10 +96,12 @@
                                                 {{ $refund->customer->phone }}
                                             </a>
                                         @else
+                                            @if($refund->customer['email'])
                                             <a href="mailto:{{ $refund->customer['email'] }}"
                                                class="text-dark hover-primary fs-12">
                                                 {{ $refund->customer['email'] }}
                                             </a>
+                                            @endif
                                         @endif
                                     </div>
                                 @else

@@ -309,7 +309,9 @@
                                             @if($order->customer['phone'])
                                                 <a class="d-block title-color" href="tel:{{ $order->customer['phone'] }}">{{ $order->customer['phone'] }}</a>
                                             @else
+                                                @if($order->customer['email'])
                                                 <a class="d-block title-color" href="mailto:{{ $order->customer['email'] }}">{{ $order->customer['email'] }}</a>
+                                                @endif
                                             @endif
                                         @else
                                             <label class="badge badge-danger fs-12">{{translate('invalid_customer_data')}}</label>

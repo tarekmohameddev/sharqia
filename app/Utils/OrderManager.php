@@ -970,6 +970,9 @@ class OrderManager
         }
 
         foreach ($orderPlacedMailEvents as $orderPlacedMailEvent) {
+            if (empty($orderPlacedMailEvent['email'])) {
+                continue;
+            }
             try {
                 event(new OrderPlacedEvent(email: $orderPlacedMailEvent['email'], data: $orderPlacedMailEvent['data']));
             } catch (Exception $exception) {

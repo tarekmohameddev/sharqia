@@ -151,7 +151,9 @@
                                     <span class="d-block h5 text-hover-primary mb-0">{{$review->customer['f_name']." ".$review->customer['l_name']}} <i
                                             class="tio-verified text-primary" data-bs-toggle="tooltip" data-bs-placement="top"
                                             title="Verified Customer"></i></span>
+                                        @if($review->customer->email)
                                         <span class="d-block font-size-sm text-body">{{$review->customer->email}}</span>
+                                        @endif
                                     </div>
                                 </a>
                             </td>

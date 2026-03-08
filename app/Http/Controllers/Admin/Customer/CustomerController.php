@@ -123,7 +123,9 @@ class CustomerController extends BaseController
             'subject' => $customer['is_active'] ? translate('Account_Unblocked') . ' !' : translate('Account_Blocked') . ' !',
             'title' => $customer['is_active'] ? translate('Account_Unblocked') . ' !' : translate('Account_Blocked') . ' !',
         ];
-        event(new CustomerStatusUpdateEvent(email: $customer['email'], data: $data));
+        if ($customer['email']) {
+            event(new CustomerStatusUpdateEvent(email: $customer['email'], data: $data));
+        }
         return response()->json(['message' => translate('update_successfully')]);
     }
 

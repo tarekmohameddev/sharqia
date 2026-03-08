@@ -91,12 +91,14 @@ class CustomerAuthService
             'name' => $request['f_name'] . ' ' . $request['l_name'],
             'f_name' => $request['f_name'],
             'l_name' => $request['l_name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'is_active' => 1,
             'password' => bcrypt($request['password']),
             'referral_code' => Helpers::generate_referer_code(),
             'referred_by' => $referUser ? $referUser['id'] : null,
+            'registration_source' => 'web',
+            'claimed_at' => now(),
         ];
     }
   

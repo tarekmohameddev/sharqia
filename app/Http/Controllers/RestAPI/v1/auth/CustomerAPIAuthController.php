@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
@@ -50,8 +51,8 @@ class CustomerAPIAuthController extends Controller
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
             'l_name' => 'required',
-            'email' => 'required|unique:users',
-            'phone' => 'required|min:6|max:20|unique:users',
+            'email' => 'nullable|email|unique:users',
+            'phone' => 'required|min:6|max:20',
             'password' => 'required|min:6',
         ], [
             'f_name.required' => translate('The first name field is required.'),
@@ -62,6 +63,51 @@ class CustomerAPIAuthController extends Controller
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
+        // Check if phone already exists
+        $existingUser = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+
+        if ($existingUser) {
+            if ($existingUser->claimed_at === null) {
+                // Unclaimed (POS/import-created) account -- initiate claim flow
+                $temporaryToken = Str::random(40);
+                $otp = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+                // Store OTP + claim data in verification record (DB-backed, multi-server safe)
+                $this->phoneOrEmailVerificationRepo->updateOrCreate(
+                    params: ['phone_or_email' => $request['phone']],
+                    value: [
+                        'phone_or_email' => $request['phone'],
+                        'token' => $otp,
+                        'claim_data' => json_encode([
+                            'f_name' => $request['f_name'],
+                            'l_name' => $request['l_name'],
+                            'email' => $request['email'] ?? null,
+                            'password' => bcrypt($request['password']),
+                            'temporary_token' => $temporaryToken,
+                        ]),
+                    ]
+                );
+                $response = SMSModule::sendCentralizedSMS($request['phone'], $otp);
+                if (env('APP_MODE') == 'dev') {
+                    $response = 'success';
+                }
+                if ($response != 'success') {
+                    return response()->json(['errors' => [
+                        ['code' => 'config-missing', 'message' => translate('Unable_to_send_the_verification_code.')]
+                    ]], 400);
+                }
+                return response()->json([
+                    'temporary_token' => $temporaryToken,
+                    'claim_account' => true,
+                    'phone' => $request['phone'],
+                    'status' => false,
+                ], 200);
+            }
+            // Already claimed: direct to login
+            return response()->json(['errors' => [
+                ['code' => 'phone', 'message' => translate('account_already_registered_please_login')]
+            ]], 403);
+        }
+
         $referUser = $request['referral_code'] ? $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]) : null;
 
         $temporaryToken = Str::random(40);
@@ -70,12 +116,14 @@ class CustomerAPIAuthController extends Controller
             'name' => $request['f_name'] . ' ' . $request['l_name'],
             'f_name' => $request['f_name'],
             'l_name' => $request['l_name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'password' => bcrypt($request['password']),
             'temporary_token' => $temporaryToken,
             'referral_code' => Helpers::generate_referer_code(),
             'referred_by' => $referUser?->id ?? null,
+            'registration_source' => 'mobile',
+            'claimed_at' => now(),
         ]);
 
         $referralData = getWebConfig(name: 'ref_earning_customer');
@@ -96,7 +144,7 @@ class CustomerAPIAuthController extends Controller
         if ($phoneVerification && !$user->is_phone_verified) {
             return response()->json(['temporary_token' => $temporaryToken], 200);
         }
-        if ($emailVerification && $user->email_verified_at == null) {
+        if ($emailVerification && $user->email && $user->email_verified_at == null) {
             return response()->json(['temporary_token' => $temporaryToken], 200);
         }
 
@@ -132,12 +180,8 @@ class CustomerAPIAuthController extends Controller
                 return response()->json(['errors' => $errors], 403);
             }
 
-            $data = [
-                'email' => $user['email'],
-                'password' => $request['password'],
-            ];
-
-            if (auth()->attempt($data)) {
+            if (Hash::check($request['password'], $user['password'])) {
+                auth()->login($user);
                 $temporaryToken = Str::random(40);
                 $phoneVerification = getLoginConfig(key: 'phone_verification') ?? 0;
                 $emailVerification = getLoginConfig(key: 'email_verification') ?? 0;
@@ -145,7 +189,7 @@ class CustomerAPIAuthController extends Controller
 
                 if (
                     ($phoneVerification && !$user['is_phone_verified']) ||
-                    ($emailVerification && !$user['is_email_verified'])
+                    ($emailVerification && $user['email'] && !$user['is_email_verified'])
                 ) {
                     return response()->json([
                         'temporary_token' => $temporaryToken,
@@ -364,6 +408,34 @@ class CustomerAPIAuthController extends Controller
         }
 
         if (isset($verify)) {
+            // Check if this is a claim-account flow (verify record has claim_data)
+            if ($verify->claim_data) {
+                $claimData = json_decode($verify->claim_data, true);
+                // Atomic claim: only succeeds if account is still unclaimed
+                $affected = \App\Models\User::where('phone', $request['phone'])
+                    ->whereNull('claimed_at')
+                    ->update([
+                        'f_name' => $claimData['f_name'],
+                        'l_name' => $claimData['l_name'],
+                        'email' => $claimData['email'],
+                        'password' => $claimData['password'],
+                        'temporary_token' => $claimData['temporary_token'],
+                        'claimed_at' => now(),
+                        'registration_source' => 'mobile',
+                        'is_phone_verified' => 1,
+                        'is_active' => 1,
+                    ]);
+                $this->phoneOrEmailVerificationRepo->delete(params: ['phone_or_email' => $request['phone']]);
+                if ($affected === 0) {
+                    return response()->json(['errors' => [
+                        ['code' => 'phone', 'message' => translate('account_already_registered_please_login')]
+                    ]], 403);
+                }
+                $user = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+                $token = $user->createToken('LaravelAuthApp')->accessToken;
+                return response()->json(['message' => translate('OTP verified!'), 'token' => $token, 'status' => true, 'claimed' => true], 200);
+            }
+
             $this->customerRepo->updateWhere(params: ['phone' => $request['phone']], data: [
                 'is_phone_verified' => 1
             ]);
@@ -441,8 +513,8 @@ class CustomerAPIAuthController extends Controller
         $validator = Validator::make($request->all(), [
             'f_name' => 'required',
             'l_name' => 'required',
-            'email' => 'required|unique:users',
-            'phone' => 'required|min:6|max:20|unique:users',
+            'email' => 'nullable|email|unique:users',
+            'phone' => 'required|min:6|max:20',
             'password' => 'required|min:6',
         ], [
             'f_name.required' => translate('The first name field is required.'),
@@ -451,6 +523,47 @@ class CustomerAPIAuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
+        }
+
+        // Check if phone already exists -- claim flow
+        $existingUser = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+        if ($existingUser) {
+            if ($existingUser->claimed_at === null) {
+                $temporaryToken = Str::random(40);
+                $otp = (env('APP_MODE') == 'live') ? rand(100000, 999999) : 123456;
+                $this->phoneOrEmailVerificationRepo->updateOrCreate(
+                    params: ['phone_or_email' => $request['phone']],
+                    value: [
+                        'phone_or_email' => $request['phone'],
+                        'token' => $otp,
+                        'claim_data' => json_encode([
+                            'f_name' => $request['f_name'],
+                            'l_name' => $request['l_name'],
+                            'email' => $request['email'] ?? null,
+                            'password' => bcrypt($request['password']),
+                            'temporary_token' => $temporaryToken,
+                        ]),
+                    ]
+                );
+                $response = SMSModule::sendCentralizedSMS($request['phone'], $otp);
+                if (env('APP_MODE') == 'dev') {
+                    $response = 'success';
+                }
+                if ($response != 'success') {
+                    return response()->json(['errors' => [
+                        ['code' => 'config-missing', 'message' => translate('Unable_to_send_the_verification_code.')]
+                    ]], 400);
+                }
+                return response()->json([
+                    'temporary_token' => $temporaryToken,
+                    'claim_account' => true,
+                    'phone' => $request['phone'],
+                    'status' => false,
+                ], 200);
+            }
+            return response()->json(['errors' => [
+                ['code' => 'phone', 'message' => translate('account_already_registered_please_login')]
+            ]], 403);
         }
 
         if ($request['referral_code']) {
@@ -462,12 +575,14 @@ class CustomerAPIAuthController extends Controller
         $user = $this->customerRepo->add([
             'f_name' => $request['f_name'],
             'l_name' => $request['l_name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'password' => bcrypt($request['password']),
             'temporary_token' => $temporaryToken,
             'referral_code' => Helpers::generate_referer_code(),
             'referred_by' => $refer_user->id ?? null,
+            'registration_source' => 'mobile',
+            'claimed_at' => now(),
         ]);
 
         $emailVerification = getLoginConfig(key: 'email_verification') ?? 0;
@@ -476,7 +591,7 @@ class CustomerAPIAuthController extends Controller
         if ($phoneVerification && !$user->is_phone_verified) {
             return response()->json(['temporary_token' => $temporaryToken], 200);
         }
-        if ($emailVerification && $user->email_verified_at == null) {
+        if ($emailVerification && $user->email && $user->email_verified_at == null) {
             return response()->json(['temporary_token' => $temporaryToken], 200);
         }
 
@@ -614,7 +729,7 @@ class CustomerAPIAuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'nullable|max:255',
+            'email' => 'nullable|email|max:255|unique:users',
             'phone' => 'required|string|min:6|max:15',
         ]);
 
@@ -622,14 +737,36 @@ class CustomerAPIAuthController extends Controller
             return response()->json(['errors' => Helpers::validationErrorProcessor($validator)], 403);
         }
 
-        if ($request['email']) {
-            $isEmailExist = $this->customerRepo->getFirstWhere(params: ['email' => $request['email']]);
+        // Check if phone already exists
+        $existingUser = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
 
-            if ($isEmailExist) {
-                return response()->json(['errors' => [
-                    ['code' => 'email', 'message' => translate('this_email_has_already_been_used_in_another_account!')]
-                ]], 403);
+        if ($existingUser) {
+            if ($existingUser->claimed_at === null) {
+                // Atomic claim: only succeeds if account is still unclaimed
+                $affected = \App\Models\User::where('phone', $request['phone'])
+                    ->whereNull('claimed_at')
+                    ->update([
+                        'f_name' => $request['name'],
+                        'l_name' => '',
+                        'email' => $request['email'] ?? null,
+                        'claimed_at' => now(),
+                        'registration_source' => 'otp',
+                        'is_phone_verified' => 1,
+                        'login_medium' => 'OTP',
+                        'is_active' => 1,
+                    ]);
+                if ($affected === 0) {
+                    return response()->json(['errors' => [
+                        ['code' => 'phone', 'message' => translate('account_already_registered_please_login')]
+                    ]], 403);
+                }
+                $user = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+                $token = $user->createToken('LaravelAuthApp')->accessToken;
+                return response()->json(['token' => $token], 200);
             }
+            return response()->json(['errors' => [
+                ['code' => 'phone', 'message' => translate('account_already_registered_please_login')]
+            ]], 403);
         }
 
         $temporaryToken = Str::random(40);
@@ -637,14 +774,16 @@ class CustomerAPIAuthController extends Controller
         $user = $this->customerRepo->add([
             'name' => $request['name'],
             'f_name' => $request['name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
-            'password' => bcrypt(rand(11111111, 99999999)),
+            'password' => bcrypt($request['password'] ?? Str::random(32)),
             'temporary_token' => $temporaryToken,
             'app_language' => 'en',
             'is_phone_verified' => 1,
             'referral_code' => Helpers::generate_referer_code(),
             'login_medium' => 'OTP',
+            'registration_source' => 'otp',
+            'claimed_at' => now(),
         ]);
 
         $token = $user->createToken('LaravelAuthApp')->accessToken;
@@ -806,7 +945,7 @@ class CustomerAPIAuthController extends Controller
         $user = $this->customerRepo->add([
             'name' => $request['name'],
             'f_name' => $request['name'],
-            'email' => $request['email'],
+            'email' => $request['email'] ?? null,
             'phone' => $request['phone'],
             'password' => bcrypt(rand(11111111, 99999999)),
             'temporary_token' => $temporaryToken,
@@ -814,6 +953,8 @@ class CustomerAPIAuthController extends Controller
             'email_verified_at' => now(),
             'referral_code' => Helpers::generate_referer_code(),
             'login_medium' => 'social',
+            'registration_source' => 'social',
+            'claimed_at' => now(),
         ]);
 
         $phoneVerificationStatus = getLoginConfig(key: 'phone_verification') ?? 0;

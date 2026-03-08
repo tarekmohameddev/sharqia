@@ -475,8 +475,10 @@
                                                         <a class="d-block text-dark"
                                                             href="tel:{{ $order->customer['phone'] }}">{{ $order->customer['phone'] }}</a>
                                                     @else
+                                                        @if($order->customer['email'])
                                                         <a class="d-block text-dark"
                                                             href="mailto:{{ $order->customer['email'] }}">{{ $order->customer['email'] }}</a>
+                                                        @endif
                                                     @endif
                                                     @php($altPhone = data_get($order, 'shipping_address_data.alternative_phone') ?: ($order->customer->alternative_phone ?? null))
                                                     @if (!empty($altPhone))

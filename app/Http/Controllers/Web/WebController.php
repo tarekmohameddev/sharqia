@@ -604,11 +604,13 @@ class WebController extends Controller
                 'name' => $newCustomerRegister['name'],
                 'f_name' => $newCustomerRegister['name'],
                 'l_name' => $newCustomerRegister['l_name'],
-                'email' => $newCustomerRegister['email'],
+                'email' => $newCustomerRegister['email'] ?? null,
                 'phone' => $newCustomerRegister['phone'],
                 'is_active' => 1,
                 'password' => bcrypt($newCustomerRegister['password']),
                 'referral_code' => $newCustomerRegister['referral_code'],
+                'registration_source' => 'web',
+                'claimed_at' => now(),
             ]);
             session()->put('newRegisterCustomerInfo', $addCustomer);
 
@@ -724,11 +726,13 @@ class WebController extends Controller
                 'name' => $newCustomerRegister['name'],
                 'f_name' => $newCustomerRegister['name'],
                 'l_name' => $newCustomerRegister['l_name'],
-                'email' => $newCustomerRegister['email'],
+                'email' => $newCustomerRegister['email'] ?? null,
                 'phone' => $newCustomerRegister['phone'],
                 'is_active' => 1,
                 'password' => bcrypt($newCustomerRegister['password']),
                 'referral_code' => $newCustomerRegister['referral_code'],
+                'registration_source' => 'web',
+                'claimed_at' => now(),
             ]);
             session()->put('newRegisterCustomerInfo', $addCustomer);
 

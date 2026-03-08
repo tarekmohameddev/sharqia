@@ -15,6 +15,7 @@ use Gregwar\Captcha\CaptchaBuilder;
 use Gregwar\Captcha\PhraseBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 
 class LoginController extends Controller
@@ -125,7 +126,7 @@ class LoginController extends Controller
             }
             return redirect(route('customer.auth.check-verification', ['identity' => base64_encode($user['phone']), 'type' => base64_encode('phone_verification')]));
         }
-        if ($email_verification && !$user->is_email_verified) {
+        if ($email_verification && $user->email && !$user->is_email_verified) {
             if ($request->ajax()) {
                 return response()->json([
                     'status' => 'error',
@@ -152,7 +153,8 @@ class LoginController extends Controller
             }
         }
 
-        if (isset($user) && auth('customer')->attempt(['email' => $user['email'], 'password' => $request['password']], $remember)) {
+        if (isset($user) && Hash::check($request['password'], $user['password'])) {
+            auth('customer')->login($user, $remember);
 
             if (!$user->is_active) {
                 auth()->guard('customer')->logout();

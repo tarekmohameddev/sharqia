@@ -215,7 +215,7 @@ $direction = Session::get('direction');
             <h3 class="mb-1" id="mail-body">{{ translate('Hi').' '.$data['order']->customer['f_name'].',' }}</h3>
             <div
                 class="mb-1">{{translate('thank_you_for_choosing_').$companyName.'! '.translate('your_digital_product_is_ready_for_download').'.'.translate('to_download_your_product').','.translate('_use_your_email_')}}
-                <span style="color: #0a53be;">{{$data['order']->customer['email']}}</span>{{translate('_and')}}
+                <span style="color: #0a53be;">{{$data['order']->customer['email'] ?? $data['order']->customer['phone']}}</span>{{translate('_and')}}
                 <strong>{{translate('_order').'# '.$data['order']->id. translate('_below')}}</strong></div>
             <br>
             <table class="order-body-table" style="width: 100%;background: #E9F6FF">
@@ -260,7 +260,7 @@ $direction = Session::get('direction');
                 <tr>
                     <td style="text-align:center;padding:16px">
                         <div class="text-capitalize" style="margin-bottom:10px">{{translate('click_below')}}</div>
-                        <a href="{{route('digital-product-download-pos.index',['order_id'=>$data['order']->id,'email'=>$data['order']->customer['email']])}}"
+                        <a href="{{route('digital-product-download-pos.index',['order_id'=>$data['order']->id,'email'=>$data['order']->customer['email'] ?? $data['order']->customer['phone']])}}"
                            style="color:#0177CD">{{url('digital-product-download-pos')}}</a>
                     </td>
                 </tr>

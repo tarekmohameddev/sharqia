@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use App\Services\RecaptchaService;
 use App\Traits\EmailTemplateTrait;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Contracts\View\View;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
@@ -76,6 +77,34 @@ class RegisterController extends Controller
             return back();
         }
 
+        // Check for unclaimed phone (POS/import-created) -- claim flow
+        $existingUser = $this->customerRepo->getFirstWhere(params: ['phone' => $request['phone']]);
+        if ($existingUser) {
+            if ($existingUser->claimed_at === null) {
+                // Redirect to OTP verification with claim data stored in session
+                session(['claim_account_data' => [
+                    'f_name' => $request['f_name'],
+                    'l_name' => $request['l_name'],
+                    'email' => $request['email'] ?? null,
+                    'password' => bcrypt($request['password']),
+                ]]);
+                $this->getCustomerVerificationCheck($existingUser, 'phone');
+                if ($request->ajax()) {
+                    return response()->json([
+                        'redirect_url' => route('customer.auth.check-verification', ['identity' => base64_encode($existingUser['phone']), 'type' => base64_encode('phone_verification')]),
+                        'claim_account' => true,
+                    ]);
+                }
+                return redirect(route('customer.auth.check-verification', ['identity' => base64_encode($existingUser['phone']), 'type' => base64_encode('phone_verification')]));
+            }
+            // Already claimed -- tell user to login
+            if ($request->ajax()) {
+                return response()->json(['error' => translate('account_already_registered_please_login')], 403);
+            }
+            Toastr::error(translate('account_already_registered_please_login'));
+            return back();
+        }
+
         $referUser = $request['referral_code'] ? $this->customerRepo->getFirstWhere(params: ['referral_code' => $request['referral_code']]) : null;
         $referralConfig = getWebConfig(name: 'ref_earning_customer');
         $referralEarningRate = $this->businessSettingRepo->getFirstWhere(params: ['type' => 'ref_earning_exchange_rate']);
@@ -95,7 +124,7 @@ class RegisterController extends Controller
                 return response()->json([
                     'redirect_url' => route('customer.auth.check-verification', ['identity' => base64_encode($user['phone']), 'type' => base64_encode('phone_verification')]),
                 ]);
-            } else if ($emailVerification && !$user->is_email_verified) {
+            } else if ($emailVerification && $user->email && !$user->is_email_verified) {
                 $this->phoneOrEmailVerificationRepo->delete(params: ['phone_or_email' => $user?->email]);
                 $this->getCustomerVerificationCheck($user, 'email');
                 return response()->json([
@@ -116,7 +145,7 @@ class RegisterController extends Controller
                 $this->getCustomerVerificationCheck($user, 'phone');
                 return redirect(route('customer.auth.check-verification', ['identity' => base64_encode($user['phone']), 'type' => base64_encode('phone_verification')]));
             }
-            if ($emailVerification && !$user->is_email_verified) {
+            if ($emailVerification && $user->email && !$user->is_email_verified) {
                 $this->phoneOrEmailVerificationRepo->delete(params: ['phone_or_email' => $user?->email]);
                 $this->getCustomerVerificationCheck($user, 'email');
                 return redirect(route('customer.auth.check-verification', ['identity' => base64_encode($user['email']), 'type' => base64_encode('email_verification')]));
@@ -465,7 +494,8 @@ class RegisterController extends Controller
 
     public static function login_process($user, $email, $password): ?string
     {
-        if (auth('customer')->attempt(['email' => $email, 'password' => $password], true)) {
+        if (Hash::check($password, $user->password)) {
+            auth('customer')->login($user, true);
             CustomerManager::updateCustomerSessionData(userId: auth('customer')->id());
             CartManager::cartListSessionToDatabase();
             return translate('welcome_to') . ' ' . getWebConfig(name: 'company_name') . '!';

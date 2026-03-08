@@ -252,6 +252,8 @@ class SocialAuthController extends Controller
                 'email_verified_at' => now(),
                 'referral_code' => Helpers::generate_referer_code(),
                 'login_medium' => $socialLoginNewCustomer['login_medium'] ?? null,
+                'registration_source' => 'social',
+                'claimed_at' => now(),
             ]);
             $this->customerRepo->updateOrCreate(params: ['email' => $socialLoginNewCustomer['email']], data: session('social_login_new_customer'));
             $user = $this->customerRepo->getFirstWhere(params: ['email' => $socialLoginNewCustomer['email']]);

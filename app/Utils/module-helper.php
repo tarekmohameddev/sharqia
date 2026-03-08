@@ -25,11 +25,13 @@ if (!function_exists('digital_payment_success')) {
                         'name' => $newCustomerInfo['name'],
                         'f_name' => $newCustomerInfo['name'],
                         'l_name' => $newCustomerInfo['l_name'],
-                        'email' => $newCustomerInfo['email'],
+                        'email' => $newCustomerInfo['email'] ?? null,
                         'phone' => $newCustomerInfo['phone'],
                         'is_active' => 1,
                         'password' => bcrypt($newCustomerInfo['password']),
                         'referral_code' => $newCustomerInfo['referral_code'],
+                        'registration_source' => 'web',
+                        'claimed_at' => now(),
                     ]);
                 } else {
                     $addCustomer = $checkCustomer;
@@ -115,7 +117,9 @@ if (!function_exists('add_fund_to_wallet_success')) {
                         'subject' => translate('add_fund_to_wallet'),
                         'title' => translate('add_fund_to_wallet'),
                     ];
-                    event(new AddFundToWalletEvent(email: $wallet_transaction->user['email'], data: $data));
+                    if ($wallet_transaction->user['email']) {
+                        event(new AddFundToWalletEvent(email: $wallet_transaction->user['email'], data: $data));
+                    }
                 } catch (\Exception $ex) {
                     info($ex);
                 }

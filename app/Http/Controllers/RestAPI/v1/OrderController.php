@@ -178,11 +178,13 @@ class OrderController extends Controller
             'name' => $address['contact_person_name'],
             'f_name' => $address['contact_person_name'],
             'l_name' => '',
-            'email' => $address['email'],
+            'email' => $address['email'] ?? null,
             'phone' => $address['phone'],
             'is_active' => 1,
             'password' => bcrypt($request['password']),
             'referral_code' => Helpers::generate_referer_code(),
+            'registration_source' => 'mobile',
+            'claimed_at' => now(),
         ]);
     }
 

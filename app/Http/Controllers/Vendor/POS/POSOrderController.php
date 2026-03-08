@@ -194,11 +194,17 @@ class POSOrderController extends BaseController
                 [
                     'f_name' => $customerInfo['f_name'] ?? '',
                     'l_name' => $customerInfo['l_name'] ?? '',
-                    'email' => $customerInfo['email'] ?? null,
-                    'phone' => $customerInfo['phone'],
-                    'password' => bcrypt('123456'),
                 ]
             );
+            if ($customer->wasRecentlyCreated) {
+                $customer->update([
+                    'email' => null,
+                    'password' => bcrypt(Str::random(32)),
+                    'registration_source' => 'pos',
+                    'claimed_at' => null,
+                    'is_active' => 1,
+                ]);
+            }
             $userId = $customer['id'];
         }
 

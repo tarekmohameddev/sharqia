@@ -441,7 +441,9 @@ class EasyOrdersService
                     'l_name' => $lName,
                     'email' => null,
                     'phone' => $phone,
-                    'password' => bcrypt('123456'),
+                    'password' => bcrypt(Str::random(32)),
+                    'registration_source' => 'import',
+                    'claimed_at' => null,
                     'is_active' => 1,
                 ]);
             }

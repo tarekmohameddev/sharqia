@@ -132,8 +132,10 @@
                                 </td>
                                 <td>
                                     <div class="mb-1">
+                                        @if($customer->email)
                                         <strong><a class="text-dark text-hover-primary"
                                                 href="mailto:{{$customer->email}}">{{$customer->email}}</a></strong>
+                                        @endif
 
                                     </div>
                                     <a class="text-dark text-hover-primary" href="tel:{{$customer->phone}}">{{$customer->phone}}</a>

@@ -28,8 +28,8 @@ class CustomerRegistrationRequest extends FormRequest
     {
         return [
             'f_name' => 'required',
-            'email' => 'required|email|unique:users',
-            'phone' => 'required|unique:users|max:20',
+            'email' => 'nullable|email|unique:users',
+            'phone' => 'required|max:20',
             'password' => 'required|same:con_password',
 
         ];

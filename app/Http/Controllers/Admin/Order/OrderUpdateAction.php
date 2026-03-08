@@ -8,6 +8,7 @@ use App\Services\{OrderDetailsService, OrderService, ShippingAddressService};
 use App\Traits\CalculatorTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Models\CategoryDiscountRule;
 
 class OrderUpdateAction extends Controller
@@ -76,7 +77,9 @@ class OrderUpdateAction extends Controller
                             'email' => null,
                             'phone' => $cd['phone'] ?? null,
                             'alternative_phone' => $cd['alternative_phone'] ?? null,
-                            'password' => bcrypt('123456'),
+                            'password' => bcrypt(Str::random(32)),
+                            'registration_source' => 'pos',
+                            'claimed_at' => null,
                             'is_active' => 1,
                         ]);
                         $userId = (int)$customer->id;

@@ -23,7 +23,9 @@ class CustomerService
             'city' => $cityName,
             'zip' => $request['zip_code'] ?? null,
             'street_address' => $request['address'] ?? null,
-            'password' => bcrypt($request['password'] ?? 'password')
+            'password' => bcrypt($request['password'] ?? 'password'),
+            'registration_source' => 'pos',
+            'claimed_at' => null,
         ];
     }
 

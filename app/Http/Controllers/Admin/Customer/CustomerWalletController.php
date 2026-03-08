@@ -84,7 +84,9 @@ class CustomerWalletController extends BaseController
                 'subject' => translate('add_fund_to_wallet'),
                 'title' => translate('add_fund_to_wallet'),
             ];
-            event(new AddFundToWalletEvent(email: $customer['email'], data: $data));
+            if ($customer['email']) {
+                event(new AddFundToWalletEvent(email: $customer['email'], data: $data));
+            }
             return response()->json(['message' => translate('transaction_successful')], 200);
         }
 

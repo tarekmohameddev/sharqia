@@ -25,7 +25,7 @@ class CustomerRequest extends FormRequest
         return [
             'f_name' => 'required',
             'l_name' => 'required',
-            'email' => 'required|email|unique:users',
+            'email' => 'nullable|email|unique:users',
             'phone' => 'unique:users|min:4|max:20',
         ];
     }

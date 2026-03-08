@@ -49,7 +49,7 @@
             <td style="height:80px"></td>
             <td>{{ ucwords(($item->f_name?? translate('not_found')).' '.$item->l_name) }}</td>
             <td>{{ (string)$item?->phone ?? translate('not_found') }}</td>
-            <td>{{ $item->email }}</td>
+            <td>{{ $item->email ?? '' }}</td>
             <td>{{ date('d M, Y ',strtotime($item->created_at)) }}</td>
             <td>{{ $item->orders->count() ?? 0 }}</td>
             <td>{{ translate($item->is_active == 1 ? 'active' : 'inactive') }}</td>

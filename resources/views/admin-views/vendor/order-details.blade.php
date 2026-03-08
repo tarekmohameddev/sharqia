@@ -535,7 +535,9 @@
                                         class="text-dark"> <strong>{{$orderCount}}</strong> {{translate('orders')}}</span>
                                     <span
                                         class="text-dark break-all"><strong>{{$order->customer['phone']}}</strong></span>
+                                    @if($order->customer['email'])
                                     <span class="text-dark break-all">{{$order->customer['email']}}</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
