@@ -9,6 +9,7 @@ use App\Http\Controllers\RestAPI\v1\auth\SocialAuthController;
 use App\Http\Controllers\RestAPI\v1\BannerController;
 use App\Http\Controllers\RestAPI\v1\EasyOrdersWebhookController;
 use App\Http\Controllers\RestAPI\v1\AuthenticityVerifyController;
+use App\Http\Controllers\RestAPI\v1\SimpleOrderController;
 use App\Http\Controllers\RestAPI\v1\BrandController;
 use App\Http\Controllers\RestAPI\v1\CartController;
 use App\Http\Controllers\RestAPI\v1\CategoryController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\RestAPI\v1\CustomerRestockRequestController;
 use App\Http\Controllers\RestAPI\v1\DealController;
 use App\Http\Controllers\RestAPI\v1\DealOfTheDayController;
 use App\Http\Controllers\RestAPI\v1\FlashDealController;
+use App\Http\Controllers\RestAPI\v1\GovernorateController;
 use App\Http\Controllers\RestAPI\v1\MapApiController;
 use App\Http\Controllers\RestAPI\v1\NotificationController;
 use App\Http\Controllers\RestAPI\v1\OrderController;
@@ -51,6 +53,8 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
         Route::get('config', 'configuration');
         Route::get('business-pages', 'getBusinessPagesList');
     });
+
+    Route::get('governorates', [GovernorateController::class, 'index']);
 
     Route::group(['prefix' => 'auth', 'namespace' => 'auth'], function () {
         Route::controller(PassportAuthController::class)->group(function () {
@@ -248,6 +252,7 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
                     Route::get('offline-payment-method-list', 'offline_payment_method_list');
                     Route::post('place-by-offline-payment', 'placeOrderByOfflinePayment');
                 });
+                Route::post('place-simple', [SimpleOrderController::class, 'placeOrder']);
                 Route::controller(CustomerController::class)->group(function () {
                     Route::get('details', 'get_order_details');
                     Route::get('generate-invoice', 'getOrderInvoice');

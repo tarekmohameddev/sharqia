@@ -51,6 +51,44 @@ class OrderService
         ];
     }
 
+    public function getSimpleOrderData(
+        int|string $orderId,
+        float $amount,
+        int|string $userId,
+        int $isGuest = 0,
+        ?int $sellerId = null,
+        ?int $cityId = null,
+        float $shippingCost = 0,
+        ?string $orderNote = null,
+    ): array {
+        return [
+            'id' => $orderId,
+            'customer_id' => $userId,
+            'is_guest' => $isGuest,
+            'customer_type' => 'customer',
+            'payment_status' => 'unpaid',
+            'order_status' => 'pending',
+            'seller_id' => $sellerId,
+            'seller_is' => 'seller',
+            'payment_method' => 'cash_on_delivery',
+            'order_type' => 'default_type',
+            'checked' => 1,
+            'extra_discount' => 0,
+            'extra_discount_type' => null,
+            'order_amount' => currencyConverter(amount: $amount),
+            'paid_amount' => 0,
+            'discount_amount' => 0,
+            'coupon_code' => null,
+            'discount_type' => null,
+            'coupon_discount_bearer' => 'inhouse',
+            'city_id' => $cityId,
+            'shipping_cost' => currencyConverter(amount: $shippingCost),
+            'order_note' => $orderNote,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
     public function getCheckIsOrderOnlyDigital(object $order): bool
     {
         $isOrderOnlyDigital = true;

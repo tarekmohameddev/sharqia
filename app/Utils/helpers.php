@@ -35,6 +35,9 @@ class Helpers
         if (auth('customer')->check()) {
             $user = auth('customer')->user();
 
+        } elseif (auth('api')->check()) {
+            $user = auth('api')->user();
+
         } elseif (is_object($request) && method_exists($request, 'user')) {
             $user = $request->user() ?? $request->user;
 
