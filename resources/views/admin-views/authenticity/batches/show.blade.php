@@ -10,9 +10,13 @@
                 <small class="text-muted">{{ translate('Generated') }}: {{ $batch->generated_at?->format('Y-m-d H:i') ?? '-' }}</small>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('admin.authenticity.batches.print', $batch->id) }}"
+                   target="_blank" class="btn btn-primary">
+                    <i class="fi fi-sr-print"></i> {{ translate('Print_Cards') }}
+                </a>
                 <a href="{{ route('admin.authenticity.batches.export-pdf', $batch->id) }}"
-                   class="btn btn-primary">
-                    <i class="fi fi-sr-file-pdf"></i> {{ translate('Export_PDF_for_Printing') }}
+                   class="btn btn-outline-primary">
+                    <i class="fi fi-sr-file-pdf"></i> {{ translate('Download_PDF') }}
                 </a>
                 <a href="{{ route('admin.authenticity.batches.export-csv', $batch->id) }}"
                    class="btn btn-outline-secondary">

@@ -2,21 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scratch Cards — {{ $batch->batch_number }}</title>
+    <title>{{ $batch->batch_number }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-            background: #fff;
+        @page {
+            size: 320mm 234mm;
+            margin: 0;
         }
 
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #e8e8e8;
+        }
+
+        /* ── Screen preview ── */
+        @media screen {
+            body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 16px;
+                padding: 24px;
+            }
+
+            .page {
+                background: #fff;
+                box-shadow: 0 4px 16px rgba(0,0,0,.25);
+            }
+        }
+
+        /* ── Shared page shell ── */
         .page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 8mm;
+            width: 320mm;
+            height: 234mm;
+            overflow: hidden;
             page-break-after: always;
         }
 
@@ -24,106 +44,120 @@
             page-break-after: avoid;
         }
 
-        .grid {
-            display: table;
-            width: 100%;
-            border-collapse: collapse;
+        /* ── Card grid: 6 cols × 7 rows, 4mm gap ── */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 50mm);
+            grid-template-rows: repeat(7, 30mm);
+            gap: 4mm;
+            width: 320mm;
+            height: 234mm;
         }
 
-        .grid-row {
-            display: table-row;
-        }
-
-        .card-cell {
-            display: table-cell;
-            width: 25%;
-            padding: 3mm;
-        }
-
+        /* ── Individual card: exactly 50×30mm ── */
         .scratch-card {
-            border: 2px solid #333;
-            border-radius: 6px;
-            overflow: hidden;
-            height: 38mm;
+            width: 50mm;
+            height: 30mm;
+            border: 0.4pt solid #000;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
             background: #fff;
         }
 
-        .card-header-strip {
-            background: #1a1a2e;
-            color: #fff;
-            text-align: center;
-            padding: 2mm 1mm;
-            font-size: 8px;
-            font-weight: bold;
-            letter-spacing: 1px;
+        .card-empty {
+            width: 50mm;
+            height: 30mm;
         }
 
-        .card-body-area {
+        /* Card header */
+        .card-header {
+            height: 5mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 0.3pt solid #888;
+            flex-shrink: 0;
+        }
+
+        .card-header span {
+            font-size: 4.5pt;
+            letter-spacing: 0.5pt;
+            color: #333;
+            text-transform: uppercase;
+        }
+
+        /* Code area */
+        .card-code {
+            height: 7mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .card-code span {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8.5pt;
+            font-weight: bold;
+            letter-spacing: 1pt;
+            color: #000;
+        }
+
+        /* Barcode */
+        .card-barcode {
             flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 0 1mm;
+        }
+
+        .card-barcode svg {
+            max-width: 46mm;
+            height: 10mm;
+            display: block;
+        }
+
+        /* Footer */
+        .card-footer {
+            height: 7mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2mm;
+            gap: 0.5mm;
+            border-top: 0.3pt solid #aaa;
+            flex-shrink: 0;
+            padding: 0.5mm 1mm;
         }
 
-        .scratch-area {
-            background: repeating-linear-gradient(
-                45deg,
-                #e0e0e0,
-                #e0e0e0 2px,
-                #c8c8c8 2px,
-                #c8c8c8 4px
-            );
-            border: 1px dashed #999;
-            border-radius: 3px;
-            width: 100%;
-            padding: 3mm 2mm;
-            text-align: center;
-            font-size: 7px;
+        .card-footer .batch-number {
+            font-size: 4pt;
             color: #555;
-            margin-bottom: 2mm;
-            position: relative;
+            letter-spacing: 0.3pt;
         }
 
-        .hidden-code {
-            font-family: 'Courier New', monospace;
-            font-size: 9px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #1a1a2e;
-        }
-
-        .barcode-area {
-            width: 100%;
+        .card-footer .warning-text {
+            font-size: 3.5pt;
+            color: #333;
             text-align: center;
-            overflow: hidden;
+            direction: rtl;
+            line-height: 1.3;
         }
 
-        .barcode-area svg {
-            max-width: 100%;
-            height: 12mm;
-        }
-
-        .card-footer-strip {
-            background: #f5f5f5;
-            text-align: center;
-            padding: 1mm;
-            font-size: 6px;
-            color: #666;
-            border-top: 1px solid #ddd;
-        }
-
-        @page {
-            margin: 0;
-            size: A4 portrait;
-        }
-
+        /* ── Print overrides ── */
         @media print {
-            body { margin: 0; }
-            .page { page-break-after: always; }
+            body {
+                background: none;
+                display: block;
+                padding: 0;
+            }
+
+            .page {
+                box-shadow: none;
+            }
         }
     </style>
 </head>
@@ -131,37 +165,34 @@
 
 @foreach($pages as $pageIndex => $pageCodes)
     <div class="page">
-        <div class="grid">
-            @foreach($pageCodes->chunk(4) as $rowCodes)
-                <div class="grid-row">
-                    @foreach($rowCodes as $code)
-                        <div class="card-cell">
-                            <div class="scratch-card">
-                                <div class="card-header-strip">✓ AUTHENTICITY CARD</div>
-                                <div class="card-body-area">
-                                    <div class="scratch-area">
-                                        <div style="font-size:6px; margin-bottom:1mm;">▼ SCRATCH HERE ▼</div>
-                                        <div class="hidden-code">{{ $code->code }}</div>
-                                    </div>
-                                    <div class="barcode-area">
-                                        {!! DNS1D::getBarcodeHTML($code->code, 'C128', 1.2, 28, '#000000', false) !!}
-                                    </div>
-                                </div>
-                                <div class="card-footer-strip">
-                                    {{ $batch->batch_number }} &bull; Scan to verify authenticity
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                    {{-- Fill empty cells if row is not complete --}}
-                    @for($i = count($rowCodes); $i < 4; $i++)
-                        <div class="card-cell"></div>
-                    @endfor
+        <div class="card-grid">
+            @foreach($pageCodes as $code)
+                <div class="scratch-card">
+                    <div class="card-header">
+                        <span>Authenticity Card</span>
+                    </div>
+                    <div class="card-code">
+                        <span>{{ $code->code }}</span>
+                    </div>
+                    <div class="card-barcode">
+                        {!! DNS1D::getBarcodeHTML($code->code, 'C128', 1.0, 34, '#000000', false) !!}
+                    </div>
+                    <div class="card-footer">
+                        <span class="batch-number">{{ $batch->batch_number }}</span>
+                        <span class="warning-text">لحمايتك من أي تلاعب أو تقليد، الكود صالح 4 ساعات فقط من أول استخدام</span>
+                    </div>
                 </div>
             @endforeach
+            {{-- Fill empty cells so the grid stays intact on the last page --}}
+            @for($i = count($pageCodes); $i < 42; $i++)
+                <div class="card-empty"></div>
+            @endfor
         </div>
     </div>
 @endforeach
 
+<script>
+    window.onload = function () { window.print(); };
+</script>
 </body>
 </html>
