@@ -14,9 +14,13 @@
                    target="_blank" class="btn btn-primary">
                     <i class="fi fi-sr-print"></i> {{ translate('Print_Cards') }}
                 </a>
-                <a href="{{ route('admin.authenticity.batches.export-pdf', $batch->id) }}"
+                <a href="{{ route('admin.authenticity.batches.export-pdf-single', $batch->id) }}"
                    class="btn btn-outline-primary">
-                    <i class="fi fi-sr-file-pdf"></i> {{ translate('Download_PDF') }}
+                    <i class="fi fi-sr-file-pdf"></i> {{ translate('PDF_One_Per_Page') }}
+                </a>
+                <a href="{{ route('admin.authenticity.batches.export-zip', $batch->id) }}"
+                   class="btn btn-outline-success">
+                    <i class="fi fi-sr-file-zip"></i> {{ translate('Export_Images_ZIP') }}
                 </a>
                 <a href="{{ route('admin.authenticity.batches.export-csv', $batch->id) }}"
                    class="btn btn-outline-secondary">

@@ -1287,6 +1287,8 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::controller(AuthenticityBatchExportController::class)->group(function () {
                 Route::get('{id}/print', 'printPreview')->name('print');
                 Route::get('{id}/export-pdf', 'exportPdf')->name('export-pdf');
+                Route::get('{id}/export-pdf-single', 'exportPdfSingle')->name('export-pdf-single');
+                Route::get('{id}/export-zip', 'exportZip')->name('export-zip');
                 Route::get('{id}/export-csv', 'exportCsv')->name('export-csv');
             });
         });

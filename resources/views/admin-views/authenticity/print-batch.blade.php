@@ -169,7 +169,7 @@
             @foreach($pageCodes as $code)
                 <div class="scratch-card">
                     <div class="card-header">
-                        <span>Authenticity Card</span>
+                        <span>الشرقية بيور</span>
                     </div>
                     <div class="card-code">
                         <span>{{ $code->code }}</span>
