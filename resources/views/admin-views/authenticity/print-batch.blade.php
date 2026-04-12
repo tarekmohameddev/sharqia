@@ -122,29 +122,30 @@
 
         /* Footer */
         .card-footer {
-            height: 7mm;
+            height: 8mm;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.5mm;
+            gap: 0.3mm;
             border-top: 0.3pt solid #aaa;
             flex-shrink: 0;
-            padding: 0.5mm 1mm;
+            padding: 0.4mm 0.8mm;
         }
 
         .card-footer .batch-number {
-            font-size: 4pt;
+            font-size: 3.5pt;
             color: #555;
             letter-spacing: 0.3pt;
         }
 
         .card-footer .warning-text {
-            font-size: 3.5pt;
-            color: #333;
+            font-size: 6pt;
+            font-weight: 600;
+            color: #222;
             text-align: center;
             direction: rtl;
-            line-height: 1.3;
+            line-height: 1.25;
         }
 
         /* ── Print overrides ── */
@@ -168,11 +169,8 @@
         <div class="card-grid">
             @foreach($pageCodes as $code)
                 <div class="scratch-card">
-                    <div class="card-header">
-                        <span>الشرقية بيور</span>
-                    </div>
                     <div class="card-code">
-                        <span>{{ $code->code }}</span>
+                        <span>للتحقق من المنتج </span>
                     </div>
                     <div class="card-barcode">
                         {!! DNS1D::getBarcodeHTML($code->code, 'C128', 1.0, 34, '#000000', false) !!}

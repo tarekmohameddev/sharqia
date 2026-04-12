@@ -66,7 +66,7 @@
             top: 11mm;
             left: 0;
             right: 0;
-            height: 13mm;
+            height: 12mm;
             text-align: center;
             overflow: hidden;
         }
@@ -80,26 +80,29 @@
 
         .card-footer {
             position: absolute;
-            top: 24mm;
+            top: 23mm;
             left: 0;
             right: 0;
-            height: 6mm;
+            height: 7mm;
             border-top: 0.3pt solid #aaa;
             text-align: center;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 0.5mm;
         }
 
         .warning-text {
-            font-size: 3pt;
-            color: #333;
+            font-size: 5.5pt;
+            font-weight: 600;
+            color: #222;
             font-family: 'DejaVu Sans', sans-serif;
             direction: rtl;
             unicode-bidi: plaintext;
             text-align: center;
-            white-space: nowrap;
-            line-height: 1;
+            line-height: 1.2;
             display: block;
-            line-height: 6mm;
         }
     </style>
 </head>
@@ -107,7 +110,7 @@
 
 @foreach($codes as $code)
     <div class="card">
-        <div class="card-header">الشرقية بيور</div>
+        <div class="card-header">للتحقق من المنتج </div>
         <div class="card-code">{{ $code->code }}</div>
         <div class="card-barcode">
             <img
