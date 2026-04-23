@@ -66,43 +66,48 @@
             top: 11mm;
             left: 0;
             right: 0;
-            height: 12mm;
-            text-align: center;
-            overflow: hidden;
-        }
-
-        .card-barcode img {
-            width: 48mm;
-            height: 11mm;
-            display: block;
-            margin: 1mm auto 0;
-        }
-
-        .card-footer {
-            position: absolute;
-            top: 23mm;
-            left: 0;
-            right: 0;
-            height: 7mm;
-            border-top: 0.3pt solid #aaa;
+            height: 8mm;
             text-align: center;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0 0.5mm;
+        }
+
+        .card-barcode img {
+            width: 46mm;
+            height: 8mm;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .card-footer {
+            position: absolute;
+            top: 19mm;
+            left: 0;
+            right: 0;
+            height: 11mm;
+            border-top: 0.3pt solid #aaa;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 0.8mm;
+            box-sizing: border-box;
         }
 
         .warning-text {
-            font-size: 5.5pt;
-            font-weight: 600;
-            color: #222;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #111;
             font-family: 'DejaVu Sans', sans-serif;
             direction: rtl;
             unicode-bidi: plaintext;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.1;
             display: block;
+            width: 100%;
         }
     </style>
 </head>

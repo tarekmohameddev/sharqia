@@ -108,12 +108,12 @@ class AuthenticityBatchExportController extends BaseController
                     <div style="position:absolute; left:0; right:0; top:4mm; height:7mm; line-height:7mm; text-align:center; font-family:\'Courier New\', Courier, monospace; font-size:8.5pt; font-weight:bold; letter-spacing:1pt; color:#000; overflow:hidden;">
                         ' . e($txt_up_meessage) . '
                     </div>
-                    <div style="position:absolute; left:0; right:0; top:11mm; height:12mm; text-align:center; overflow:hidden;">
-                        <img src="' . e($barcodeSrc) . '" style="width:48mm; height:11mm; display:block; margin:0.5mm auto 0;" alt="barcode" />
+                    <div style="position:absolute; left:0; right:0; top:11mm; height:8mm; text-align:center; overflow:hidden;">
+                        <img src="' . e($barcodeSrc) . '" style="width:46mm; height:8mm; display:block; margin:0 auto; object-fit:contain;" alt="barcode" />
                     </div>
-                    <div style="position:absolute; left:0; right:0; top:23mm; height:7mm; display:flex; align-items:center; justify-content:center; text-align:center; font-size:5.5pt; font-weight:bold; color:#222; border-top:0.3pt solid #aaa; direction:rtl; unicode-bidi:plaintext; padding:0 1mm; line-height:1.15;">
+                    <table style="position:absolute; left:0; right:0; top:19mm; width:100%; height:11mm; border-top:0.3pt solid #aaa; border-collapse:collapse; margin:0; padding:0;"><tr><td style="text-align:center; vertical-align:middle; font-size:9pt; font-weight:bold; color:#111; direction:rtl; unicode-bidi:plaintext; line-height:1.08; padding:0 1.2mm; height:11mm;">
                         ' . e($warningText) . '
-                    </div>
+                    </td></tr></table>
                 </div>
             ';
 
@@ -213,20 +213,20 @@ class AuthenticityBatchExportController extends BaseController
             'UTF-8'
         );
 
-        // viewBox: 500 × 300 units → 1 unit = 0.1 mm
-        // Zones: header 0-50 | code 50-120 | barcode 120-228 | footer 228-300
+        // viewBox: 500 × 300 units → 10 units = 1 mm
+        // Zones: header 0–40 | code 40–110 | barcode 110–190 | footer 190–300 (warning centered in footer)
         return <<<SVG
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="50mm" height="30mm" viewBox="0 0 500 300">
   <rect x="0.5" y="0.5" width="499" height="299" fill="white" stroke="black" stroke-width="1"/>
   <text x="250" y="40" text-anchor="middle" dominant-baseline="middle"
         font-family="'Courier New',Courier,monospace" font-size="22" font-weight="bold" fill="#000">للتحقق من المنتج </text>
-  <svg x="20" y="118" width="460" height="108" viewBox="{$barcodeViewBox}" preserveAspectRatio="none">
+  <svg x="20" y="110" width="460" height="80" viewBox="{$barcodeViewBox}" preserveAspectRatio="none">
     {$barcodeInner}
   </svg>
-  <line x1="0" y1="228" x2="500" y2="228" stroke="#aaa" stroke-width="0.5"/>
-  <text x="250" y="276" text-anchor="middle" dominant-baseline="middle"
-        font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="600" fill="#222" direction="rtl">{$warningText}</text>
+  <line x1="0" y1="190" x2="500" y2="190" stroke="#aaa" stroke-width="0.5"/>
+  <text x="250" y="245" text-anchor="middle" dominant-baseline="middle"
+        font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#111" direction="rtl">{$warningText}</text>
 </svg>
 SVG;
     }

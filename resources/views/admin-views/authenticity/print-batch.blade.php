@@ -104,9 +104,10 @@
             color: #000;
         }
 
-        /* Barcode */
+        /* Barcode — fixed height so no extra white band above/below SVG */
         .card-barcode {
-            flex: 1;
+            flex: 0 0 12mm;
+            height: 12mm;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -116,36 +117,50 @@
 
         .card-barcode svg {
             max-width: 46mm;
-            height: 10mm;
+            width: 100%;
+            height: 12mm;
             display: block;
         }
 
-        /* Footer */
+        /* Footer — text vertically + horizontally centered in strip */
         .card-footer {
-            height: 8mm;
+            height: 11mm;
+            flex-shrink: 0;
+            border-top: 0.3pt solid #aaa;
+            padding: 0 1mm;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-footer-inner {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.3mm;
-            border-top: 0.3pt solid #aaa;
-            flex-shrink: 0;
-            padding: 0.4mm 0.8mm;
+            gap: 0.25mm;
+            width: 100%;
+            max-height: 100%;
         }
 
         .card-footer .batch-number {
-            font-size: 3.5pt;
-            color: #555;
-            letter-spacing: 0.3pt;
+            font-size: 2.8pt;
+            color: #666;
+            letter-spacing: 0.2pt;
+            text-align: center;
+            line-height: 1;
         }
 
         .card-footer .warning-text {
-            font-size: 6pt;
-            font-weight: 600;
-            color: #222;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #111;
             text-align: center;
             direction: rtl;
-            line-height: 1.25;
+            line-height: 1.12;
+            width: 100%;
+            display: block;
         }
 
         /* ── Print overrides ── */
@@ -176,8 +191,10 @@
                         {!! DNS1D::getBarcodeHTML($code->code, 'C128', 1.0, 34, '#000000', false) !!}
                     </div>
                     <div class="card-footer">
-                        <span class="batch-number">{{ $batch->batch_number }}</span>
-                        <span class="warning-text">لحمايتك من أي تلاعب أو تقليد، الكود صالح 4 ساعات فقط من أول استخدام</span>
+                        <div class="card-footer-inner">
+                            <span class="batch-number">{{ $batch->batch_number }}</span>
+                            <span class="warning-text">لحمايتك من أي تلاعب أو تقليد، الكود صالح 4 ساعات فقط من أول استخدام</span>
+                        </div>
                     </div>
                 </div>
             @endforeach
