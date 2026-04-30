@@ -279,9 +279,6 @@
                                 @if($shippingAddress->address)
                                     {{ $shippingAddress->address }}
                                 @endif
-                                @if($shippingAddress->zip)
-                                    - {{ $shippingAddress->zip }}
-                                @endif
                             @else
                                 عنوان غير محدد
                             @endif
