@@ -32,6 +32,17 @@ class AuthenticityVerifyController extends Controller
         $deviceId = $request->input('device_id');
         $codeEntered = $this->codeService->normalizeCode($request->input('code'));
 
+        // Enforce "digits only, formatted 1234-5678-9012" after normalization.
+        if (!preg_match('/^\d{4}-\d{4}-\d{4}$/', $codeEntered)) {
+            $this->abuseDetection->recordInvalidAttempt($userId, $ip, $deviceId);
+            $this->logScan(null, $codeEntered, $userId, 'invalid', $ip, $request, $deviceId);
+
+            return response()->json([
+                'authentic' => false,
+                'message' => translate('invalid_code'),
+            ], 422);
+        }
+
         // Check if blocked before rate limit (blocked = harder block)
         if ($this->abuseDetection->isBlocked($userId, $ip, $deviceId)) {
             $this->logScan(null, $codeEntered, $userId, 'blocked', $ip, $request, $deviceId);
@@ -96,6 +107,12 @@ class AuthenticityVerifyController extends Controller
 
         $userId = $request->user()->id;
         $codeEntered = $this->codeService->normalizeCode($request->input('code'));
+
+        if (!preg_match('/^\d{4}-\d{4}-\d{4}$/', $codeEntered)) {
+            return response()->json([
+                'message' => translate('invalid_code'),
+            ], 422);
+        }
 
         $code = AuthenticityCode::where('code', $codeEntered)->first();
 

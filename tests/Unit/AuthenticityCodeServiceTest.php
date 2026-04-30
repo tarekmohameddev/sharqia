@@ -23,51 +23,34 @@ class AuthenticityCodeServiceTest extends TestCase
     public function test_generated_code_has_correct_format(): void
     {
         $code = $this->service->generateCode();
-        // Format: XXXX-XXXX-XXXX — 14 chars total including 2 dashes
         $this->assertSame(14, strlen($code));
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/', $code);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{4}-\d{4}$/', $code);
     }
 
-    public function test_generated_code_uses_valid_charset(): void
+    public function test_generated_code_is_digits_only_with_dashes(): void
     {
-        $charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
         for ($i = 0; $i < 100; $i++) {
             $code = $this->service->generateCode();
-            $stripped = str_replace('-', '', $code);
-            foreach (str_split($stripped) as $char) {
-                $this->assertStringContainsString($char, $charset, "Character '{$char}' is not in the allowed charset");
-            }
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{4}-\d{4}$/', $code);
         }
-    }
-
-    public function test_generated_code_excludes_ambiguous_characters(): void
-    {
-        $ambiguous = ['0', 'O', '1', 'I', 'L'];
-        for ($i = 0; $i < 200; $i++) {
-            $code = $this->service->generateCode();
-            $stripped = str_replace('-', '', $code);
-            foreach ($ambiguous as $char) {
-                $this->assertStringNotContainsString($char, $stripped, "Code '{$code}' contains ambiguous character '{$char}'");
-            }
-        }
-    }
-
-    public function test_normalize_code_accepts_code_without_dashes(): void
-    {
-        $normalized = $this->service->normalizeCode('FSY96HKI7TOP');
-        $this->assertSame('FSY9-6HKI-7TOP', $normalized);
     }
 
     public function test_normalize_code_accepts_code_with_spaces(): void
     {
-        $normalized = $this->service->normalizeCode('FSY9 6HKI 7TOP');
-        $this->assertSame('FSY9-6HKI-7TOP', $normalized);
+        $normalized = $this->service->normalizeCode('1234 5678 9012');
+        $this->assertSame('1234-5678-9012', $normalized);
     }
 
-    public function test_normalize_code_accepts_lowercase(): void
+    public function test_normalize_code_accepts_code_with_dashes(): void
     {
-        $normalized = $this->service->normalizeCode('fsy9-6hki-7top');
-        $this->assertSame('FSY9-6HKI-7TOP', $normalized);
+        $normalized = $this->service->normalizeCode('1234-5678-9012');
+        $this->assertSame('1234-5678-9012', $normalized);
+    }
+
+    public function test_normalize_code_accepts_plain_12_digits(): void
+    {
+        $normalized = $this->service->normalizeCode('123456789012');
+        $this->assertSame('1234-5678-9012', $normalized);
     }
 
     public function test_generate_batch_creates_batch_and_codes(): void

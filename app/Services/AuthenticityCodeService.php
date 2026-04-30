@@ -9,46 +9,44 @@ use Illuminate\Support\Facades\DB;
 class AuthenticityCodeService
 {
     /**
-     * Charset excludes 0/O, 1/I/L to avoid visual confusion when reading from printed cards.
-     * Code format: XXXX-XXXX-XXXX (3 groups of 4, dash-separated), e.g. FSY9-6HKI-7TOP
+     * Code format: 4 digits + dash + 4 digits + dash + 4 digits, e.g. 1234-5678-9012
      */
-    private const CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    private const MAX_BATCH_DIRECT = 5000;
+    private const CODE_LENGTH = 12;
     private const SEGMENT_LENGTH = 4;
     private const SEGMENT_COUNT = 3;
-    private const MAX_BATCH_DIRECT = 5000;
 
     public function generateCode(): string
     {
-        $charset = self::CHARSET;
-        $charsetLength = strlen($charset);
-        $segments = [];
-
-        for ($s = 0; $s < self::SEGMENT_COUNT; $s++) {
-            $segment = '';
-            for ($i = 0; $i < self::SEGMENT_LENGTH; $i++) {
-                $segment .= $charset[random_int(0, $charsetLength - 1)];
-            }
-            $segments[] = $segment;
+        $digits = '';
+        for ($i = 0; $i < self::CODE_LENGTH; $i++) {
+            $digits .= (string) random_int(0, 9);
         }
 
-        return implode('-', $segments);
+        return $this->formatDigits($digits);
     }
 
     /**
-     * Normalize a user-supplied code to the canonical stored format (XXXX-XXXX-XXXX).
-     * Accepts codes with or without dashes/spaces.
+     * Normalize a user-supplied code to the canonical stored format (1234-5678-9012).
+     * Accepts input with optional spaces/dashes; strips them out then reformats.
      */
     public function normalizeCode(string $input): string
     {
-        $stripped = strtoupper(preg_replace('/[\s\-]+/', '', $input));
+        $stripped = trim($input);
+        $digitsOnly = preg_replace('/\D+/', '', $stripped);
 
-        // If 12 raw chars, reformat with dashes
-        if (strlen($stripped) === self::SEGMENT_LENGTH * self::SEGMENT_COUNT) {
-            return implode('-', str_split($stripped, self::SEGMENT_LENGTH));
+        // If we ended up with exactly 12 digits, return as canonical
+        if (strlen($digitsOnly) === self::CODE_LENGTH) {
+            return $this->formatDigits($digitsOnly);
         }
 
-        // Already formatted or unknown — return uppercased as-is
-        return strtoupper(trim($input));
+        // Unknown format — return trimmed input as-is (caller can reject)
+        return $stripped;
+    }
+
+    private function formatDigits(string $digitsOnly): string
+    {
+        return implode('-', str_split($digitsOnly, self::SEGMENT_LENGTH));
     }
 
     /**

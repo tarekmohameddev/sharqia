@@ -103,7 +103,7 @@ class AuthenticityVerifyApiTest extends TestCase
     public function test_invalid_code_returns_404(): void
     {
         $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
-            'code' => 'XXXXXXZZZZZZ',
+            'code' => '9999-9999-9999',
         ]);
 
         $response->assertStatus(404)
@@ -111,24 +111,13 @@ class AuthenticityVerifyApiTest extends TestCase
 
         $this->assertDatabaseHas('authenticity_scan_logs', [
             'result' => 'invalid',
-            'code_entered' => 'XXXXXXZZZZZZ',
+            'code_entered' => '9999-9999-9999',
         ]);
-    }
-
-    public function test_code_is_normalized_to_uppercase(): void
-    {
-        $lowerCode = strtolower($this->code->code);
-
-        $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
-            'code' => $lowerCode,
-        ]);
-
-        $response->assertOk()->assertJson(['authentic' => true]);
     }
 
     public function test_code_without_dashes_is_accepted(): void
     {
-        // Strip dashes — user types the raw 12 chars without separators
+        // User inputs the 12 digits without separators; server normalizes to 1234-5678-9012
         $noDashes = str_replace('-', '', $this->code->code);
 
         $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
@@ -140,13 +129,24 @@ class AuthenticityVerifyApiTest extends TestCase
 
     public function test_code_with_spaces_instead_of_dashes_is_accepted(): void
     {
-        $withSpaces = str_replace('-', ' ', $this->code->code);
+        // Allow spaces; will be normalized back to 12 digits
+        $withSpaces = substr($this->code->code, 0, 4) . ' ' . substr($this->code->code, 4, 4) . ' ' . substr($this->code->code, 8, 4);
 
         $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
             'code' => $withSpaces,
         ]);
 
         $response->assertOk()->assertJson(['authentic' => true]);
+    }
+
+    public function test_non_12_digit_code_returns_422(): void
+    {
+        $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
+            'code' => '12345ABCDE',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['authentic' => false]);
     }
 
     public function test_blocked_user_returns_403(): void
@@ -222,7 +222,7 @@ class AuthenticityVerifyApiTest extends TestCase
     public function test_report_invalid_code_returns_404(): void
     {
         $response = $this->actingAsCustomer()->postJson('/api/v1/authenticity/report-counterfeit', [
-            'code' => 'BADCODE12345',
+            'code' => '9999-9999-9999',
         ]);
 
         $response->assertStatus(404);
