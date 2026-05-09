@@ -42,30 +42,20 @@ function computeCategoryDeals(items, categoryRulesMap) {
             remaining = remaining % rule.quantity;
         }
 
-        /**
-         * Gifts should not be "overridden" by another rule that has no gift.
-         * We compute gifts per gift-rule independently from the greedy discount application.
-         *
-         * Example:
-         * - Rule A: buy 2 => gift
-         * - Rule B: buy 5 => no gift
-         * For 5 items, the greedy discount may pick Rule B, but we must still keep
-         * gifts earned from Rule A (floor(5/2)=2).
-         */
-        rules.forEach(rule => {
-            if (!rule || !rule.giftProduct || !rule.giftProduct.id) return;
-            const giftQty = parseInt(rule.quantity || 0);
-            if (!giftQty || giftQty <= 0) return;
-            const giftTimes = Math.floor(totalCount / giftQty);
-            if (giftTimes > 0) {
+        // Find the single highest applicable rule and add all its gift products once.
+        // rules are already sorted highest-first.
+        const applicableRule = rules.find(r => totalCount >= (parseInt(r.quantity) || 0));
+        if (applicableRule && Array.isArray(applicableRule.giftProducts) && applicableRule.giftProducts.length > 0) {
+            applicableRule.giftProducts.forEach(giftProduct => {
+                if (!giftProduct || !giftProduct.id) return;
                 gifts.push({
                     categoryId: parseInt(catId),
-                    ruleId: rule.id,
-                    gift: rule.giftProduct,
-                    quantity: giftTimes
+                    ruleId: applicableRule.id,
+                    gift: giftProduct,
+                    quantity: 1
                 });
-            }
-        });
+            });
+        }
     });
 
     return { discountAmount: totalDiscount, giftsToEnsure: gifts };
@@ -1136,8 +1126,10 @@ $(document).ready(function() {
                     Object.keys(rulesMap).forEach(function(catId){
                         const rules = rulesMap[catId] || [];
                         rules.forEach(function(rule){
-                            if (rule && rule.giftProduct && rule.giftProduct.id) {
-                                giftIds.add(parseInt(rule.giftProduct.id));
+                            if (rule && Array.isArray(rule.giftProducts)) {
+                                rule.giftProducts.forEach(function(gp) {
+                                    if (gp && gp.id) giftIds.add(parseInt(gp.id));
+                                });
                             }
                         });
                     });

@@ -85,24 +85,24 @@ class POSController extends BaseController
         $governorates = Governorate::all();
 
         // Build category discount rules map for client-side POS
-        $rawCategoryRules = CategoryDiscountRule::with(['giftProduct'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
+        $rawCategoryRules = CategoryDiscountRule::with(['giftProducts'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
         $categoryRulesMap = [];
         foreach ($rawCategoryRules as $rule) {
-            $gift = null;
-            if ($rule->giftProduct) {
-                $gift = [
-                    'id' => $rule->giftProduct->id,
-                    'name' => $rule->giftProduct->name,
-                    'image' => getStorageImages(path: $rule->giftProduct->thumbnail_full_url, type: 'backend-product'),
-                    'unit' => $rule->giftProduct->unit,
-                    'stock' => (int) ($rule->giftProduct->current_stock ?? 0),
+            $giftProducts = $rule->giftProducts->map(function ($p) {
+                return [
+                    'id'    => $p->id,
+                    'name'  => $p->name,
+                    'image' => getStorageImages(path: $p->thumbnail_full_url, type: 'backend-product'),
+                    'unit'  => $p->unit,
+                    'stock' => (int) ($p->current_stock ?? 0),
                 ];
-            }
+            })->values()->toArray();
+
             $categoryRulesMap[$rule->category_id][] = [
-                'id' => $rule->id,
-                'quantity' => (int) $rule->quantity,
+                'id'             => $rule->id,
+                'quantity'       => (int) $rule->quantity,
                 'discountAmount' => (float) $rule->discount_amount,
-                'giftProduct' => $gift,
+                'giftProducts'   => $giftProducts,
             ];
         }
 

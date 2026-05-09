@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class CategoryDiscountRule extends Model
 {
@@ -11,7 +12,6 @@ class CategoryDiscountRule extends Model
         'category_id',
         'quantity',
         'discount_amount',
-        'gift_product_id',
         'is_active',
     ];
 
@@ -26,10 +26,13 @@ class CategoryDiscountRule extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-    public function giftProduct(): BelongsTo
+    public function giftProducts(): BelongsToMany
     {
-        return $this->belongsTo(Product::class, 'gift_product_id');
+        return $this->belongsToMany(
+            Product::class,
+            'category_discount_rule_gifts',
+            'category_discount_rule_id',
+            'product_id'
+        );
     }
 }
-
-

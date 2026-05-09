@@ -57,7 +57,7 @@ class CategoryController extends BaseController
 
     public function getUpdateView(string|int $id): View|RedirectResponse
     {
-        $category = $this->categoryRepo->getFirstWhere(params: ['id' => $id], relations: ['translations']);
+        $category = $this->categoryRepo->getFirstWhere(params: ['id' => $id], relations: ['translations', 'discountRules.giftProducts']);
         $languages = getWebConfig(name: 'pnc_language') ?? null;
         $defaultLanguage = $languages[0];
         return view('admin-views.category.category-edit', [
@@ -78,13 +78,16 @@ class CategoryController extends BaseController
         if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
             foreach ($request['category_discount_rules'] as $ruleData) {
                 if (!empty($ruleData['quantity']) && isset($ruleData['discount_amount'])) {
-                    CategoryDiscountRule::create([
+                    $rule = CategoryDiscountRule::create([
                         'category_id' => $savedCategory->id,
                         'quantity' => (int) $ruleData['quantity'],
                         'discount_amount' => (float) $ruleData['discount_amount'],
-                        'gift_product_id' => !empty($ruleData['gift_product_id']) ? (int) $ruleData['gift_product_id'] : null,
                         'is_active' => true,
                     ]);
+                    $giftIds = array_filter(array_map('intval', $ruleData['gift_product_ids'] ?? []));
+                    if (!empty($giftIds)) {
+                        $rule->giftProducts()->sync($giftIds);
+                    }
                 }
             }
         }
@@ -106,13 +109,16 @@ class CategoryController extends BaseController
         if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
             foreach ($request['category_discount_rules'] as $ruleData) {
                 if (!empty($ruleData['quantity']) && isset($ruleData['discount_amount'])) {
-                    CategoryDiscountRule::create([
+                    $rule = CategoryDiscountRule::create([
                         'category_id' => $category->id,
                         'quantity' => (int) $ruleData['quantity'],
                         'discount_amount' => (float) $ruleData['discount_amount'],
-                        'gift_product_id' => !empty($ruleData['gift_product_id']) ? (int) $ruleData['gift_product_id'] : null,
                         'is_active' => true,
                     ]);
+                    $giftIds = array_filter(array_map('intval', $ruleData['gift_product_ids'] ?? []));
+                    if (!empty($giftIds)) {
+                        $rule->giftProducts()->sync($giftIds);
+                    }
                 }
             }
         }

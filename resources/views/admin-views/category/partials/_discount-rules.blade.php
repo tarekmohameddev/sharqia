@@ -40,13 +40,15 @@
                                     <label class="form-label">{{ translate('discount_amount') }} <span class="input-required-icon">*</span></label>
                                     <input type="number" min="0" step="0.01" class="form-control" name="category_discount_rules[{{ $index }}][discount_amount]" value="{{ $rule->discount_amount }}" required>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">{{ translate('gift_product') }}</label>
-                                    <select class="form-control category-gift-product-select" name="category_discount_rules[{{ $index }}][gift_product_id]">
-                                        <option value="">{{ translate('select_gift_product') }}</option>
-                                        @if($rule->giftProduct)
-                                            <option value="{{ $rule->giftProduct->id }}" selected>{{ $rule->giftProduct->name }}</option>
-                                        @endif
+                                <div class="col-md-5">
+                                    <label class="form-label">{{ translate('gift_products') }}</label>
+                                    <select class="form-control category-gift-product-select"
+                                            name="category_discount_rules[{{ $index }}][gift_product_ids][]"
+                                            multiple="multiple"
+                                            data-selected-ids="{{ $rule->giftProducts->pluck('id')->implode(',') }}">
+                                        @foreach($rule->giftProducts as $giftProduct)
+                                            <option value="{{ $giftProduct->id }}" selected>{{ $giftProduct->name }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-1 d-flex align-items-end">
@@ -74,10 +76,12 @@
                 <label class="form-label">{{ translate('discount_amount') }} <span class="input-required-icon">*</span></label>
                 <input type="number" min="0" step="0.01" class="form-control" name="category_discount_rules[INDEX][discount_amount]" placeholder="{{ translate('ex: 20') }}" required>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">{{ translate('gift_product') }}</label>
-                <select class="form-control category-gift-product-select" name="category_discount_rules[INDEX][gift_product_id]">
-                    <option value="">{{ translate('select_gift_product') }}</option>
+            <div class="col-md-5">
+                <label class="form-label">{{ translate('gift_products') }}</label>
+                <select class="form-control category-gift-product-select"
+                        name="category_discount_rules[INDEX][gift_product_ids][]"
+                        multiple="multiple"
+                        data-selected-ids="">
                 </select>
             </div>
             <div class="col-md-1 d-flex align-items-end">
@@ -87,7 +91,6 @@
             </div>
         </div>
     </div>
-    
 </template>
 
 @push('script')
@@ -113,7 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (el.name) el.name = el.name.replace('INDEX', categoryDiscountRuleIndex);
             });
             const giftSelect = clone.querySelector('.category-gift-product-select');
-            loadGiftProductsForSelect(giftSelect);
+            loadGiftProductsForSelect(giftSelect, function() {
+                initSelect2(giftSelect);
+            });
             const removeBtn = clone.querySelector('.remove-category-discount-rule');
             removeBtn.addEventListener('click', function() {
                 this.closest('.discount-rule-item').remove();
@@ -123,26 +128,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.querySelectorAll('.category-gift-product-select').forEach(loadGiftProductsForSelect);
+    // Initialize existing rule selects
+    document.querySelectorAll('.category-gift-product-select').forEach(function(selectElement) {
+        loadGiftProductsForSelect(selectElement, function() {
+            initSelect2(selectElement);
+        });
+    });
 
-    function loadGiftProductsForSelect(selectElement) {
+    function initSelect2(selectElement) {
+        if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+            $(selectElement).select2({
+                placeholder: '{{ translate('select_gift_products') }}',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    }
+
+    function loadGiftProductsForSelect(selectElement, callback) {
         if (!selectElement) return;
-        if (selectElement.dataset.loaded === '1') return;
+        if (selectElement.dataset.loaded === '1') {
+            if (callback) callback();
+            return;
+        }
+        const selectedIds = (selectElement.dataset.selectedIds || '')
+            .split(',')
+            .map(id => id.trim())
+            .filter(id => id !== '');
+
         fetch('{{ route("admin.products.gift-products") }}')
             .then(response => response.json())
             .then(data => {
-                const hasSelected = !!selectElement.querySelector('option[selected]');
+                // Collect IDs already rendered (pre-selected options from server)
+                const existingIds = new Set();
+                selectElement.querySelectorAll('option').forEach(opt => {
+                    existingIds.add(String(opt.value));
+                });
+
                 data.forEach(p => {
+                    const idStr = String(p.id);
+                    if (existingIds.has(idStr)) return; // skip duplicates
                     const option = document.createElement('option');
                     option.value = p.id;
                     option.textContent = p.name + ' (' + p.unit_price + ')';
+                    if (selectedIds.includes(idStr)) {
+                        option.selected = true;
+                    }
                     selectElement.appendChild(option);
                 });
                 selectElement.dataset.loaded = '1';
+                if (callback) callback();
             })
-            .catch(() => {});
+            .catch(() => {
+                if (callback) callback();
+            });
     }
 });
 </script>
 @endpush
-
