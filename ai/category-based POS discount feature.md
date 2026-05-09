@@ -81,6 +81,18 @@ This document explains the category-level quantity-based discount rules feature 
 - Keep `CATEGORY_RULES_MAP` payload small by sending only active rules and necessary gift data (id, name, image, unit, stock)
 - The `category_discount_rules` table uses the MyISAM engine (inherited from the project default); no FK enforcement at the DB level — integrity is managed at the application layer
 
+## Easy Orders integration
+
+The same discount rules apply when importing EasyOrders into the main orders system via `App\Services\EasyOrdersService::buildCartAndCalculateDiscount()`. The logic mirrors the POS client (`computeCategoryDeals`) exactly:
+
+- **Relation**: `CategoryDiscountRule::with('giftProducts')` — loads multiple gift products per rule via the pivot table.
+- **Mixed categories**: `Category` rows are queried for `allow_mixed_discount`; if ≥2 categories in the cart have the flag set, their item counts are pooled and the rules of the first such category (by cart-build order) are applied to the entire group.
+- **Greedy discount**: same highest-threshold-first, multiple-applications algorithm as POS.
+- **Gifts**: the single highest applicable rule is selected; every gift product attached to that rule is added with `quantity = 1` — no multiples, no summing across lower rules.
+- **Gift order lines**: gift cart items are created with `price = 0`, `is_gift = true`, and stored in `order_details` alongside regular items; `extra_discount` on the `orders` row is set to the computed category discount amount.
+
+The `extra_discount` column in the `orders` table (field `extra_discount_type = 'amount'` when non-zero) is the single place where the category discount lands for EasyOrders-imported orders, matching the POS behaviour.
+
 ## Files touched
 - Models: `app/Models/Category.php`, `app/Models/CategoryDiscountRule.php`
 - Migrations:

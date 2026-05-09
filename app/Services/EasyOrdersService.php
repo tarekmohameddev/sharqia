@@ -7,6 +7,7 @@ use App\Contracts\Repositories\OrderDetailRepositoryInterface;
 use App\Contracts\Repositories\OrderRepositoryInterface;
 use App\Contracts\Repositories\ShippingAddressRepositoryInterface;
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Models\Category;
 use App\Models\CategoryDiscountRule;
 use App\Models\EasyOrder;
 use App\Models\EasyOrdersGovernorateMapping;
@@ -257,7 +258,7 @@ class EasyOrdersService
             $totals['totalTax'] += $taxAmountPerUnit * $qty;
         }
 
-        // Category rules discount (exclude gifts) – same logic as POS
+        // Category rules discount (exclude gifts) – mirrors POS computeCategoryDeals logic
         $categoryCounts = [];
         foreach ($cartItems as $ci) {
             if (!empty($ci['is_gift'])) {
@@ -273,16 +274,47 @@ class EasyOrdersService
         $categoryDiscount = 0.0;
         $giftLines = [];
         if (!empty($categoryCounts)) {
-            $rules = CategoryDiscountRule::with('giftProduct')
-                ->whereIn('category_id', array_keys($categoryCounts))
+            $catIds = array_keys($categoryCounts);
+
+            // Load categories to resolve allow_mixed_discount flag
+            $categories = Category::whereIn('id', $catIds)
+                ->get(['id', 'allow_mixed_discount'])
+                ->keyBy('id');
+
+            // Load all active rules with their gift products
+            $allRules = CategoryDiscountRule::with('giftProducts')
+                ->whereIn('category_id', $catIds)
                 ->where('is_active', true)
                 ->orderBy('quantity', 'desc')
                 ->get()
                 ->groupBy('category_id');
 
-            foreach ($categoryCounts as $catId => $count) {
-                $remaining = $count;
-                $catRules = ($rules[$catId] ?? collect())->sortByDesc('quantity');
+            // Identify mixed-discount categories; the first one (by original array order) governs
+            $mixedCatIds = [];
+            $firstMixedCatId = null;
+            foreach ($catIds as $catId) {
+                $cat = $categories->get($catId);
+                if ($cat && $cat->allow_mixed_discount) {
+                    $mixedCatIds[] = $catId;
+                    if ($firstMixedCatId === null) {
+                        $firstMixedCatId = $catId;
+                    }
+                }
+            }
+
+            $processedAsMixed = [];
+
+            // Process mixed group as a single virtual group when ≥2 categories participate
+            if (count($mixedCatIds) > 1 && $firstMixedCatId !== null) {
+                $mixedTotalCount = 0;
+                foreach ($mixedCatIds as $catId) {
+                    $mixedTotalCount += $categoryCounts[$catId];
+                }
+
+                $catRules = ($allRules[$firstMixedCatId] ?? collect())->sortByDesc('quantity');
+
+                // Greedy discount: highest threshold first, apply as many times as possible
+                $remaining = $mixedTotalCount;
                 foreach ($catRules as $rule) {
                     if ($remaining < (int)$rule->quantity) {
                         continue;
@@ -295,31 +327,58 @@ class EasyOrdersService
                     $remaining = $remaining % (int)$rule->quantity;
                 }
 
-                // Gifts are computed independently from greedy discount application
+                // Gifts: single highest applicable rule, each gift product added once
+                $applicableRule = $catRules->first(fn ($r) => $mixedTotalCount >= (int)$r->quantity);
+                if ($applicableRule) {
+                    foreach ($applicableRule->giftProducts as $giftProduct) {
+                        if (!$giftProduct || !$giftProduct->id) {
+                            continue;
+                        }
+                        $giftKey = 'cat_' . $firstMixedCatId . '_rule_' . (int)$applicableRule->id . '_gift_' . (int)$giftProduct->id;
+                        $giftLines[$giftKey] = ['product' => $giftProduct, 'quantity' => 1];
+                    }
+                }
+
+                foreach ($mixedCatIds as $id) {
+                    $processedAsMixed[$id] = true;
+                }
+            }
+
+            // Process remaining categories independently (non-mixed, or lone mixed category)
+            foreach ($categoryCounts as $catId => $count) {
+                if (isset($processedAsMixed[$catId])) {
+                    continue;
+                }
+
+                $catRules = ($allRules[$catId] ?? collect())->sortByDesc('quantity');
+                if ($catRules->isEmpty()) {
+                    continue;
+                }
+
+                // Greedy discount
+                $remaining = $count;
                 foreach ($catRules as $rule) {
-                    $giftProduct = $rule->giftProduct;
-                    if (!$giftProduct || !$giftProduct->id) {
+                    if ($remaining < (int)$rule->quantity) {
                         continue;
                     }
-                    if (isset($giftProduct->status) && (int)$giftProduct->status !== 1) {
+                    $times = intdiv($remaining, (int)$rule->quantity);
+                    if ($times <= 0) {
                         continue;
                     }
-                    $giftQty = (int)$rule->quantity;
-                    if ($giftQty <= 0) {
-                        continue;
+                    $categoryDiscount += ((float)$rule->discount_amount) * $times;
+                    $remaining = $remaining % (int)$rule->quantity;
+                }
+
+                // Gifts: single highest applicable rule, each gift product added once
+                $applicableRule = $catRules->first(fn ($r) => $count >= (int)$r->quantity);
+                if ($applicableRule) {
+                    foreach ($applicableRule->giftProducts as $giftProduct) {
+                        if (!$giftProduct || !$giftProduct->id) {
+                            continue;
+                        }
+                        $giftKey = 'cat_' . (int)$catId . '_rule_' . (int)$applicableRule->id . '_gift_' . (int)$giftProduct->id;
+                        $giftLines[$giftKey] = ['product' => $giftProduct, 'quantity' => 1];
                     }
-                    $giftTimes = intdiv($count, $giftQty);
-                    if ($giftTimes <= 0) {
-                        continue;
-                    }
-                    $giftKey = 'cat_' . (int)$rule->category_id . '_rule_' . (int)$rule->id . '_gift_' . (int)$giftProduct->id;
-                    if (!isset($giftLines[$giftKey])) {
-                        $giftLines[$giftKey] = [
-                            'product' => $giftProduct,
-                            'quantity' => 0,
-                        ];
-                    }
-                    $giftLines[$giftKey]['quantity'] += $giftTimes;
                 }
             }
         }
