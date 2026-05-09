@@ -75,6 +75,7 @@ class CategoryController extends BaseController
         $this->translationRepo->add(request: $request, model: 'App\Models\Category', id: $savedCategory->id);
 
         // Handle category discount rules
+        $savedCategory->update(['allow_mixed_discount' => $request->boolean('allow_mixed_discount')]);
         if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
             foreach ($request['category_discount_rules'] as $ruleData) {
                 if (!empty($ruleData['quantity']) && isset($ruleData['discount_amount'])) {
@@ -105,6 +106,7 @@ class CategoryController extends BaseController
         $this->translationRepo->update(request: $request, model: 'App\Models\Category', id: $request['id']);
 
         // Update category discount rules
+        $this->categoryRepo->update(id: $category->id, data: ['allow_mixed_discount' => $request->boolean('allow_mixed_discount')]);
         CategoryDiscountRule::where('category_id', $category->id)->delete();
         if ($request->has('enable_category_discount_rules') && $request->has('category_discount_rules')) {
             foreach ($request['category_discount_rules'] as $ruleData) {

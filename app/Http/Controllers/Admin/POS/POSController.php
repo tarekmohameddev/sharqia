@@ -87,6 +87,10 @@ class POSController extends BaseController
         // Build category discount rules map for client-side POS
         $rawCategoryRules = CategoryDiscountRule::with(['giftProducts'])->where('is_active', true)->orderBy('quantity', 'desc')->get();
         $categoryRulesMap = [];
+
+        $categoryIds = $rawCategoryRules->pluck('category_id')->unique()->values();
+        $categoriesById = \App\Models\Category::whereIn('id', $categoryIds)->get()->keyBy('id');
+
         foreach ($rawCategoryRules as $rule) {
             $giftProducts = $rule->giftProducts->map(function ($p) {
                 return [
@@ -98,7 +102,14 @@ class POSController extends BaseController
                 ];
             })->values()->toArray();
 
-            $categoryRulesMap[$rule->category_id][] = [
+            if (!isset($categoryRulesMap[$rule->category_id])) {
+                $categoryRulesMap[$rule->category_id] = [
+                    'allowMixedDiscount' => (bool) ($categoriesById[$rule->category_id]->allow_mixed_discount ?? false),
+                    'rules'              => [],
+                ];
+            }
+
+            $categoryRulesMap[$rule->category_id]['rules'][] = [
                 'id'             => $rule->id,
                 'quantity'       => (int) $rule->quantity,
                 'discountAmount' => (float) $rule->discount_amount,

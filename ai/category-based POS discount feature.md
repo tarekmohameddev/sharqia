@@ -7,6 +7,7 @@ This document explains the category-level quantity-based discount rules feature 
 - POS applies rules on the client (local cart) while you add/remove items
 - Gifts are auto-added/removed based on thresholds; discounts are summed into Extra Discount
 - Discounts use greedy highest-threshold-first application; gifts use the single highest applicable rule only
+- **Mixed categories discount**: categories with `allow_mixed_discount` enabled pool their item counts; the rules of the first such category added to the cart govern the combined group
 
 ## Rules semantics
 - Scope: counts only products whose `category_id` equals the main category id (no subcategories)
@@ -15,8 +16,11 @@ This document explains the category-level quantity-based discount rules feature 
   - **Discounts**: for a given category, locate the highest threshold rule applicable to the current count, apply it as many times as possible (multiples), then consider the remainder against the next lower rule, and so on (greedy)
   - **Gifts**: find the single highest applicable rule (highest threshold ≤ current count); add all gift products attached to that rule exactly once — no summing across lower rules, no multiples
 - Stacking with manual Extra Discount: amounts are added together
+- **Mixed category grouping**: when two or more categories both have `allow_mixed_discount = true`, all their item counts are summed into one virtual group; the rules of whichever mixed category first appeared in the cart are used for the entire group. Categories without the flag continue to be evaluated independently.
 
 ## Data model
+- `App/Models/Category`
+  - `allow_mixed_discount`: bool (default false) — when true, this category participates in the cross-category mixed group
 - `App/Models/CategoryDiscountRule`
   - `category_id`: main category id
   - `quantity`: threshold (e.g., 5, 10)
@@ -36,17 +40,20 @@ This document explains the category-level quantity-based discount rules feature 
 - Category add/edit forms include a "Category Discount Rules" section (`resources/views/admin-views/category/partials/_discount-rules.blade.php`).
 - Each rule has a **multi-select** gift products field (Select2, `name="...[gift_product_ids][]"`); you can attach zero or more gift products to a single rule.
 - Existing rules pre-populate the multi-select with previously saved gift products.
+- A checkbox **"Allow Mixed Categories Discount"** appears inside the rules section; when checked, `allow_mixed_discount` is saved on the category.
 - Rules are saved/updated in `CategoryController@add` and `CategoryController@update` using `giftProducts()->sync()`.
 - The edit view eager-loads `discountRules.giftProducts` for efficient pre-population.
 
 ## POS integration
 - Server: `Admin/POS/POSController@index` loads active category rules with their gift products and exposes a `window.CATEGORY_RULES_MAP` to the POS page.
-  - Each rule entry in the map has a `giftProducts` array (each item: `id, name, image, unit, stock`).
+  - Map structure: `{ [categoryId]: { allowMixedDiscount: bool, rules: [ { id, quantity, discountAmount, giftProducts[] } ] } }`
 - Client: `public/assets/back-end/js/admin/pos-script.js`
   - Items in the local cart track `categoryId` (added to product card data attributes).
   - `computeCategoryDeals(items, CATEGORY_RULES_MAP)` computes:
-    - Total category discount across categories (flat, greedy multiples)
-    - Gifts: the single highest applicable rule per category, all its gift products pushed once each
+    - Mixed group: if ≥2 categories have `allowMixedDiscount = true`, their counts are summed and the rules of the first-added category are used for the whole group.
+    - Non-mixed categories are still evaluated independently using greedy multiples.
+    - Total category discount across all groups (flat, greedy multiples)
+    - Gifts: the single highest applicable rule per group, all its gift products pushed once each
   - `ensureCategoryGifts(gifts)` adds missing gifts and removes extras when quantities change
   - Gift keys use the format `cat_${catId}_rule_${ruleId}_gift_${giftId}` — handles multiple gifts per rule and ensures clean add/remove
   - Extra Discount is set to: `categoryDiscount + manualExtraDiscount` (manual can be amount or percent)
@@ -78,13 +85,16 @@ This document explains the category-level quantity-based discount rules feature 
 - Models: `app/Models/Category.php`, `app/Models/CategoryDiscountRule.php`
 - Migrations:
   - `database/migrations/2025_08_24_000001_create_category_discount_rules_table.php`
-  - `database/migrations/2026_05_07_000001_create_category_discount_rule_gifts_table.php` *(new)*
+  - `database/migrations/2026_05_07_000001_create_category_discount_rule_gifts_table.php` *(multi-gift refactor)*
+  - `database/migrations/2026_05_09_000001_add_allow_mixed_discount_to_categories_table.php` *(mixed discount flag)*
 - Admin UI: `resources/views/admin-views/category/partials/_discount-rules.blade.php`, included in category add/edit views
 - Controllers: `app/Http/Controllers/Admin/Product/CategoryController.php`, `app/Http/Controllers/Admin/POS/POSController.php`
 - POS view: `resources/views/admin-views/pos/index.blade.php`
 - POS JS: `public/assets/back-end/js/admin/pos-script.js`
 
 ## QA checklist
+
+### Single-category rules (unchanged behaviour)
 - Create a category rule with quantity=5, discount=20, and **two** gift products; save
 - Create a second rule on the same category with quantity=10, discount=0, and **one different** gift product; save
 - In POS: add 5 items from that category → expect Extra Discount 20 and both gifts from the 5-item rule; no gifts from the 10-item rule
@@ -93,3 +103,14 @@ This document explains the category-level quantity-based discount rules feature 
 - Remove items below 10 → 10-item rule gifts removed, 5-item rule gifts re-applied
 - Remove items below 5 → all category gifts removed
 - Place order → backend totals match UI; Change Amount 0 unless paid amount differs
+
+### Mixed categories
+- Category **Butter**: rules 5-item (20 off + gift-A), 10-item (50 off + gift-B) — `allow_mixed_discount` ON
+- Category **Cheese**: rules 5-item (15 off), 10-item (40 off) — `allow_mixed_discount` ON
+- Category **Salt**: rule 3-item (5 off) — `allow_mixed_discount` OFF
+- In POS: add 5 Butter → expect 20 off + gift-A (Butter's 5-item rule)
+- Add 5 Cheese (now 10 mixed total) → expect 50 off + gift-B (Butter's 10-item rule replaces 5-item; Cheese rules ignored)
+- Add 3 Salt → additional 5 off from Salt's independent rule; total Extra Discount = 55 off
+- Remove Cheese items → mixed total drops to 5; reverts to Butter's 5-item rule (20 off + gift-A)
+- Remove Butter below 5 → all Butter/mixed gifts removed
+- Single mixed category alone (no other mixed category present) → treated independently with its own rules

@@ -14,36 +14,101 @@ let clientCart = {
     total: 0
 };
 
-// Compute category-based deals: greedy apply highest thresholds first, multiples allowed
+// Compute category-based deals: greedy apply highest thresholds first, multiples allowed.
+// Supports "mixed categories" mode: categories with allowMixedDiscount=true pool their
+// item counts together and apply rules from the first such category added to the cart.
 function computeCategoryDeals(items, categoryRulesMap) {
+    // Count items per category, tracking insertion order (first item index) for mixed logic
     const byCategory = {};
-    items.forEach(item => {
+    items.forEach((item, index) => {
         if (!item || item.isGift) return;
         const catId = parseInt(item.categoryId || 0);
         if (!catId) return;
-        byCategory[catId] = byCategory[catId] || { count: 0 };
+        if (!byCategory[catId]) {
+            byCategory[catId] = { count: 0, firstIndex: index };
+        }
         byCategory[catId].count += parseInt(item.quantity || 0);
+    });
+
+    // Identify categories with mixed discount enabled; find which was added first
+    const mixedCatIds = [];
+    let firstMixedCategoryId = null;
+    let firstMixedIndex = Infinity;
+
+    Object.keys(byCategory).forEach(catId => {
+        const catData = categoryRulesMap && categoryRulesMap[catId];
+        if (catData && catData.allowMixedDiscount) {
+            mixedCatIds.push(parseInt(catId));
+            if (byCategory[catId].firstIndex < firstMixedIndex) {
+                firstMixedIndex = byCategory[catId].firstIndex;
+                firstMixedCategoryId = parseInt(catId);
+            }
+        }
     });
 
     let totalDiscount = 0;
     const gifts = [];
+    const processedAsMixed = new Set();
 
+    // Process all mixed-enabled categories as one combined group
+    if (mixedCatIds.length > 1 && firstMixedCategoryId !== null) {
+        let mixedTotalCount = 0;
+        mixedCatIds.forEach(catId => {
+            mixedTotalCount += byCategory[catId].count;
+        });
+
+        const catEntry = categoryRulesMap[firstMixedCategoryId];
+        const rules = (catEntry && Array.isArray(catEntry.rules))
+            ? catEntry.rules.slice().sort((a, b) => b.quantity - a.quantity)
+            : [];
+
+        if (rules.length && mixedTotalCount > 0) {
+            let remaining = mixedTotalCount;
+            for (const rule of rules) {
+                if (remaining < rule.quantity) continue;
+                const times = Math.floor(remaining / rule.quantity);
+                if (times <= 0) continue;
+                totalDiscount += parseFloat(rule.discountAmount || 0) * times;
+                remaining = remaining % rule.quantity;
+            }
+
+            const applicableRule = rules.find(r => mixedTotalCount >= (parseInt(r.quantity) || 0));
+            if (applicableRule && Array.isArray(applicableRule.giftProducts) && applicableRule.giftProducts.length > 0) {
+                applicableRule.giftProducts.forEach(giftProduct => {
+                    if (!giftProduct || !giftProduct.id) return;
+                    gifts.push({
+                        categoryId: firstMixedCategoryId,
+                        ruleId: applicableRule.id,
+                        gift: giftProduct,
+                        quantity: 1
+                    });
+                });
+            }
+        }
+
+        mixedCatIds.forEach(id => processedAsMixed.add(id));
+    }
+
+    // Process remaining categories (non-mixed, or single mixed category) individually
     Object.keys(byCategory).forEach(catId => {
-        const rules = (categoryRulesMap && categoryRulesMap[catId]) ? categoryRulesMap[catId].slice().sort((a,b)=>b.quantity-a.quantity) : [];
+        if (processedAsMixed.has(parseInt(catId))) return;
+
+        const catEntry = categoryRulesMap && categoryRulesMap[catId];
+        const rules = (catEntry && Array.isArray(catEntry.rules))
+            ? catEntry.rules.slice().sort((a, b) => b.quantity - a.quantity)
+            : [];
         if (!rules.length) return;
+
         const totalCount = byCategory[catId].count;
         let remaining = totalCount;
         for (const rule of rules) {
             if (remaining < rule.quantity) continue;
             const times = Math.floor(remaining / rule.quantity);
             if (times <= 0) continue;
-            // Only flat amount supported
-            totalDiscount += (parseFloat(rule.discountAmount || 0) * times);
+            totalDiscount += parseFloat(rule.discountAmount || 0) * times;
             remaining = remaining % rule.quantity;
         }
 
-        // Find the single highest applicable rule and add all its gift products once.
-        // rules are already sorted highest-first.
         const applicableRule = rules.find(r => totalCount >= (parseInt(r.quantity) || 0));
         if (applicableRule && Array.isArray(applicableRule.giftProducts) && applicableRule.giftProducts.length > 0) {
             applicableRule.giftProducts.forEach(giftProduct => {
@@ -1124,7 +1189,8 @@ $(document).ready(function() {
                     const rulesMap = (typeof window !== 'undefined') ? (window.CATEGORY_RULES_MAP || {}) : {};
                     const giftIds = new Set();
                     Object.keys(rulesMap).forEach(function(catId){
-                        const rules = rulesMap[catId] || [];
+                        const catEntry = rulesMap[catId];
+                        const rules = (catEntry && Array.isArray(catEntry.rules)) ? catEntry.rules : [];
                         rules.forEach(function(rule){
                             if (rule && Array.isArray(rule.giftProducts)) {
                                 rule.giftProducts.forEach(function(gp) {

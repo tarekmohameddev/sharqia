@@ -35,6 +35,7 @@ class Category extends Model
         'position',
         'home_status',
         'priority',
+        'allow_mixed_discount',
     ];
 
     protected $casts = [
@@ -46,6 +47,7 @@ class Category extends Model
         'position' => 'integer',
         'home_status' => 'integer',
         'priority' => 'integer',
+        'allow_mixed_discount' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

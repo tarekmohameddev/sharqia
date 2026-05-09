@@ -20,6 +20,20 @@
             </div>
         </div>
         <div id="category-discount-rules-section" style="display: {{ isset($category) && $category->discountRules && $category->discountRules->count() ? 'block' : 'none' }};">
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="allow-mixed-discount" name="allow_mixed_discount"
+                           {{ isset($category) && $category->allow_mixed_discount ? 'checked' : '' }}>
+                    <label class="form-check-label" for="allow-mixed-discount">
+                        {{ translate('allow_mixed_categories_discount') }}
+                    </label>
+                    <span class="tooltip-icon cursor-pointer ms-1" data-bs-toggle="tooltip"
+                          aria-label="{{ translate('when_enabled_products_from_categories_with_this_option_share_quantity_and_use_rules_from_the_first_category_added') }}"
+                          data-bs-title="{{ translate('when_enabled_products_from_categories_with_this_option_share_quantity_and_use_rules_from_the_first_category_added') }}">
+                        <i class="fi fi-sr-info"></i>
+                    </span>
+                </div>
+            </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0">{{ translate('discount_rules') }}</h5>
                 <button type="button" class="btn btn-primary btn-sm" id="add-category-discount-rule">
