@@ -426,10 +426,13 @@ Route::group(['namespace' => 'RestAPI\v1', 'prefix' => 'v1', 'middleware' => ['a
 
     Route::post('contact-us', 'GeneralController@contact_store');
 
-    // Authenticity Scratch Card Verification (requires customer auth)
+    // Authenticity — public verify (no auth, web landing page)
+    Route::post('authenticity/verify', [AuthenticityVerifyController::class, 'verify'])
+        ->middleware('throttle:authenticity-verify');
+
+    // Authenticity — authenticated routes (mobile app)
     Route::group(['prefix' => 'authenticity', 'middleware' => 'auth:api'], function () {
         Route::controller(AuthenticityVerifyController::class)->group(function () {
-            Route::post('verify', 'verify')->middleware('throttle:authenticity-verify');
             Route::post('report-counterfeit', 'reportCounterfeit');
         });
     });
