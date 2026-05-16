@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2e8b35" />
+  <title>التحقق من أصالة المنتج – الشرقية بيور</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:        #2e8b35;
+      --green-dark:   #1e6124;
+      --green-mid:    #3aa343;
+      --green-light:  #eaf6eb;
+      --green-border: #b2ddb6;
+      --blue:         #1455ac;
+      --blue-light:   #e8f0fb;
+      --gold:         #c8a02a;
+      --gold-light:   #fdf6e3;
+      --success:      #1a7a2e;
+      --success-bg:   #eaf6eb;
+      --warning:      #b45309;
+      --warning-bg:   #fffbeb;
+      --danger:       #b91c1c;
+      --danger-bg:    #fef2f1;
+      --rate-color:   #78350f;
+      --rate-bg:      #fef9ec;
+      --text:         #1a2a1c;
+      --muted:        #5a7360;
+      --border:       #d4e8d6;
+      --white:        #ffffff;
+      --radius:       18px;
+      --shadow:       0 6px 30px rgba(30,97,36,0.13);
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+      background: linear-gradient(165deg, #e8f5ea 0%, #f4faf5 55%, #ffffff 100%);
+      min-height: 100vh;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 48px;
+    }
+
+    /* ─── TOP BAR ─────────────────────────────── */
+    .top-bar {
+      width: 100%;
+      background: var(--green);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px rgba(30,97,36,0.25);
+    }
+
+    .top-bar-inner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .logo-img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.35);
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .brand-text { display: flex; flex-direction: column; }
+
+    .brand-name-ar {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+
+    .brand-name-en {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    /* ─── PAGE BODY ──────────────────────────── */
+    .page-body {
+      width: 100%;
+      padding: 28px 16px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ─── CARD ───────────────────────────────── */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 30px 22px 26px;
+      width: 100%;
+      max-width: 440px;
+      border-top: 5px solid var(--green);
+    }
+
+    .card-header {
+      text-align: center;
+      margin-bottom: 26px;
+    }
+
+    .shield-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 66px;
+      height: 66px;
+      background: var(--green-light);
+      border-radius: 50%;
+      margin-bottom: 14px;
+      border: 2px solid var(--green-border);
+    }
+
+    .shield-icon svg { width: 34px; height: 34px; }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 7px;
+    }
+
+    .card-desc {
+      font-size: 0.87rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ─── FORM ───────────────────────────────── */
+    .form-label {
+      display: block;
+      font-size: 0.87rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .code-input {
+      width: 100%;
+      height: 56px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-align: center;
+      color: var(--text);
+      background: #f7fdf7;
+      outline: none;
+      direction: ltr;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      padding: 0 16px;
+    }
+
+    .code-input::placeholder {
+      letter-spacing: 2px;
+      color: #adc6af;
+      font-weight: 400;
+      font-size: 1rem;
+    }
+
+    .code-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(46,139,53,0.13);
+      background: var(--white);
+    }
+
+    .code-input.error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 4px rgba(185,28,28,0.10);
+    }
+
+    .input-hint {
+      font-size: 0.77rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 7px;
+    }
+
+    /* ─── BUTTON ─────────────────────────────── */
+    .btn-verify {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      height: 52px;
+      background: var(--green);
+      color: var(--white);
+      border: none;
+      border-radius: 12px;
+      font-size: 1.02rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 18px;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(46,139,53,0.35);
+    }
+
+    .btn-verify:hover:not(:disabled) {
+      background: var(--green-dark);
+      box-shadow: 0 6px 20px rgba(46,139,53,0.42);
+    }
+
+    .btn-verify:active:not(:disabled) { transform: scale(0.98); }
+
+    .btn-verify:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ─── SPINNER ────────────────────────────── */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn-verify.loading .spinner { display: block; }
+    .btn-verify.loading .btn-text { display: none; }
+
+    /* ─── RESULT BOX ─────────────────────────── */
+    .result-box {
+      margin-top: 22px;
+      border-radius: 12px;
+      padding: 18px 16px 16px;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-box.show { display: flex; gap: 13px; align-items: flex-start; }
+
+    .result-box.success { background: var(--success-bg); border: 1.5px solid var(--green-border); }
+    .result-box.warning { background: var(--warning-bg); border: 1.5px solid #fcd34d; }
+    .result-box.danger  { background: var(--danger-bg);  border: 1.5px solid #fca5a5; }
+    .result-box.rate    { background: var(--rate-bg);    border: 1.5px solid #fde68a; }
+
+    .result-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .result-box.success .result-icon { background: #c3eccc; }
+    .result-box.warning .result-icon { background: #fde68a; }
+    .result-box.danger  .result-icon { background: #fecaca; }
+    .result-box.rate    .result-icon { background: #fef3c7; }
+
+    .result-icon svg { width: 20px; height: 20px; }
+
+    .result-content { flex: 1; min-width: 0; }
+
+    .result-title {
+      font-size: 0.97rem;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .result-box.success .result-title { color: var(--success); }
+    .result-box.warning .result-title { color: var(--warning); }
+    .result-box.danger  .result-title { color: var(--danger); }
+    .result-box.rate    .result-title { color: var(--rate-color); }
+
+    .result-msg {
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .result-meta {
+      font-size: 0.79rem;
+      color: var(--muted);
+      margin-top: 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .report-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--danger);
+      text-decoration: none;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 5px 12px;
+      background: #fff;
+      transition: background 0.15s;
+    }
+
+    .report-link:hover { background: var(--danger-bg); }
+
+    /* ─── DIVIDER ────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 24px 0 18px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider-text {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ─── STEPS ──────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 11px; }
+
+    .step { display: flex; align-items: flex-start; gap: 12px; }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--green-light);
+      color: var(--green);
+      border: 1.5px solid var(--green-border);
+      font-size: 0.8rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-text {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.55;
+      padding-top: 4px;
+    }
+
+    /* ─── BADGE ROW ──────────────────────────── */
+    .trust-badges {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 22px;
+      flex-wrap: wrap;
+    }
+
+    .badge-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.73rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .badge-item .b-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--green-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid var(--green-border);
+    }
+
+    .badge-item .b-icon svg { width: 18px; height: 18px; }
+
+    /* ─── FOOTER ─────────────────────────────── */
+    .page-footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 0 16px;
+    }
+
+    .page-footer a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────── */
+    @media (min-width: 480px) {
+      .card { padding: 38px 34px 30px; }
+      .card-title { font-size: 1.3rem; }
+      .logo-img { width: 72px; height: 72px; }
+      .brand-name-ar { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR / HEADER -->
+  <header class="top-bar">
+    <a class="top-bar-inner" href="https://www.elsharqiapure.com.eg/" target="_blank" rel="noopener" aria-label="العودة إلى الموقع الرئيسي">
+      <img
+        class="logo-img"
+        src="https://files.easy-orders.net/1764042241962019639.jpg"
+        alt="شعار الشرقية بيور"
+        onerror="this.style.display='none'"
+      />
+      <div class="brand-text">
+        <span class="brand-name-ar">الشرقية بيور</span>
+        <span class="brand-name-en">EL SHARKIA PURE</span>
+      </div>
+    </a>
+  </header>
+
+  <div class="page-body">
+
+    <!-- MAIN CARD -->
+    <div class="card" role="main">
+
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="shield-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.4C17.25 22.15 21 17.25 21 12V6l-9-4z"
+                  fill="#2e8b35" opacity="0.18"/>
+            <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.4C17.25 22.15 21 17.25 21 12V6l-9-4z"
+                  stroke="#2e8b35" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M9 12l2 2 4-4" stroke="#2e8b35" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="card-title">التحقق من أصالة المنتج</h1>
+        <p class="card-desc">أدخل كود الأمان المطبوع على المنتج للتحقق من أصالته وضمان سلامتك</p>
+      </div>
+
+      <!-- Form -->
+      <form id="verifyForm" autocomplete="off" novalidate>
+        <label class="form-label" for="codeInput">كود المنتج</label>
+        <input
+          id="codeInput"
+          class="code-input"
+          type="text"
+          inputmode="text"
+          placeholder="XXXX-XXXX-XXXX"
+          maxlength="14"
+          spellcheck="false"
+          autocorrect="off"
+          autocapitalize="characters"
+          aria-label="أدخل كود المنتج"
+          aria-describedby="codeHint"
+        />
+        <p class="input-hint" id="codeHint">الكود مكوّن من 12 حرفًا ورقمًا — مثال: FSY9-6HKI-7TOP</p>
+
+        <button class="btn-verify" type="submit" id="submitBtn" disabled>
+          <div class="spinner" aria-hidden="true"></div>
+          <span class="btn-text">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                 style="vertical-align:middle;margin-left:5px">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+              <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            تحقق الآن
+          </span>
+        </button>
+      </form>
+
+      <!-- Result Box -->
+      <div id="resultBox" class="result-box" role="alert" aria-live="polite">
+        <div class="result-icon" id="resultIcon"></div>
+        <div class="result-content">
+          <p class="result-title" id="resultTitle"></p>
+          <p class="result-msg"   id="resultMsg"></p>
+          <div class="result-meta" id="resultMeta"></div>
+          <a id="reportLink" class="report-link"
+             href="mailto:support@elsharqiapure.com.eg?subject=الإبلاغ عن منتج مزيف"
+             style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            الإبلاغ عن تزوير
+          </a>
+        </div>
+      </div>
+
+      <!-- Trust Badges -->
+      <div class="trust-badges" aria-hidden="true">
+        <div class="badge-item">
+          <div class="b-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.4C17.25 22.15 21 17.25 21 12V6l-9-4z"
+                    stroke="#2e8b35" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>حماية المستهلك</span>
+        </div>
+        <div class="badge-item">
+          <div class="b-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#2e8b35" stroke-width="1.8"/>
+              <path d="M9 12l2 2 4-4" stroke="#2e8b35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>منتج معتمد</span>
+        </div>
+        <div class="badge-item">
+          <div class="b-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                    stroke="#2e8b35" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>ضمان الجودة</span>
+        </div>
+      </div>
+
+      <!-- Divider + Steps -->
+      <div class="divider">
+        <span class="divider-text">كيف تجد الكود؟</span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">١</div>
+          <p class="step-text">ابحث عن ملصق الأمان على الغلاف الخارجي للمنتج</p>
+        </div>
+        <div class="step">
+          <div class="step-num">٢</div>
+          <p class="step-text">اكشط الطبقة الفضية بلطف للكشف عن كود الأمان</p>
+        </div>
+        <div class="step">
+          <div class="step-num">٣</div>
+          <p class="step-text">أدخل الكود كاملًا في الحقل أعلاه واضغط "تحقق الآن"</p>
+        </div>
+      </div>
+
+    </div><!-- /.card -->
+
+    <!-- PAGE FOOTER -->
+    <footer class="page-footer">
+      <p>© <span id="year"></span> الشرقية بيور – جميع الحقوق محفوظة</p>
+      <p style="margin-top:5px">
+        <a href="https://www.elsharqiapure.com.eg/" target="_blank" rel="noopener">
+          العودة إلى الموقع الرئيسي
+        </a>
+      </p>
+    </footer>
+
+  </div><!-- /.page-body -->
+
+  <script>
+    'use strict';
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const input     = document.getElementById('codeInput');
+    const form      = document.getElementById('verifyForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const resultBox = document.getElementById('resultBox');
+
+    const VALID_LENGTH = 14; // XXXX-XXXX-XXXX
+
+    // ─── Auto-format code input ───────────────────────────────────────────────
+    input.addEventListener('input', function () {
+      const selStart = this.selectionStart;
+      const raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      let formatted = '';
+
+      for (let i = 0; i < raw.length && i < 12; i++) {
+        if (i === 4 || i === 8) formatted += '-';
+        formatted += raw[i];
+      }
+
+      const prevLen = this.value.length;
+      this.value = formatted;
+
+      const diff = formatted.length - prevLen;
+      const newPos = Math.max(0, selStart + diff);
+      try { this.setSelectionRange(newPos, newPos); } catch (_) {}
+
+      this.classList.remove('error');
+      hideResult();
+      submitBtn.disabled = formatted.length < VALID_LENGTH;
+    });
+
+    input.addEventListener('paste', function () {
+      setTimeout(() => input.dispatchEvent(new Event('input')), 0);
+    });
+
+    // ─── Submit handler ───────────────────────────────────────────────────────
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const code = input.value.trim();
+
+      if (code.length < VALID_LENGTH) {
+        input.classList.add('error');
+        showResult('danger', 'كود غير مكتمل',
+          'يرجى إدخال الكود كاملًا بالصيغة الصحيحة: XXXX-XXXX-XXXX');
+        return;
+      }
+
+      setLoading(true);
+      hideResult();
+
+      try {
+        const response = await fetch('https://app.elsharqiapure.com.eg/api/v1/authenticity/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ code }),
+        });
+
+        if (response.status === 429) {
+          showResult('rate', 'تجاوزت الحد المسموح به',
+            'لقد تجاوزت الحد الأقصى للمحاولات (3 محاولات كل 24 ساعة). يرجى المحاولة لاحقًا.');
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.message && /too many/i.test(data.message)) {
+          showResult('rate', 'تجاوزت الحد المسموح به',
+            'لقد تجاوزت الحد الأقصى للمحاولات (3 محاولات كل 24 ساعة). يرجى المحاولة لاحقًا.');
+
+        } else if (data.authentic === true && data.first_scan === true) {
+          showResult('success',
+            '✓ منتج أصلي ومعتمد',
+            'تهانينا! هذا المنتج أصلي ومعتمد من الشرقية بيور. أنت أول من يفحص هذا الكود.',
+            null, false);
+
+        } else if (data.authentic === true && data.first_scan === false) {
+          const meta = [];
+          if (data.first_scanned_at) {
+            meta.push({ text: 'تاريخ أول فحص: ' + formatDate(data.first_scanned_at) });
+          }
+          showResult('warning',
+            '⚠ تم فحص هذا الكود مسبقًا',
+            'هذا الكود تم التحقق منه من قبل. إذا لم تكن أنت من فحصه، فقد يكون المنتج مزيفًا.',
+            meta, data.can_report_counterfeit === true);
+
+        } else {
+          input.classList.add('error');
+          showResult('danger',
+            '✗ كود غير صحيح',
+            data.message === 'Invalid code'
+              ? 'هذا الكود غير صحيح أو غير موجود في قاعدة بياناتنا. تأكد من إدخاله بشكل صحيح.'
+              : (data.message || 'حدث خطأ، يرجى المحاولة مرة أخرى.'));
+        }
+
+      } catch (_) {
+        showResult('danger', 'خطأ في الاتصال',
+          'تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت وأعد المحاولة.');
+      }
+
+      setLoading(false);
+    });
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+    function setLoading(on) {
+      submitBtn.classList.toggle('loading', on);
+      submitBtn.disabled = on;
+      if (!on) submitBtn.disabled = input.value.trim().length < VALID_LENGTH;
+    }
+
+    function hideResult() {
+      resultBox.className = 'result-box';
+    }
+
+    function showResult(type, title, message, meta, canReport) {
+      const icons = {
+        success: `<svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#1a7a2e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        warning: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        danger:  `<svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+        rate:    `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#78350f" stroke-width="2"/><path d="M12 7v5l3 3" stroke="#78350f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      };
+
+      document.getElementById('resultIcon').innerHTML = icons[type] || '';
+      document.getElementById('resultTitle').textContent = title;
+      document.getElementById('resultMsg').textContent   = message;
+
+      const metaEl = document.getElementById('resultMeta');
+      metaEl.innerHTML = '';
+      if (meta && meta.length) {
+        meta.forEach(function (m) {
+          const span = document.createElement('span');
+          span.textContent = m.text;
+          metaEl.appendChild(span);
+        });
+      }
+
+      document.getElementById('reportLink').style.display = canReport ? 'inline-flex' : 'none';
+
+      resultBox.className = 'result-box show ' + type;
+      resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function formatDate(dateStr) {
+      try {
+        return new Date(dateStr.replace(' ', 'T')).toLocaleString('ar-EG', {
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      } catch (_) { return dateStr; }
+    }
+  </script>
+</body>
+</html>
