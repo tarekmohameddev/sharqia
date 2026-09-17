@@ -173,6 +173,19 @@ class AuthenticityVerifyApiTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_verify_endpoint_allows_40_attempts_per_day(): void
+    {
+        for ($attempt = 0; $attempt < 40; $attempt++) {
+            $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
+                'code' => $this->code->code,
+            ])->assertOk();
+        }
+
+        $this->actingAsCustomer()->postJson('/api/v1/authenticity/verify', [
+            'code' => $this->code->code,
+        ])->assertStatus(429);
+    }
+
     // -------------------------------------------------------------------------
     // Report counterfeit endpoint
     // -------------------------------------------------------------------------

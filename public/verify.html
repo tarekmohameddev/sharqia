@@ -223,6 +223,79 @@
 
     .btn-verify:disabled { opacity: 0.55; cursor: not-allowed; }
 
+    .btn-scan {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      height: 48px;
+      background: var(--blue-light);
+      color: var(--blue);
+      border: 1.5px solid #b8cff1;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    }
+
+    .btn-scan:hover:not(:disabled) {
+      background: #dce9fb;
+      border-color: #8fb2e6;
+    }
+
+    .btn-scan:active:not(:disabled) { transform: scale(0.98); }
+
+    .btn-scan:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .scanner-panel {
+      display: none;
+      margin-top: 14px;
+      padding: 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      background: #f7fdf7;
+    }
+
+    .scanner-panel.show { display: block; }
+
+    .scanner-reader {
+      overflow: hidden;
+      border-radius: 12px;
+      background: #111;
+      direction: ltr;
+    }
+
+    .scanner-reader video {
+      border-radius: 12px;
+    }
+
+    .scanner-status {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .btn-cancel-scan {
+      width: 100%;
+      height: 42px;
+      margin-top: 10px;
+      border: 1.5px solid #fca5a5;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--danger);
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
     /* ─── SPINNER ────────────────────────────── */
     .spinner {
       width: 20px;
@@ -487,6 +560,20 @@
         />
         <p class="input-hint" id="codeHint">الكود مكوّن من 12 حرفًا ورقمًا — مثال: FSY9-6HKI-7TOP</p>
 
+        <button class="btn-scan" type="button" id="scanBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 8h3l1.5-2h7L17 8h3v10H4V8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="12" cy="13" r="3.5" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          مسح الباركود بالكاميرا
+        </button>
+
+        <div id="scannerPanel" class="scanner-panel" aria-live="polite">
+          <div id="scannerReader" class="scanner-reader"></div>
+          <p id="scannerStatus" class="scanner-status">وجّه الكاميرا نحو الباركود حتى يظهر بوضوح داخل الإطار</p>
+          <button class="btn-cancel-scan" type="button" id="closeScannerBtn">إغلاق الكاميرا</button>
+        </div>
+
         <button class="btn-verify" type="submit" id="submitBtn" disabled>
           <div class="spinner" aria-hidden="true"></div>
           <span class="btn-text">
@@ -584,17 +671,33 @@
 
   </div><!-- /.page-body -->
 
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
     'use strict';
 
     document.getElementById('year').textContent = new Date().getFullYear();
 
-    const input     = document.getElementById('codeInput');
-    const form      = document.getElementById('verifyForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const resultBox = document.getElementById('resultBox');
+    const input           = document.getElementById('codeInput');
+    const form            = document.getElementById('verifyForm');
+    const submitBtn       = document.getElementById('submitBtn');
+    const resultBox       = document.getElementById('resultBox');
+    const scanBtn         = document.getElementById('scanBtn');
+    const scannerPanel    = document.getElementById('scannerPanel');
+    const scannerStatus   = document.getElementById('scannerStatus');
+    const closeScannerBtn = document.getElementById('closeScannerBtn');
 
     const VALID_LENGTH = 14; // XXXX-XXXX-XXXX
+    const RAW_CODE_LENGTH = 12;
+    const CAMERA_SUPPORTED = Boolean(
+      window.isSecureContext &&
+      navigator.mediaDevices &&
+      navigator.mediaDevices.getUserMedia &&
+      window.Html5Qrcode
+    );
+
+    let barcodeScanner = null;
+    let isScanning = false;
+    let scanHandled = false;
 
     // ─── Auto-format code input ───────────────────────────────────────────────
     input.addEventListener('input', function () {
@@ -622,6 +725,103 @@
     input.addEventListener('paste', function () {
       setTimeout(() => input.dispatchEvent(new Event('input')), 0);
     });
+
+    // ─── Camera barcode scanning ──────────────────────────────────────────────
+    if (!CAMERA_SUPPORTED) {
+      scanBtn.disabled = true;
+      scanBtn.title = 'مسح الباركود بالكاميرا يتطلب فتح الصفحة عبر HTTPS ومتصفح يدعم الكاميرا';
+    }
+
+    scanBtn.addEventListener('click', startBarcodeScanner);
+    closeScannerBtn.addEventListener('click', stopBarcodeScanner);
+
+    async function startBarcodeScanner() {
+      if (!CAMERA_SUPPORTED || isScanning) return;
+
+      hideResult();
+      input.classList.remove('error');
+      scannerPanel.classList.add('show');
+      scannerStatus.textContent = 'جاري فتح الكاميرا...';
+      scanBtn.disabled = true;
+      scanHandled = false;
+
+      try {
+        barcodeScanner = barcodeScanner || new Html5Qrcode('scannerReader');
+        const scannerConfig = {
+          fps: 10,
+          qrbox: function (viewfinderWidth, viewfinderHeight) {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            return {
+              width: Math.floor(minEdge * 0.92),
+              height: Math.floor(minEdge * 0.38),
+            };
+          },
+        };
+        const formatsToSupport = getSupportedBarcodeFormats();
+        if (formatsToSupport.length) scannerConfig.formatsToSupport = formatsToSupport;
+
+        await barcodeScanner.start(
+          { facingMode: 'environment' },
+          scannerConfig,
+          handleScanSuccess,
+          function () {}
+        );
+
+        isScanning = true;
+        scannerStatus.textContent = 'وجّه الكاميرا نحو الباركود حتى يظهر بوضوح داخل الإطار';
+      } catch (_) {
+        scannerStatus.textContent = 'تعذّر فتح الكاميرا. تأكد من السماح باستخدام الكاميرا وفتح الصفحة عبر HTTPS.';
+        scanBtn.disabled = false;
+      }
+    }
+
+    async function stopBarcodeScanner() {
+      if (!barcodeScanner || !isScanning) {
+        scannerPanel.classList.remove('show');
+        scanBtn.disabled = !CAMERA_SUPPORTED;
+        return;
+      }
+
+      try {
+        await barcodeScanner.stop();
+        await barcodeScanner.clear();
+      } catch (_) {}
+
+      barcodeScanner = null;
+      isScanning = false;
+      scannerPanel.classList.remove('show');
+      scanBtn.disabled = !CAMERA_SUPPORTED;
+    }
+
+    async function handleScanSuccess(decodedText) {
+      if (scanHandled) return;
+
+      const rawCode = String(decodedText || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+      if (rawCode.length < RAW_CODE_LENGTH) {
+        scannerStatus.textContent = 'تمت قراءة غير مكتملة، قرّب الكاميرا من الباركود وحاول مرة أخرى';
+        return;
+      }
+
+      scanHandled = true;
+      input.value = rawCode.slice(0, RAW_CODE_LENGTH);
+      input.dispatchEvent(new Event('input'));
+      scannerStatus.textContent = 'تمت قراءة الباركود بنجاح';
+
+      await stopBarcodeScanner();
+      if (form.requestSubmit) form.requestSubmit();
+      else submitBtn.click();
+    }
+
+    function getSupportedBarcodeFormats() {
+      const formats = window.Html5QrcodeSupportedFormats;
+      if (!formats) return [];
+
+      return [
+        formats.CODE_128,
+        formats.CODE_39,
+      ].filter(Boolean);
+    }
 
     // ─── Submit handler ───────────────────────────────────────────────────────
     form.addEventListener('submit', async function (e) {
@@ -651,7 +851,7 @@
 
         if (response.status === 429) {
           showResult('rate', 'تجاوزت الحد المسموح به',
-            'لقد تجاوزت الحد الأقصى للمحاولات (3 محاولات كل 24 ساعة). يرجى المحاولة لاحقًا.');
+            'لقد تجاوزت الحد الأقصى للمحاولات (40 محاولة كل 24 ساعة). يرجى المحاولة لاحقًا.');
           setLoading(false);
           return;
         }
@@ -660,7 +860,7 @@
 
         if (data.message && /too many/i.test(data.message)) {
           showResult('rate', 'تجاوزت الحد المسموح به',
-            'لقد تجاوزت الحد الأقصى للمحاولات (3 محاولات كل 24 ساعة). يرجى المحاولة لاحقًا.');
+            'لقد تجاوزت الحد الأقصى للمحاولات (40 محاولة كل 24 ساعة). يرجى المحاولة لاحقًا.');
 
         } else if (data.authentic === true && data.first_scan === true) {
           showResult('success',

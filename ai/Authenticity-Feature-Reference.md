@@ -188,7 +188,7 @@ Uses `translate()` keys: `Authenticity_Scratch_Cards`, `Dashboard`, `Code_Batche
 ### 6.1 Rate limiting (`RouteServiceProvider`)
 
 - **Name**: `throttle:authenticity-verify` (on verify route only).
-- **Limits**: 10/min per user, 30/min per IP (both applied).
+- **Limits**: 40/day per authenticated user, or 40/day per IP for public web requests.
 
 ### 6.2 Endpoints
 

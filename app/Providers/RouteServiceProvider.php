@@ -149,15 +149,8 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('authenticity-verify', function (\Illuminate\Http\Request $request) {
             $user = $request->user('api');
-            if ($user) {
-                // Authenticated mobile users — existing generous limits
-                return [
-                    Limit::perMinute(10)->by('user:' . $user->id),
-                    Limit::perMinute(30)->by('ip:' . $request->ip()),
-                ];
-            }
-            // Unauthenticated web users — 3 attempts per IP per day
-            return Limit::perDay(3)->by('web-ip:' . $request->ip());
+
+            return Limit::perDay(40)->by($user ? 'user:' . $user->id : 'web-ip:' . $request->ip());
         });
     }
 }
