@@ -18,20 +18,18 @@
         <meta http-equiv="Content-Type" content="text/html;"/>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap');
-
             * {
                 margin: 0;
                 padding: 0;
                 line-height: 1.6;
-                font-family: "Cairo", sans-serif;
+                font-family: dejavusans, sans-serif;
                 color: #000;
                 direction: rtl;
             }
 
             body {
                 font-size: 14px;
-                font-family: "Cairo", sans-serif;
+                font-family: dejavusans, sans-serif;
                 direction: rtl;
                 text-align: right;
             }

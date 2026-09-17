@@ -86,3 +86,12 @@ resources/lang/sa/new-messages.php
 # Report and export folders
 exports/
 report-doc/
+
+resources/lang/sa/new-messages.php.user.ini
+
+config/system-addons.php
+/storage/
+/bootstrap/cache/
+
+# Let's Encrypt challenge tokens (rotate and should not be committed)
+.well-known/acme-challenge/

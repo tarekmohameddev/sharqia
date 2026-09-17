@@ -498,12 +498,15 @@ class OrderController extends BaseController
         $companyWebLogo = getWebConfig(name: 'company_web_logo');
         $invoiceSettings = getWebConfig(name: 'invoice_settings') ?? [];
 
-        $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
+        @set_time_limit(300);
+        $mpdf = new \Mpdf\Mpdf(['default_font' => 'dejavusans', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
+        $mpdf->SetDirectionality('rtl');
         $footerHtml = self::footerHtml('admin');
         $mpdf->SetHTMLFooter($footerHtml);
 
+        $printedIds = [];
         $isFirst = true;
         foreach ($ids as $oid) {
             $order = $ordersById->get($oid);
@@ -513,25 +516,37 @@ class OrderController extends BaseController
 
             $view = PdfView::make('vendor-views.order.invoice', compact('order', 'vendor', 'companyPhone', 'companyEmail', 'companyName', 'companyWebLogo', 'invoiceSettings', 'shippingAddress', 'governorateName'));
             $html = $view->render();
-            if (!$isFirst) {
-                $mpdf->AddPage();
+            try {
+                if (!$isFirst) {
+                    $mpdf->AddPage();
+                }
+                self::writeInvoiceHtml($mpdf, $html, $isFirst);
+                $printedIds[] = $oid;
+                $isFirst = false;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Vendor bulk invoice PDF failed for order', [
+                    'order_id' => $oid,
+                    'seller_id' => $sellerId,
+                    'message' => $e->getMessage(),
+                ]);
             }
-            $mpdf->WriteHTML($html);
-            $isFirst = false;
+        }
+
+        if (empty($printedIds)) {
+            ToastMagic::error(translate('failed_to_generate_invoices'));
+            return back();
         }
 
         $fileName = 'orders_invoices_' . date('Ymd_His') . '.pdf';
 
-        // Bulk update: one query instead of 500
-        \App\Models\Order::whereIn('id', $ids)->where('seller_id', $sellerId)->update(['is_printed' => 1, 'order_status' => 'out_for_delivery']);
-        
-        // Calculate remaining orders for flash message
-        $printedCount = count($ids);
-        $remainingCount = $totalUnprinted - $printedCount;
+        \App\Models\Order::whereIn('id', $printedIds)->where('seller_id', $sellerId)->update(['is_printed' => 1, 'order_status' => 'out_for_delivery']);
+
+        $printedCount = count($printedIds);
+        $remainingCount = max(0, $totalUnprinted - $printedCount);
         if ($remainingCount > 0) {
             session()->flash('print_remaining', $remainingCount);
         }
-        
+
         $mpdf->Output($fileName, 'D');
         return null;
     }

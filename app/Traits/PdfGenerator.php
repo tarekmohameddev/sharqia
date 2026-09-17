@@ -8,23 +8,47 @@ trait  PdfGenerator
 {
     public static function generatePdf($view, $filePrefix, $filePostfix, $pdfType = null, $requestFrom = 'admin'): string
     {
-        $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
+        $mpdf = new \Mpdf\Mpdf(['default_font' => 'dejavusans', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
+        $mpdf->SetDirectionality('rtl');
         $mpdf_view = $view;
         $mpdf_view = $mpdf_view->render();
-        $mpdf->WriteHTML($mpdf_view);
+        self::writeInvoiceHtml($mpdf, $mpdf_view);
         $mpdf->Output($filePrefix . $filePostfix . '.pdf', 'D');
+    }
+
+    /**
+     * Write invoice HTML into an existing mPDF instance.
+     * Strips a full HTML document wrapper, remote font imports, and bidi control
+     * characters that make mPDF throw on PHP 8 (undefined OTL "type").
+     */
+    public static function writeInvoiceHtml(\Mpdf\Mpdf $mpdf, string $html, bool $includeCss = true): void
+    {
+        $css = '';
+        if (preg_match('/<style[^>]*>(.*?)<\/style>/is', $html, $styleMatch)) {
+            $css = preg_replace('/@import\s+url\([^)]+\);/i', '', $styleMatch[1]) ?? $styleMatch[1];
+        }
+        if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $matches)) {
+            $html = $matches[1];
+        }
+        $html = preg_replace('/@import\s+url\([^)]+\);/i', '', $html) ?? $html;
+        $html = preg_replace('/[\x{202A}-\x{202E}\x{2066}-\x{2069}\x{200B}-\x{200F}\x{FEFF}]/u', '', $html) ?? $html;
+        if ($includeCss && $css !== '') {
+            $mpdf->WriteHTML('<style>' . $css . '</style>', 1);
+        }
+        $mpdf->WriteHTML($html, 2);
     }
 
     public static function storePdf($view, $filePrefix, $filePostfix, $pdfType = null, $requestFrom = 'admin'): string
     {
-        $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
+        $mpdf = new \Mpdf\Mpdf(['default_font' => 'dejavusans', 'mode' => 'utf-8', 'format' => [190, 250], 'autoLangToFont' => true]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
+        $mpdf->SetDirectionality('rtl');
         $mpdf_view = $view;
         $mpdf_view = $mpdf_view->render();
-        $mpdf->WriteHTML($mpdf_view);
+        self::writeInvoiceHtml($mpdf, $mpdf_view);
 
         $fileName = $filePrefix . $filePostfix . '.pdf';
         $directory = 'invoices';
