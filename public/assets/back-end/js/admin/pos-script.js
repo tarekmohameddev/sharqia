@@ -1399,9 +1399,57 @@ $(".search-bar-input").on("keyup", function () {
 });
 
 $(".action-category-filter").on("change", (event) => {
-    let getUrl = new URL(window.location.href);
-    getUrl.searchParams.set("category_id", $(event.target).val());
-    window.location.href = getUrl.toString();
+    loadPosProducts({ category_id: $(event.target).val() });
+});
+
+// Load the POS product list (and its pagination) via AJAX so the
+// customer information form on the billing side is never reset.
+function loadPosProducts(params = {}) {
+    const productSection = $("#pos-product-section");
+
+    $.get({
+        url: $("#route-admin-pos-product-list").data("url"),
+        dataType: "json",
+        data: params,
+        beforeSend: function () {
+            $("#loading").fadeIn();
+        },
+        success: function (data) {
+            productSection.empty().html(data.view);
+            attachClientCartEventHandlers();
+
+            // Keep the address bar in sync without triggering a navigation/reload.
+            const newUrl = new URL(window.location.href);
+            newUrl.search = "";
+            Object.keys(params || {}).forEach((key) => {
+                const value = params[key];
+                if (value !== undefined && value !== null && value !== "") {
+                    newUrl.searchParams.set(key, value);
+                }
+            });
+            history.replaceState(null, "", newUrl.toString());
+
+            const scrollTarget = productSection.find(".pos-item-wrap-horizontal");
+            if (scrollTarget.length) {
+                scrollTarget.scrollTop(0);
+            }
+        },
+        complete: function () {
+            $("#loading").fadeOut();
+        },
+    });
+}
+
+// Delegated so it keeps working after #pos-product-section is replaced.
+$(document).on("click", "#pos-product-section .pagination a.page-link", function (e) {
+    e.preventDefault();
+    const href = $(this).attr("href");
+    const parentLi = $(this).closest("li");
+    if (!href || parentLi.hasClass("disabled") || parentLi.hasClass("active")) {
+        return;
+    }
+    const params = Object.fromEntries(new URL(href, window.location.origin).searchParams);
+    loadPosProducts(params);
 });
 
 function renderCustomerAmountForPay() {
@@ -1531,7 +1579,9 @@ renderSelectProduct();
 renderQuickViewFunctionality();
 
 function renderQuickViewFunctionality() {
-    $(".action-select-product").on("click", function (e) {
+    // Delegated on #pos-product-section so it keeps working after the
+    // product list is swapped in by AJAX pagination.
+    $("#pos-product-section").off("click", ".action-select-product").on("click", ".action-select-product", function (e) {
         // Don't trigger quick view if clicking on the add to cart button
         if ($(e.target).closest('.action-direct-add-to-cart').length) {
             return;

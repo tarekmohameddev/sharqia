@@ -58,20 +58,7 @@ class POSController extends BaseController
         $categoryId = $request['category_id'];
         $categories = $this->categoryRepo->getListWhere(orderBy: ['id' => 'desc'], filters: ['position' => 0], dataLimit: 'all');
         $searchValue = $request['searchValue'] ?? null;
-        $products = $this->productRepo->getListWhere(
-            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
-            searchValue: $searchValue,
-            filters: [
-                'added_by' => 'in_house',
-                'category_id' => $categoryId,
-                'code' => $searchValue,
-                'status' => 1,
-            ],
-            relations: ['clearanceSale' => function ($query) {
-                return $query->active();
-            }, 'activeDiscountRules.giftProduct'],
-            dataLimit: getWebConfig('pagination_limit'),
-        );
+        $products = $this->getPOSProductList($request);
         $cartId = 'walk-in-customer-' . rand(10, 1000);
         $this->cartService->getNewCartSession(cartId: $cartId);
         // OPTIMIZED: Skip loading all customers - legacy dropdown is hidden (d-none)
@@ -466,6 +453,43 @@ class POSController extends BaseController
         return response()->json([
             'success' => 1,
             'view' => view('admin-views.pos.partials._quick-view', compact('product'))->render(),
+        ]);
+    }
+
+    /**
+     * @param Request|null $request
+     * @return LengthAwarePaginator
+     */
+    private function getPOSProductList(?Request $request): LengthAwarePaginator
+    {
+        $searchValue = $request['searchValue'] ?? null;
+
+        return $this->productRepo->getListWhere(
+            orderBy: ['pos_order' => 'asc', 'id' => 'desc'],
+            searchValue: $searchValue,
+            filters: [
+                'added_by' => 'in_house',
+                'category_id' => $request['category_id'] ?? null,
+                'code' => $searchValue,
+                'status' => 1,
+            ],
+            relations: ['clearanceSale' => function ($query) {
+                return $query->active();
+            }, 'activeDiscountRules.giftProduct'],
+            dataLimit: getWebConfig('pagination_limit'),
+        );
+    }
+
+    /**
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getProductListView(Request $request): JsonResponse
+    {
+        $products = $this->getPOSProductList($request)->setPath(route('admin.pos.index'));
+
+        return response()->json([
+            'view' => view('admin-views.pos.partials._product-list', compact('products'))->render(),
         ]);
     }
 

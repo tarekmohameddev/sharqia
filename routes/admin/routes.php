@@ -166,6 +166,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['admin', '
             Route::post('coupon-discount', 'getCouponDiscount')->name('coupon-discount');
             Route::get('quick-view', 'getQuickView')->name('quick-view');
             Route::get('search-product', 'getSearchedProductsView')->name('search-product');
+            Route::get('product-list', 'getProductListView')->name('product-list');
             Route::get('get-sellers', 'getSellers')->name('get-sellers');
             Route::post('set-shipping', 'setShipping')->name('set-shipping');
         });
